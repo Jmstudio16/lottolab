@@ -337,6 +337,7 @@ async def get_global_results(
 async def create_global_result(
     result_data: GlobalResultCreateEnhanced,
     request: Request,
+    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_super_admin_user)
 ):
     """Enter a new global result - ONLY Super Admin can do this"""
@@ -390,6 +391,10 @@ async def create_global_result(
         },
         ip_address=request.client.host if request.client else None
     )
+    
+    # AUTOMATIC WINNING DETECTION: Process all pending tickets for this result
+    if process_tickets_for_result:
+        background_tasks.add_task(process_tickets_for_result, result.model_dump())
     
     return result
 
