@@ -118,16 +118,17 @@ class POSDevice(BaseModel):
     model_config = ConfigDict(extra="ignore")
     device_id: str
     company_id: str
-    imei: str  # Unique identifier
+    imei: Optional[str] = None  # Unique identifier
     device_name: str
     branch: Optional[str] = None
     location: Optional[str] = None
     assigned_agent_id: Optional[str] = None
+    agent_id: Optional[str] = None  # Legacy field
     status: str = "PENDING"  # PENDING, ACTIVE, BLOCKED
     last_seen: Optional[str] = None
     notes: Optional[str] = None
     created_at: str
-    updated_at: str
+    updated_at: Optional[str] = None
 
 class POSDeviceCreate(BaseModel):
     imei: str
