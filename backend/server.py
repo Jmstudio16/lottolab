@@ -599,6 +599,9 @@ async def get_all_lotteries():
     lotteries = await db.lotteries.find({}, {"_id": 0}).to_list(1000)
     return [Lottery(**l) for l in lotteries]
 
+# Initialize and include super admin routes
+init_super_admin_routes(db, get_current_user)
+app.include_router(super_admin_router)
 app.include_router(api_router)
 
 app.add_middleware(
