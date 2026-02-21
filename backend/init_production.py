@@ -115,7 +115,7 @@ async def initialize_production_data():
     print(f"  - Plans: {len(plans)} configured")
     print(f"  - Companies: {len(companies)} active")
     print(f"  - Licenses: {len(companies)} created")
-    print(f"  - System Settings: Configured")
+    print("  - System Settings: Configured")
     
     client.close()
 
