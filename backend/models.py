@@ -887,3 +887,291 @@ class DailyReport(BaseModel):
     voided_tickets_count: int = 0
     generated_at: str
     generated_by: Optional[str] = None
+
+
+# ============ COMPANY LOTTERY CATALOG (REAL-TIME SYNC) ============
+class CompanyLotteryCatalog(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    company_id: str
+    lottery_game_id: str
+    lottery_name: Optional[str] = None
+    state_code: Optional[str] = None
+    game_type: Optional[str] = None
+    enabled: bool = True
+    allowed_draw_ids: List[str] = []
+    cutoff_rules: Dict[str, Any] = {}  # {"open_time": "08:00", "close_time": "12:55"}
+    max_bet_per_ticket: float = 10000.0
+    max_bet_per_number: float = 5000.0
+    max_payout_per_draw: float = 100000.0
+    created_at: str
+    updated_at: Optional[str] = None
+
+class CompanyLotteryCatalogCreate(BaseModel):
+    lottery_game_id: str
+    enabled: bool = True
+    cutoff_rules: Dict[str, Any] = {}
+    max_bet_per_ticket: float = 10000.0
+    max_bet_per_number: float = 5000.0
+    max_payout_per_draw: float = 100000.0
+
+class CompanyLotteryCatalogUpdate(BaseModel):
+    enabled: Optional[bool] = None
+    cutoff_rules: Optional[Dict[str, Any]] = None
+    max_bet_per_ticket: Optional[float] = None
+    max_bet_per_number: Optional[float] = None
+    max_payout_per_draw: Optional[float] = None
+
+# ============ COMPANY POS RULES ============
+class TicketFormat(str, Enum):
+    THERMAL_80MM = "80MM_THERMAL"
+    A4_STANDARD = "A4_STANDARD"
+
+class CompanyPosRules(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    company_id: str
+    block_numbers_enabled: bool = True
+    limits_enabled: bool = True
+    allow_void_ticket: bool = True
+    allow_reprint_ticket: bool = True
+    allow_manual_results_view: bool = True
+    ticket_format: str = "80MM_THERMAL"
+    config_version: int = 1  # Increment on any change for sync
+    created_at: str
+    updated_at: Optional[str] = None
+
+class CompanyPosRulesUpdate(BaseModel):
+    block_numbers_enabled: Optional[bool] = None
+    limits_enabled: Optional[bool] = None
+    allow_void_ticket: Optional[bool] = None
+    allow_reprint_ticket: Optional[bool] = None
+    allow_manual_results_view: Optional[bool] = None
+    ticket_format: Optional[str] = None
+
+# ============ AGENT POLICY ============
+class DeviceTypeEnum(str, Enum):
+    POS = "POS"
+    COMPUTER = "COMPUTER"
+    PHONE = "PHONE"
+    TABLET = "TABLET"
+
+class AgentPolicy(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    company_id: str
+    agent_id: str
+    allowed_device_types: List[str] = ["POS", "COMPUTER", "PHONE", "TABLET"]
+    must_use_imei: bool = False
+    max_credit_limit: float = 50000.0
+    max_win_limit: float = 100000.0
+    commission_percent: float = 0.0
+    supervisor_percent: float = 0.0
+    status: str = "active"  # active, suspended
+    created_at: str
+    updated_at: Optional[str] = None
+
+class AgentPolicyCreate(BaseModel):
+    agent_id: str
+    allowed_device_types: List[str] = ["POS", "COMPUTER", "PHONE", "TABLET"]
+    must_use_imei: bool = False
+    max_credit_limit: float = 50000.0
+    max_win_limit: float = 100000.0
+    commission_percent: float = 0.0
+    supervisor_percent: float = 0.0
+
+class AgentPolicyUpdate(BaseModel):
+    allowed_device_types: Optional[List[str]] = None
+    must_use_imei: Optional[bool] = None
+    max_credit_limit: Optional[float] = None
+    max_win_limit: Optional[float] = None
+    commission_percent: Optional[float] = None
+    supervisor_percent: Optional[float] = None
+    status: Optional[str] = None
+
+# ============ ENHANCED AGENT CREATE (FULL FORM) ============
+class AgentCreateFull(BaseModel):
+    # Personal Info
+    first_name: str
+    last_name: str
+    email: EmailStr
+    password: str
+    phone: Optional[str] = None
+    
+    # Location
+    branch_id: Optional[str] = None
+    zone: Optional[str] = None
+    address: Optional[str] = None
+    
+    # Device Settings
+    imei: Optional[str] = None  # Required if must_use_imei is true
+    device_id: Optional[str] = None  # Auto-generated if not provided
+    
+    # Financial Settings
+    commission_percent: float = 0.0
+    supervisor_percent: float = 0.0
+    credit_limit: float = 50000.0
+    win_limit: float = 100000.0
+    
+    # Permissions
+    allowed_device_types: List[str] = ["POS", "COMPUTER", "PHONE", "TABLET"]
+    must_use_imei: bool = False
+    can_void_ticket: bool = True
+    can_reprint_ticket: bool = True
+    
+    # Status
+    status: str = "ACTIVE"
+
+class AgentProfile(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    agent_id: str
+    user_id: str
+    company_id: str
+    first_name: str
+    last_name: str
+    name: str
+    email: str
+    phone: Optional[str] = None
+    branch_id: Optional[str] = None
+    branch_name: Optional[str] = None
+    zone: Optional[str] = None
+    address: Optional[str] = None
+    commission_percent: float = 0.0
+    supervisor_percent: float = 0.0
+    credit_limit: float = 50000.0
+    win_limit: float = 100000.0
+    current_credit: float = 0.0
+    current_winnings: float = 0.0
+    allowed_device_types: List[str] = []
+    must_use_imei: bool = False
+    can_void_ticket: bool = True
+    can_reprint_ticket: bool = True
+    status: str = "ACTIVE"
+    pos_devices: List[Dict[str, Any]] = []
+    enabled_lotteries_count: int = 0
+    total_sales_today: float = 0.0
+    total_tickets_today: int = 0
+    created_at: str
+    updated_at: Optional[str] = None
+    last_login: Optional[str] = None
+
+class AgentProfileUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    branch_id: Optional[str] = None
+    zone: Optional[str] = None
+    address: Optional[str] = None
+    commission_percent: Optional[float] = None
+    supervisor_percent: Optional[float] = None
+    credit_limit: Optional[float] = None
+    win_limit: Optional[float] = None
+    allowed_device_types: Optional[List[str]] = None
+    must_use_imei: Optional[bool] = None
+    can_void_ticket: Optional[bool] = None
+    can_reprint_ticket: Optional[bool] = None
+    status: Optional[str] = None
+
+# ============ AGENT LOTTERY PERMISSIONS ============
+class AgentLotteryPermission(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    company_id: str
+    agent_id: str
+    lottery_game_id: str
+    lottery_name: Optional[str] = None
+    enabled: bool = True
+    created_at: str
+    updated_at: Optional[str] = None
+
+# ============ LOTTERY TRANSACTION ACTIONS ============
+class TransactionAction(str, Enum):
+    SELL = "SELL"
+    VOID = "VOID"
+    REPRINT = "REPRINT"
+    PAYOUT = "PAYOUT"
+    BLOCK_NUMBER = "BLOCK_NUMBER"
+    UNBLOCK_NUMBER = "UNBLOCK_NUMBER"
+
+class LotteryTransaction(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    transaction_id: str
+    company_id: str
+    agent_id: str
+    agent_name: Optional[str] = None
+    device_session_id: Optional[str] = None
+    pos_device_id: Optional[str] = None
+    device_type: Optional[str] = None
+    ticket_id: Optional[str] = None
+    action: str
+    payload: Dict[str, Any] = {}
+    created_at: str
+
+# ============ ENHANCED TICKET (WITH FULL DETAILS) ============
+class TicketEnhanced(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    ticket_id: str
+    ticket_code: str
+    verification_code: str
+    qr_payload: Optional[str] = None
+    company_id: str
+    company_name: Optional[str] = None
+    agent_id: str
+    agent_name: Optional[str] = None
+    device_session_id: Optional[str] = None
+    pos_device_id: Optional[str] = None
+    device_type: Optional[str] = None
+    branch_id: Optional[str] = None
+    branch_name: Optional[str] = None
+    lottery_id: str
+    lottery_name: str
+    draw_id: Optional[str] = None
+    draw_date: str
+    draw_name: str
+    plays: List[Dict[str, Any]] = []  # [{numbers, bet_type, amount}]
+    total_amount: float
+    potential_win: float = 0.0
+    actual_win: float = 0.0
+    currency: str = "HTG"
+    status: str = "PENDING_RESULT"  # PENDING_RESULT, WINNER, LOSER, VOID, PAID
+    printed_count: int = 1
+    voided_at: Optional[str] = None
+    voided_by: Optional[str] = None
+    void_reason: Optional[str] = None
+    paid_at: Optional[str] = None
+    paid_by: Optional[str] = None
+    created_at: str
+
+# ============ DEVICE CONFIG RESPONSE (FOR SYNC) ============
+class DeviceConfigResponse(BaseModel):
+    config_version: int = 1
+    company: Dict[str, Any] = {}
+    agent: Dict[str, Any] = {}
+    pos_rules: Dict[str, Any] = {}
+    enabled_lotteries: List[Dict[str, Any]] = []
+    schedules: List[Dict[str, Any]] = []
+    blocked_numbers: List[Dict[str, Any]] = []
+    sales_limits: List[Dict[str, Any]] = []
+    prime_configs: List[Dict[str, Any]] = []
+    agent_policy: Dict[str, Any] = {}
+    timestamp: str
+
+class DeviceSyncResponse(BaseModel):
+    config_version: int = 1
+    latest_results: List[Dict[str, Any]] = []
+    blocked_numbers: List[Dict[str, Any]] = []
+    limits: List[Dict[str, Any]] = []
+    agent_status: str = "active"
+    pos_status: Optional[str] = None
+    daily_stats: Dict[str, Any] = {}
+    balance: Dict[str, Any] = {}
+    server_time: str
+
+# ============ COMPANY CONFIG VERSION TRACKING ============
+class CompanyConfigVersion(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    company_id: str
+    version: int = 1
+    last_updated_at: str
+    last_updated_by: Optional[str] = None
+    change_type: Optional[str] = None  # LOTTERY_TOGGLE, BLOCKED_NUMBER, LIMIT, POS_RULE
