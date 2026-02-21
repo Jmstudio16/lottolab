@@ -35,6 +35,8 @@ import { CompanyConfigurationPage } from '@/pages/CompanyConfigurationPage';
 import { CompanyStatisticsPage } from '@/pages/CompanyStatisticsPage';
 import { CompanyDailyReportsPage } from '@/pages/CompanyDailyReportsPage';
 import CompanyProfileSettingsPage from '@/pages/company/CompanySettingsPage';
+import { CompanyAgentBalancesPage } from '@/pages/CompanyAgentBalancesPage';
+import { CompanyWinningTicketsPage } from '@/pages/CompanyWinningTicketsPage';
 
 // Agent Universal Terminal Pages (NEW)
 import { AgentLayout } from '@/layouts/AgentLayout';
