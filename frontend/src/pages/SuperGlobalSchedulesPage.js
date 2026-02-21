@@ -407,6 +407,6 @@ export const SuperGlobalSchedulesPage = () => {
           </div>
         )}
       </div>
-    </div>
+    </AdminLayout>
   );
 };
