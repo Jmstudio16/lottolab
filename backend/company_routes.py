@@ -458,131 +458,26 @@ async def delete_agent(
     
     return {"message": "Agent deleted successfully"}
 
-# ============ SCHEDULES CRUD ============
-@company_router.get("/schedules", response_model=List[Schedule])
+# ============ SCHEDULES (READ-ONLY - Global schedules managed by Super Admin) ============
+@company_router.get("/schedules")
 async def get_schedules(current_user: dict = Depends(get_current_user)):
+    """View schedules - READ ONLY. Schedules are managed globally by Super Admin."""
     company_id = require_company_access(current_user)
-    schedules = await db.schedules.find({"company_id": company_id}, {"_id": 0}).to_list(1000)
-    return [Schedule(**s) for s in schedules]
+    
+    # Get global schedules
+    global_schedules = await db.global_schedules.find({"is_active": True}, {"_id": 0}).to_list(1000)
+    
+    # Enrich with lottery info
+    for schedule in global_schedules:
+        lottery = await db.global_lotteries.find_one({"lottery_id": schedule["lottery_id"]}, {"_id": 0})
+        if lottery:
+            schedule["lottery_name"] = lottery.get("lottery_name")
+            schedule["state_code"] = lottery.get("state_code")
+    
+    return global_schedules
 
-@company_router.post("/schedules", response_model=Schedule)
-async def create_schedule(
-    schedule_data: ScheduleCreate,
-    request: Request,
-    current_user: dict = Depends(get_current_user)
-):
-    company_id = require_company_access(current_user, [UserRole.COMPANY_ADMIN, UserRole.COMPANY_MANAGER])
-    
-    # Verify lottery exists
-    lottery = await db.lotteries.find_one({"lottery_id": schedule_data.lottery_id}, {"_id": 0})
-    if not lottery:
-        raise HTTPException(status_code=404, detail="Lottery not found")
-    
-    # Check for duplicate schedule
-    existing = await db.schedules.find_one({
-        "company_id": company_id,
-        "lottery_id": schedule_data.lottery_id,
-        "day_of_week": schedule_data.day_of_week
-    })
-    if existing:
-        raise HTTPException(status_code=400, detail="Schedule already exists for this lottery and day")
-    
-    schedule_id = generate_id("sched_")
-    now = get_current_timestamp()
-    
-    schedule = Schedule(
-        schedule_id=schedule_id,
-        company_id=company_id,
-        lottery_id=schedule_data.lottery_id,
-        lottery_name=lottery["lottery_name"],
-        day_of_week=schedule_data.day_of_week,
-        open_time=schedule_data.open_time,
-        close_time=schedule_data.close_time,
-        draw_time=schedule_data.draw_time,
-        is_active=schedule_data.is_active,
-        created_at=now,
-        updated_at=now
-    )
-    
-    await db.schedules.insert_one(schedule.model_dump())
-    
-    await log_activity(
-        db=db,
-        action_type="SCHEDULE_CREATED",
-        entity_type="schedule",
-        entity_id=schedule_id,
-        performed_by=current_user["user_id"],
-        company_id=company_id,
-        metadata={"lottery_name": lottery["lottery_name"], "day": schedule_data.day_of_week},
-        ip_address=request.client.host if request.client else None
-    )
-    
-    return schedule
-
-@company_router.put("/schedules/{schedule_id}", response_model=Schedule)
-async def update_schedule(
-    schedule_id: str,
-    updates: ScheduleUpdate,
-    request: Request,
-    current_user: dict = Depends(get_current_user)
-):
-    company_id = require_company_access(current_user, [UserRole.COMPANY_ADMIN, UserRole.COMPANY_MANAGER])
-    
-    update_data = {k: v for k, v in updates.model_dump().items() if v is not None}
-    if not update_data:
-        raise HTTPException(status_code=400, detail="No fields to update")
-    
-    update_data["updated_at"] = get_current_timestamp()
-    
-    result = await db.schedules.update_one(
-        {"schedule_id": schedule_id, "company_id": company_id},
-        {"$set": update_data}
-    )
-    
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Schedule not found")
-    
-    schedule_doc = await db.schedules.find_one({"schedule_id": schedule_id}, {"_id": 0})
-    
-    await log_activity(
-        db=db,
-        action_type="SCHEDULE_UPDATED",
-        entity_type="schedule",
-        entity_id=schedule_id,
-        performed_by=current_user["user_id"],
-        company_id=company_id,
-        metadata={"updates": update_data},
-        ip_address=request.client.host if request.client else None
-    )
-    
-    return Schedule(**schedule_doc)
-
-@company_router.delete("/schedules/{schedule_id}")
-async def delete_schedule(
-    schedule_id: str,
-    request: Request,
-    current_user: dict = Depends(get_current_user)
-):
-    company_id = require_company_access(current_user, [UserRole.COMPANY_ADMIN])
-    
-    schedule = await db.schedules.find_one({"schedule_id": schedule_id, "company_id": company_id}, {"_id": 0})
-    if not schedule:
-        raise HTTPException(status_code=404, detail="Schedule not found")
-    
-    await db.schedules.delete_one({"schedule_id": schedule_id, "company_id": company_id})
-    
-    await log_activity(
-        db=db,
-        action_type="SCHEDULE_DELETED",
-        entity_type="schedule",
-        entity_id=schedule_id,
-        performed_by=current_user["user_id"],
-        company_id=company_id,
-        metadata={"lottery_name": schedule.get("lottery_name")},
-        ip_address=request.client.host if request.client else None
-    )
-    
-    return {"message": "Schedule deleted successfully"}
+# NOTE: POST, PUT, DELETE for schedules have been REMOVED
+# Schedules are now managed globally by Super Admin only
 
 # ============ TICKETS ============
 @company_router.get("/tickets", response_model=List[Ticket])
