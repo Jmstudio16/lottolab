@@ -102,6 +102,12 @@ async def get_system_settings():
             "updated_at": get_current_timestamp()
         }
         await db.system_settings.insert_one(settings)
+    else:
+        # Ensure system_logo_url exists (migration from old field name)
+        if not settings.get("system_logo_url"):
+            settings["system_logo_url"] = settings.get("platform_logo", "/assets/logos/lottolab-logo.png")
+        if not settings.get("system_name"):
+            settings["system_name"] = settings.get("platform_name", "LOTTOLAB")
     
     return settings
 
