@@ -183,16 +183,18 @@ class Ticket(BaseModel):
     ticket_id: str
     ticket_code: str
     verification_code: str
-    qr_payload: str
+    qr_payload: Optional[str] = None
     agent_id: str
+    agent_name: Optional[str] = None
     company_id: str
+    pos_device_id: Optional[str] = None
     lottery_id: str
     lottery_name: str
     draw_datetime: str
     plays: List[TicketLine]
     total_amount: float
-    currency: str
-    status: TicketStatus
+    currency: str = "HTG"
+    status: TicketStatus = TicketStatus.ACTIVE
     created_at: str
 
 class TicketCreate(BaseModel):
