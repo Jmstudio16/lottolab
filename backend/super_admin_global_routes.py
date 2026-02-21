@@ -403,11 +403,12 @@ async def update_global_result(
     result_id: str,
     updates: dict,
     request: Request,
+    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_super_admin_user)
 ):
     """Update a global result"""
-    allowed_fields = ["winning_numbers", "winning_numbers_parsed", "bonus_number"]
-    update_data = {k: v for k, v in updates.items() if k in allowed_fields and v is not None}
+    allowed_fields = ["winning_numbers", "winning_numbers_parsed", "bonus_number", "jackpot_amount", "notes", "draw_name", "draw_date"]
+    update_data = {k: v for k, v in updates.items() if k in allowed_fields}
     
     if not update_data:
         raise HTTPException(status_code=400, detail="No valid fields to update")
@@ -429,6 +430,11 @@ async def update_global_result(
         metadata={"updates": update_data},
         ip_address=request.client.host if request.client else None
     )
+    
+    # Re-process tickets if winning numbers changed
+    if "winning_numbers" in update_data or "winning_numbers_parsed" in update_data:
+        if process_tickets_for_result:
+            background_tasks.add_task(process_tickets_for_result, result_doc)
     
     return GlobalResultEnhanced(**result_doc)
 
