@@ -45,15 +45,35 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 
 # ============ AUTH ROUTES ============
 @api_router.post("/auth/login", response_model=LoginResponse)
-async def login(credentials: LoginRequest):
+async def login(credentials: LoginRequest, request: Request):
     user_doc = await db.users.find_one({"email": credentials.email}, {"_id": 0})
     if not user_doc or not verify_password(credentials.password, user_doc.get("password_hash", "")):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
+    # Update last_login
+    now = get_current_timestamp()
+    await db.users.update_one(
+        {"user_id": user_doc["user_id"]},
+        {"$set": {"last_login": now}}
+    )
+    
+    user_doc["last_login"] = now
     user_doc.pop("password_hash", None)
     user = User(**user_doc)
     
     token = create_access_token({"user_id": user.user_id, "role": user.role, "company_id": user.company_id})
+    
+    # Log login activity
+    await log_activity(
+        db=db,
+        action_type="USER_LOGIN",
+        entity_type="user",
+        entity_id=user.user_id,
+        performed_by=user.user_id,
+        company_id=user.company_id,
+        metadata={"email": user.email, "role": user.role},
+        ip_address=request.client.host if request.client else None
+    )
     
     redirect_map = {
         UserRole.SUPER_ADMIN: "/super/dashboard",
