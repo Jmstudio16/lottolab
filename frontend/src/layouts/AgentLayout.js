@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/api/auth';
+import { useLogoContext } from '@/contexts/LogoContext';
 import { 
   Home, 
   PlusCircle, 
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import Logo from '@/components/Logo';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -51,9 +53,11 @@ const AgentSidebar = ({ isOpen, onClose }) => {
         {/* Header */}
         <div className="p-4 border-b border-slate-700">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-white">LOTTOLAB</h1>
-              <p className="text-xs text-slate-400">Terminal Agent</p>
+            <div className="flex items-center gap-2">
+              <Logo size="md" />
+              <div>
+                <p className="text-xs text-slate-400">Terminal Agent</p>
+              </div>
             </div>
             <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-white">
               <X size={24} />
