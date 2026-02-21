@@ -454,6 +454,12 @@ async def print_ticket_universal(
     company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
     config = await db.company_configurations.find_one({"company_id": company_id}, {"_id": 0})
     
+    # Get logos
+    system_settings = await db.system_settings.find_one({}, {"_id": 0})
+    system_logo = system_settings.get("system_logo_url", "/assets/logos/lottolab-logo.png") if system_settings else "/assets/logos/lottolab-logo.png"
+    company_logo = company.get("company_logo_url") if company else None
+    display_logo = company_logo if company_logo else system_logo
+    
     # Generate QR code
     qr_payload = ticket.get("qr_payload", f"{ticket.get('ticket_code')}|{ticket.get('verification_code')}|{company_id}")
     qr_code = generate_qr_code_base64(qr_payload)
