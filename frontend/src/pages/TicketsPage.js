@@ -120,12 +120,12 @@ export const TicketsPage = () => {
             </div>
             <div className="min-w-[150px]">
               <label className="text-xs text-slate-400 mb-1 block">Status</label>
-              <Select value={filters.status} onValueChange={(val) => setFilters({...filters, status: val})}>
+              <Select value={filters.status || "all"} onValueChange={(val) => setFilters({...filters, status: val === "all" ? "" : val})}>
                 <SelectTrigger className="bg-slate-950 border-slate-700 text-white" data-testid="filter-status">
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-900 border-slate-700">
-                  <SelectItem value="" className="text-white">All statuses</SelectItem>
+                  <SelectItem value="all" className="text-white">All statuses</SelectItem>
                   <SelectItem value="ACTIVE" className="text-white">Active</SelectItem>
                   <SelectItem value="WINNER" className="text-white">Winner</SelectItem>
                   <SelectItem value="LOSER" className="text-white">Loser</SelectItem>
