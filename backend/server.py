@@ -16,6 +16,7 @@ from utils import generate_id, generate_ticket_code, generate_verification_code,
 from activity_logger import log_activity
 from super_admin_routes import super_admin_router, set_db
 from company_routes import company_router, set_company_db
+from agent_routes import agent_router, set_agent_db
 from error_handlers import validation_exception_handler, generic_exception_handler
 
 ROOT_DIR = Path(__file__).parent
