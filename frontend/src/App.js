@@ -296,6 +296,14 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/company/profile-settings"
+              element={
+                <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
+                  <CompanyProfileSettingsPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* ================== UNIVERSAL AGENT TERMINAL ROUTES ================== */}
             {/* Agent routes use nested layout for better UX */}
