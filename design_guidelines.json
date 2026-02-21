@@ -1,0 +1,140 @@
+{
+  "project_name": "LOTTOLAB",
+  "design_philosophy": {
+    "identity": "The High-Stakes Command Center",
+    "vibe": "Professional, Secure, Electrifying (Gold Accents), Efficient",
+    "principles": [
+      "Dark Mode First: Deep Navy backgrounds, not pure black, to reduce eye strain.",
+      "Gold for Glory: Use Gold (#facc15) strictly for 'Money', 'Wins', and 'Primary Actions'.",
+      "Blue for Structure: Use Blue (#3b82f6) for navigation, information, and admin links.",
+      "Density where it counts: Admin tables are dense; POS screens are touch-friendly and spacious.",
+      "Ticket Realism: Digital tickets should look like physical thermal receipts."
+    ]
+  },
+  "typography": {
+    "fonts": [
+      {
+        "family": "Barlow Condensed",
+        "usage": "Headings, KPIs, Ticket Numbers, Lottery Names",
+        "weights": ["600", "700", "800"],
+        "import_url": "https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      },
+      {
+        "family": "Inter",
+        "usage": "Body text, UI labels, Form inputs",
+        "weights": ["400", "500", "600"]
+      },
+      {
+        "family": "JetBrains Mono",
+        "usage": "Ticket IDs, Verification Codes, Logs, Receipt Data",
+        "weights": ["400", "500"]
+      }
+    ],
+    "rules": {
+      "headings": "font-barlow font-bold uppercase tracking-tight text-white",
+      "body": "font-sans text-slate-300",
+      "numbers": "font-mono tabular-nums tracking-wide"
+    }
+  },
+  "colors": {
+    "palette": {
+      "background": {
+        "default": "#0f172a",
+        "sidebar": "#020617",
+        "card": "#1e293b",
+        "input": "#0f172a"
+      },
+      "primary": {
+        "DEFAULT": "#facc15",
+        "foreground": "#020617",
+        "hover": "#eab308"
+      },
+      "secondary": {
+        "DEFAULT": "#3b82f6",
+        "foreground": "#ffffff",
+        "hover": "#2563eb"
+      },
+      "accent": {
+        "DEFAULT": "#1e293b",
+        "foreground": "#facc15"
+      },
+      "muted": {
+        "DEFAULT": "#334155",
+        "foreground": "#94a3b8"
+      },
+      "border": "#334155",
+      "success": "#22c55e",
+      "danger": "#ef4444",
+      "warning": "#f59e0b"
+    },
+    "gradients": {
+      "gold_glow": "bg-gradient-to-r from-yellow-400/20 to-yellow-600/20",
+      "blue_glow": "bg-gradient-to-r from-blue-500/10 to-blue-700/10"
+    }
+  },
+  "layout_strategies": {
+    "admin_dashboard": {
+      "structure": "Sidebar (Fixed Left) + Topbar (Sticky) + Main Content (Scroll)",
+      "sidebar_width": "w-64",
+      "container": "max-w-[1600px] mx-auto p-6"
+    },
+    "pos_interface": {
+      "structure": "3-Column Grid (No Scroll preferred)",
+      "cols": "grid-cols-12 gap-4 h-[calc(100vh-80px)]",
+      "left_panel": "col-span-3 (Lottery Selection - Vertical List/Tiles)",
+      "center_panel": "col-span-6 (Input Pad + Game Board)",
+      "right_panel": "col-span-3 (Cart + Checkout + Recent Tickets)"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-yellow-400 text-slate-950 hover:bg-yellow-500 font-barlow font-bold uppercase tracking-wide shadow-[0_0_15px_rgba(250,204,21,0.3)]",
+      "secondary": "bg-blue-600 text-white hover:bg-blue-700 font-medium",
+      "ghost": "hover:bg-slate-800 text-slate-300 hover:text-white",
+      "destructive": "bg-red-900/50 text-red-200 hover:bg-red-900 border border-red-800"
+    },
+    "cards": {
+      "default": "bg-slate-800/50 border border-slate-700/50 backdrop-blur-sm rounded-xl",
+      "interactive": "hover:border-yellow-500/50 transition-colors cursor-pointer",
+      "metric": "p-6 flex flex-col gap-2 relative overflow-hidden"
+    },
+    "inputs": {
+      "default": "bg-slate-950 border-slate-700 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/50 text-white placeholder:text-slate-600",
+      "pos_input": "text-4xl font-mono text-center h-20 tracking-[0.5em] bg-black border-2 border-slate-700 focus:border-yellow-400"
+    },
+    "status_badge": {
+      "base": "px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border",
+      "variants": {
+        "active": "bg-emerald-950/50 text-emerald-400 border-emerald-800",
+        "closed": "bg-slate-900 text-slate-500 border-slate-800",
+        "pending": "bg-yellow-950/30 text-yellow-500 border-yellow-900"
+      }
+    },
+    "ticket_receipt": {
+      "wrapper": "bg-white text-black font-mono p-4 w-[300px] mx-auto shadow-2xl rotate-1 relative",
+      "header": "text-center border-b-2 border-black border-dashed pb-4 mb-4",
+      "body": "space-y-2 text-sm",
+      "footer": "text-center border-t-2 border-black border-dashed pt-4 mt-4 text-xs",
+      "barcode": "h-12 w-full bg-black mt-2"
+    }
+  },
+  "visual_enhancers": {
+    "textures": "Use subtle noise texture on the dark background to prevent banding.",
+    "shadows": "shadow-2xl shadow-black/50 for floating panels.",
+    "borders": "1px solid borders with 10% opacity for crisp edges.",
+    "empty_states": "Use simple geometric ticket illustrations in line art (slate-700)."
+  },
+  "assets": {
+    "logo_url": "https://customer-assets.emergentagent.com/job_36e4b3a7-6dc6-43e8-b4c7-e0a52462b3df/artifacts/ztvthede_ChatGPT%20Image%2019%20f%C3%A9vr.%202026%2C%2020_13_22.png",
+    "icons_library": "lucide-react"
+  },
+  "universal_guidelines": [
+    "Always check 'company_id' in local storage or context before making API calls.",
+    "POS interface MUST NOT have global window scroll. It should be a fixed app-like experience.",
+    "Use 'sonner' for all toast notifications (Success: Green/Gold, Error: Red).",
+    "All dates must be formatted with 'date-fns' taking timezone into account (America/New_York or America/Port-au-Prince).",
+    "Money values MUST be formatted with currency symbol (USD $ or HTG G).",
+    "Do not use gradients for main backgrounds, only for accents or active states."
+  ],
+  "instructions_to_main_agent": "You are building LOTTOLAB. Start by setting up the font imports in index.css. Then, configure tailwind.config.js with the custom color palette. Build the Layout shell (Sidebar + Header). Create the 'Ticket' component early as it is used in POS and Results. Focus on the POS interface speed - use keyboard listeners for numpad input."
+}
