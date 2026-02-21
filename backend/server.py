@@ -22,6 +22,7 @@ from company_admin_routes import company_admin_router, set_company_admin_db
 from agent_routes import agent_router, set_agent_db
 from universal_pos_routes import universal_pos_router, set_universal_pos_db
 from sync_routes import sync_router, set_sync_db
+from settings_routes import settings_router, set_settings_db
 from error_handlers import validation_exception_handler, generic_exception_handler
 
 ROOT_DIR = Path(__file__).parent
