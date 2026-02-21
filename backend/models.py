@@ -118,15 +118,32 @@ class POSDevice(BaseModel):
     model_config = ConfigDict(extra="ignore")
     device_id: str
     company_id: str
+    imei: str  # Unique identifier
     device_name: str
-    agent_id: Optional[str] = None
-    status: str = "ACTIVE"
+    branch: Optional[str] = None
+    location: Optional[str] = None
+    assigned_agent_id: Optional[str] = None
+    status: str = "PENDING"  # PENDING, ACTIVE, BLOCKED
     last_seen: Optional[str] = None
+    notes: Optional[str] = None
     created_at: str
+    updated_at: str
 
 class POSDeviceCreate(BaseModel):
+    imei: str
     device_name: str
-    agent_id: Optional[str] = None
+    branch: Optional[str] = None
+    location: Optional[str] = None
+    assigned_agent_id: Optional[str] = None
+    notes: Optional[str] = None
+
+class POSDeviceUpdate(BaseModel):
+    device_name: Optional[str] = None
+    branch: Optional[str] = None
+    location: Optional[str] = None
+    assigned_agent_id: Optional[str] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
 
 class State(BaseModel):
     model_config = ConfigDict(extra="ignore")
