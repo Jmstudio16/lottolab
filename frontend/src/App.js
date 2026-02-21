@@ -5,7 +5,7 @@ import { ProtectedRoute } from '@/api/ProtectedRoute';
 import { Toaster } from 'sonner';
 import '@/App.css';
 
-// Pages
+// Super Admin Pages
 import { LoginPage } from '@/pages/LoginPage';
 import { SuperDashboardPage } from '@/pages/SuperDashboardPage';
 import { SuperCompaniesPage } from '@/pages/SuperCompaniesPage';
@@ -13,6 +13,8 @@ import { SuperUsersPage } from '@/pages/SuperUsersPage';
 import { SuperPlansPage } from '@/pages/SuperPlansPage';
 import { SuperActivityLogsPage } from '@/pages/SuperActivityLogsPage';
 import { SuperSettingsPage } from '@/pages/SuperSettingsPage';
+
+// Company Admin Pages
 import { CompanyDashboardPage } from '@/pages/CompanyDashboardPage';
 import { CompanyAgentsPage } from '@/pages/CompanyAgentsPage';
 import { CompanyLotteriesPage } from '@/pages/CompanyLotteriesPage';
@@ -24,7 +26,11 @@ import { ReportsPage } from '@/pages/ReportsPage';
 import { CompanyUsersPage } from '@/pages/CompanyUsersPage';
 import { CompanyActivityLogsPage } from '@/pages/CompanyActivityLogsPage';
 import { CompanySettingsPage } from '@/pages/CompanySettingsPage';
-import { POSPage } from '@/pages/POSPage';
+
+// Agent Pages (LIMITED ACCESS)
+import { AgentPOSPage } from '@/pages/AgentPOSPage';
+import { AgentMyTicketsPage } from '@/pages/AgentMyTicketsPage';
+import { AgentMySalesPage } from '@/pages/AgentMySalesPage';
 
 const RoleBasedRedirect = () => {
   const { user, loading } = useAuth();
@@ -41,12 +47,12 @@ const RoleBasedRedirect = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // Role-based redirect
+  // Role-based redirect - STRICT separation
   const redirectMap = {
     SUPER_ADMIN: '/super/dashboard',
     COMPANY_ADMIN: '/company/dashboard',
     COMPANY_MANAGER: '/company/dashboard',
-    AGENT_POS: '/pos',
+    AGENT_POS: '/agent/pos',  // Agents go to their POS, NOT company dashboard
     AUDITOR_READONLY: '/company/dashboard'
   };
 
@@ -78,7 +84,7 @@ function App() {
             {/* Root redirect */}
             <Route path="/" element={<RoleBasedRedirect />} />
 
-            {/* Super Admin Routes */}
+            {/* ================== SUPER ADMIN ROUTES ================== */}
             <Route
               path="/super/dashboard"
               element={
@@ -128,7 +134,8 @@ function App() {
               }
             />
 
-            {/* Company Admin Routes */}
+            {/* ================== COMPANY ADMIN ROUTES ================== */}
+            {/* Company Admin has FULL access to company management */}
             <Route
               path="/company/dashboard"
               element={
@@ -218,17 +225,40 @@ function App() {
               }
             />
 
-            {/* POS Routes */}
+            {/* ================== AGENT ROUTES (LIMITED ACCESS) ================== */}
+            {/* Agents can ONLY access these routes - NOT company admin pages */}
             <Route
-              path="/pos"
+              path="/agent/pos"
               element={
                 <ProtectedRoute allowedRoles={['AGENT_POS']}>
-                  <POSPage />
+                  <AgentPOSPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/agent/my-tickets"
+              element={
+                <ProtectedRoute allowedRoles={['AGENT_POS']}>
+                  <AgentMyTicketsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/agent/my-sales"
+              element={
+                <ProtectedRoute allowedRoles={['AGENT_POS']}>
+                  <AgentMySalesPage />
                 </ProtectedRoute>
               }
             />
 
-            {/* Catch all */}
+            {/* Legacy POS route redirect */}
+            <Route
+              path="/pos"
+              element={<Navigate to="/agent/pos" replace />}
+            />
+
+            {/* Catch all - redirect to role-based home */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
