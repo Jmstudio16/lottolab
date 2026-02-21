@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/api/auth';
 import { ProtectedRoute } from '@/api/ProtectedRoute';
+import { LogoProvider } from '@/contexts/LogoContext';
 import { Toaster } from 'sonner';
 import '@/App.css';
 
@@ -33,6 +34,7 @@ import { CompanyBranchesPage } from '@/pages/CompanyBranchesPage';
 import { CompanyConfigurationPage } from '@/pages/CompanyConfigurationPage';
 import { CompanyStatisticsPage } from '@/pages/CompanyStatisticsPage';
 import { CompanyDailyReportsPage } from '@/pages/CompanyDailyReportsPage';
+import CompanyProfileSettingsPage from '@/pages/company/CompanySettingsPage';
 
 // Agent Universal Terminal Pages (NEW)
 import { AgentLayout } from '@/layouts/AgentLayout';
