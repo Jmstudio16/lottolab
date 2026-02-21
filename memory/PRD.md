@@ -21,139 +21,160 @@ LOTTOLAB is a full-stack, multi-tenant Lottery SaaS platform with strict RBAC hi
    - Enters official results (auto-verified)
    - Manages all companies (suspend, reactivate, change subscription)
    - Views all agents, POS devices, vendors, tickets globally
+   - Views and manages all device sessions globally
    - Access to platform-wide statistics
 
-2. **COMPANY_ADMIN**: Operational manager (DEMOTED from previous role)
+2. **COMPANY_ADMIN**: Operational manager
    - **READ-ONLY access** to global lottery catalog, schedules, and results
    - Manages company branches (Succursales)
    - Manages agents and company users
    - Manages POS devices (with IMEI)
    - Manages vendors
-   - Configures company settings:
-     - Prime/Payout table (bet types and payout formulas)
-     - Betting limits (min/max per ticket, per number, per agent)
-     - Agent commission percentages
-     - Marriage betting configuration
-     - Receipt customization
-   - Views statistics (agent control, blocked numbers, limits, winning tickets, audit logs)
-   - Generates daily reports
+   - Manages device sessions for company agents
+   - Sets agent device permissions (ANY_DEVICE or POS_ONLY)
+   - Configures company settings
 
-3. **AGENT_POS**: Limited POS terminal access
-   - Can only sell tickets
+3. **AGENT_POS**: Universal Terminal Access (NEW - IMPLEMENTED)
+   - Access from ANY device (POS, Computer, Phone, Tablet, Browser)
+   - Sells lottery tickets
    - Views own tickets and sales
-   - Cannot access Company Admin features
+   - Views lottery results
+   - Generates personal reports
+   - Real-time sync every 5 seconds
 
-4. **AUDITOR_READONLY**: View-only access (implemented but limited scope)
+4. **AUDITOR_READONLY**: View-only access
 
 ---
 
 ## Implemented Features (February 2026)
 
-### Super Admin Portal
-- [x] Dashboard with platform stats (companies, agents, POS, tickets, sales)
+### ✅ Universal Agent Terminal System (NEW - COMPLETED)
+
+#### Authentication
+- [x] Universal login endpoint `POST /api/auth/agent/login`
+- [x] Supports both Hardware POS (with IMEI header) and Universal devices
+- [x] Automatic device type detection (POS, COMPUTER, PHONE, TABLET, BROWSER)
+- [x] Device session tracking in `device_sessions` collection
+
+#### Real-Time Synchronization
+- [x] `GET /api/device/config` - Load all config on startup
+- [x] `GET /api/device/sync` - Poll every 5 seconds for updates
+- [x] Returns: latest results, daily stats, balance, config updates
+
+#### Lottery Sales Engine
+- [x] `POST /api/lottery/sell` - Process ticket sales
+- [x] Validates game status, cutoff times, betting limits
+- [x] Records device_session_id, pos_device_id, device_type
+- [x] QR code generation for tickets
+
+#### Ticket Management
+- [x] `POST /api/lottery/cancel` - Cancel tickets within void window
+- [x] `GET /api/agent/tickets` - View agent's tickets
+- [x] `GET /api/ticket/print/{ticket_id}` - Printable HTML ticket
+
+#### Results & Reports
+- [x] `GET /api/results/latest` - Latest lottery results
+- [x] `GET /api/agent/reports` - Agent sales reports
+
+#### Frontend Pages
+- [x] `/agent/login` - Universal agent login page
+- [x] `/agent/dashboard` - Dashboard with stats and quick actions
+- [x] `/agent/new-ticket` - New ticket/sale creation
+- [x] `/agent/tickets` - Tickets list with filters
+- [x] `/agent/results` - Lottery results view
+- [x] `/agent/reports` - Sales reports
+
+### ✅ Device Session Management (NEW - COMPLETED)
+
+#### Company Admin
+- [x] `GET /api/company/device-sessions` - View company device sessions
+- [x] `PUT /api/company/device-sessions/{id}/block` - Block session
+- [x] `PUT /api/company/device-sessions/{id}/unblock` - Unblock session
+- [x] `PUT /api/company/agents/{id}/device-permission` - Set agent permissions
+
+#### Super Admin
+- [x] `GET /api/super/all-device-sessions` - View all sessions globally
+- [x] `GET /api/super/device-sessions/stats` - Session statistics
+- [x] `PUT /api/super/device-sessions/{id}/block` - Block any session
+- [x] `PUT /api/super/device-sessions/{id}/unblock` - Unblock any session
+
+### ✅ Super Admin Portal
+- [x] Dashboard with platform stats
 - [x] Global Lottery Catalog (155 lotteries seeded)
-- [x] Global Schedules management (CRUD)
-- [x] Global Results entry (CRUD, auto-verified)
-- [x] Company management (view, suspend, reactivate)
+- [x] Global Schedules management
+- [x] Global Results entry
+- [x] Company management
 - [x] User management
 - [x] Plans & Licenses
 - [x] Activity logs
 - [x] Platform settings
-- [x] Seed lottery catalog endpoint
 
-### Company Admin Portal
+### ✅ Company Admin Portal
 - [x] Dashboard with company stats
-- [x] Branches (Succursales) management (CRUD)
-- [x] Agents management (CRUD)
-- [x] POS Devices management (CRUD with IMEI)
+- [x] Branches (Succursales) management
+- [x] Agents management
+- [x] POS Devices management
 - [x] Lottery Catalog (view enabled lotteries)
-- [x] Schedules (READ-ONLY view of global schedules)
-- [x] Results (READ-ONLY view of global results)
+- [x] Schedules (READ-ONLY view)
+- [x] Results (READ-ONLY view)
 - [x] Tickets management
-- [x] Configuration module:
-  - [x] General settings (stop sales, void window, auto-print)
-  - [x] Prime/Payout table (editable payouts per bet type)
-  - [x] Betting limits
-  - [x] Marriage configuration
-  - [x] Receipt customization
-- [x] Statistics module:
-  - [x] Agent control (performance by agent)
-  - [x] Blocked numbers
-  - [x] Sales limits
-  - [x] Winning tickets
-  - [x] Audit logs (traçabilité)
-- [x] Daily Reports (generate and view)
-- [x] Company users management
-- [x] Activity logs
-- [x] Company settings
-
-### Agent POS Portal
-- [x] POS terminal interface
-- [x] Ticket selling
-- [x] View own tickets
-- [x] View own sales
+- [x] Configuration module
+- [x] Statistics module
+- [x] Daily Reports
 
 ---
 
 ## API Structure
 
+### Universal Agent Terminal Routes (`/api/`)
+- `POST /auth/agent/login` - Universal agent login
+- `GET /device/config` - Device configuration
+- `GET /device/sync` - Real-time sync
+- `POST /lottery/sell` - Sell ticket
+- `POST /lottery/cancel` - Cancel ticket
+- `GET /agent/tickets` - Agent's tickets
+- `GET /agent/reports` - Agent's reports
+- `GET /results/latest` - Latest results
+- `GET /ticket/print/{id}` - Print ticket
+
 ### Super Admin Routes (`/api/super/*`)
-- `GET/POST/PUT/DELETE /lottery-catalog` - Global lottery management
-- `GET/POST/PUT/DELETE /global-schedules` - Global schedule management
-- `GET/POST/PUT/DELETE /global-results` - Global results management
-- `GET/PUT /companies-enhanced` - Enhanced company management
-- `GET /all-agents` - View all agents globally
-- `GET /all-pos-devices` - View all POS devices globally
-- `GET /all-vendors` - View all vendors globally
-- `GET /all-tickets` - View all tickets globally
-- `GET /platform-stats` - Platform statistics
-- `POST /seed-lottery-catalog` - Seed lottery data
+- All lottery catalog CRUD
+- All schedule CRUD
+- All result CRUD
+- All device session management
+- Company management
 
 ### Company Admin Routes (`/api/company/*`)
-- `GET /schedules` - READ-ONLY global schedules
-- `GET /results` - READ-ONLY global results
-- `GET/POST/PUT/DELETE /branches` - Branch management
-- `GET/POST/PUT/DELETE /vendors` - Vendor management
-- `GET/POST/PUT /prime-configs` - Payout configuration
-- `GET/PUT /configuration` - Company configuration
-- `GET/PUT /lottery-availability` - Enable/disable lotteries
-- `GET/POST/DELETE /blocked-numbers` - Number blocking
-- `GET/POST/DELETE /sales-limits` - Sales limits
-- `GET /statistics/agent-control` - Agent statistics
-- `GET /statistics/tickets-by-agent` - Tickets per agent
-- `GET /statistics/winning-tickets` - Winning ticket stats
-- `GET /statistics/tracability` - Audit logs
-- `GET/POST/PUT /elimination-requests` - Elimination requests
-- `GET/POST /daily-reports` - Daily reports
-
-### Agent Routes (`/api/agent/*`)
-- `GET /pos` - POS terminal
-- `GET /my-tickets` - Own tickets
-- `GET /my-sales` - Own sales
+- Device session management
+- Agent permission management
+- Branch/Vendor/Configuration management
+- Read-only access to global data
 
 ---
 
 ## Database Collections
 
-- `users` - All users (Super Admin, Company Admin, Agents)
+### Core Collections
+- `users` - All users with roles
 - `companies` - Company/tenant information
 - `global_lotteries` - Master lottery catalog
 - `global_schedules` - Global draw schedules
 - `global_results` - Official lottery results
-- `lotteries` - Legacy lottery collection
+
+### Agent/Device Collections (NEW)
+- `device_sessions` - All device sessions (POS, Browser, Phone, etc.)
+- `agent_permissions` - Agent device permissions
+- `lottery_transactions` - All ticket sales with device tracking
+- `pos_devices` - Registered POS hardware devices
+
+### Company Collections
 - `branches` - Company branches
 - `agents` - Agent profiles
-- `pos_devices` - POS device registry
 - `vendors` - Vendor registry
-- `tickets` - All tickets sold
-- `prime_configs` - Payout configurations per company
+- `prime_configs` - Payout configurations
 - `company_configurations` - Company settings
-- `company_lotteries` - Lottery availability per company
-- `blocked_numbers` - Blocked numbers per company
-- `sales_limits` - Sales limits per company
-- `elimination_requests` - Ticket/number elimination requests
-- `daily_reports` - Generated daily reports
-- `activity_logs` - Audit trail
+- `blocked_numbers` - Blocked numbers
+- `sales_limits` - Sales limits
 
 ---
 
@@ -167,44 +188,48 @@ LOTTOLAB is a full-stack, multi-tenant Lottery SaaS platform with strict RBAC hi
 
 ## Changelog
 
-### 2026-02-21
-- Implemented complete RBAC refactoring:
-  - Super Admin now controls global lottery catalog, schedules, and results
-  - Company Admin demoted to operational role with read-only access to global data
-- Seeded 155 lotteries (50 US states × 3 game types + 5 Haiti games)
-- Implemented new Company Admin modules:
-  - Branches (Succursales)
-  - Vendors
-  - Configuration (Primes, Limits, Marriage, Receipt)
-  - Statistics (Agent control, Blocked numbers, Limits, Winning tickets, Audit)
-  - Daily Reports
-- Made Schedules and Results pages read-only for Company Admin
-- Updated sidebar navigation for both Super Admin and Company Admin
+### 2026-02-21 (Latest)
+- **MAJOR: Implemented Universal Agent Terminal System**
+  - Created `universal_pos_routes.py` with all POS endpoints
+  - Universal authentication (IMEI for POS, fingerprint for browsers)
+  - Real-time sync every 5 seconds
+  - Lottery sales engine with QR code generation
+  - Ticket printing system (80mm thermal + standard)
+  - Complete agent frontend with responsive layout
+- **Added Device Session Management**
+  - Company Admin can view/block/unblock sessions
+  - Company Admin can set agent device permissions
+  - Super Admin has global device session oversight
+  - Session statistics endpoint
 
-### 2026-02-20
-- Initial Company Admin portal MVP
-- Agent/Company Admin RBAC separation
-- Fixed Agents page crash
-- Fixed Select component issues
+### 2026-02-21 (Earlier)
+- Implemented complete RBAC refactoring
+- Super Admin now controls global lottery catalog, schedules, and results
+- Company Admin demoted to operational role with read-only access
+- Seeded 155 lotteries (50 US states × 3 game types + 5 Haiti games)
 
 ---
 
 ## Roadmap
 
+### P0 - Completed ✅
+- [x] Universal Agent Terminal System
+- [x] Device session management
+- [x] Real-time synchronization
+
 ### P1 - Next Priorities
-- [ ] Implement POS device IMEI validation
-- [ ] Add vendor assignment to POS devices
-- [ ] Implement automatic result verification with ticket matching
-- [ ] Add thermal printer integration
+- [ ] Hardware POS IMEI activation flow testing
+- [ ] Company Admin UI for device session management
+- [ ] Super Admin UI for global device oversight
+- [ ] Automatic result verification with ticket matching
 
 ### P2 - Future Features
-- [ ] QR code ticket verification
+- [ ] QR code ticket verification scanner
 - [ ] Advanced reporting with charts
-- [ ] Multi-currency support
-- [ ] Mobile responsive POS interface
+- [ ] Thermal printer direct integration
+- [ ] Mobile app for agents
 
 ### P3 - Enhancements
-- [ ] Email notifications
-- [ ] SMS notifications (Twilio)
+- [ ] Email/SMS notifications
 - [ ] Webhook integrations
 - [ ] API documentation (Swagger/OpenAPI)
