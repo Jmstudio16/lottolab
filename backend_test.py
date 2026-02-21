@@ -214,7 +214,7 @@ def main():
     test_credentials = [
         ("jefferson@jmstudio.com", "JMStudio@2026!", "SUPER_ADMIN"),
         ("admin@lotopam.com", "Admin123!", "COMPANY_ADMIN"),
-        ("agent001@pos.lottolab.local", "Agent123!", "AGENT_POS"),  # Updated email
+        ("agent001@lottolab.com", "Agent123!", "AGENT_POS"),  # From review request
     ]
 
     # Test shared endpoints first (no auth required)
