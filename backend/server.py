@@ -23,6 +23,7 @@ from agent_routes import agent_router, set_agent_db
 from universal_pos_routes import universal_pos_router, set_universal_pos_db
 from sync_routes import sync_router, set_sync_db
 from settings_routes import settings_router, set_settings_db
+from financial_routes import financial_router, set_financial_db, process_all_tickets_for_result
 from error_handlers import validation_exception_handler, generic_exception_handler
 
 ROOT_DIR = Path(__file__).parent
@@ -491,6 +492,7 @@ set_agent_db(db)
 set_universal_pos_db(db)
 set_sync_db(db)
 set_settings_db(db)
+set_financial_db(db)
 
 # Include all routers
 app.include_router(super_admin_router)
@@ -502,6 +504,7 @@ app.include_router(agent_router)
 app.include_router(universal_pos_router)
 app.include_router(sync_router)
 app.include_router(settings_router)
+app.include_router(financial_router)
 app.include_router(api_router)
 
 app.add_middleware(
