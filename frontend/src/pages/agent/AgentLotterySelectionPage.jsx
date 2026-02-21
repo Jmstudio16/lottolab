@@ -295,11 +295,11 @@ export const AgentLotterySelectionPage = () => {
       setCurrentTime(new Date());
       
       // Update remaining times for each lottery
-      if (syncData?.schedules && syncData?.lotteries) {
+      if (syncData?.schedules && syncData?.enabled_lotteries) {
         const newRemainingTimes = {};
         
         syncData.schedules.forEach(schedule => {
-          const lottery = syncData.lotteries.find(l => l.lottery_id === schedule.lottery_id);
+          const lottery = syncData.enabled_lotteries.find(l => l.lottery_id === schedule.lottery_id);
           if (lottery && schedule.closing_time) {
             const key = `${schedule.lottery_id}-${schedule.draw_name}`;
             newRemainingTimes[key] = calculateRemainingSeconds(
