@@ -91,10 +91,11 @@ class TestDeviceConfig:
         assert "company" in data, "Missing company in response"
         assert "agent" in data, "Missing agent in response"
         assert "configuration" in data, "Missing configuration in response"
-        assert "lotteries" in data, "Missing lotteries in response"
+        assert "enabled_lotteries" in data, "Missing enabled_lotteries in response"
         assert "schedules" in data, "Missing schedules in response"
         assert "prime_configs" in data, "Missing prime_configs in response"
         assert "timestamp" in data, "Missing timestamp in response"
+        assert "config_version" in data, "Missing config_version in response"
         
         # Verify company data
         company = data["company"]
