@@ -17,6 +17,8 @@ import { SuperSettingsPage } from '@/pages/SuperSettingsPage';
 import { SuperLotteryCatalogPage } from '@/pages/SuperLotteryCatalogPage';
 import { SuperGlobalSchedulesPage } from '@/pages/SuperGlobalSchedulesPage';
 import { SuperGlobalResultsPage } from '@/pages/SuperGlobalResultsPage';
+import { SuperResultManagementPage } from '@/pages/SuperResultManagementPage';
+import { AgentResultsViewPage } from '@/pages/agent/AgentResultsViewPage';
 
 // Company Admin Pages
 import { CompanyDashboardPage } from '@/pages/CompanyDashboardPage';
