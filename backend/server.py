@@ -15,7 +15,7 @@ from auth import verify_password, get_password_hash, create_access_token, decode
 from utils import generate_id, generate_ticket_code, generate_verification_code, generate_qr_code, get_current_timestamp
 from activity_logger import log_activity
 from super_admin_routes import super_admin_router, set_db
-from super_admin_global_routes import super_admin_global_router, set_super_admin_global_db
+from super_admin_global_routes import super_admin_global_router, set_super_admin_global_db, set_ticket_processor
 from company_routes import company_router, set_company_db
 from company_operational_routes import company_operational_router, set_company_operational_db
 from company_admin_routes import company_admin_router, set_company_admin_db
@@ -493,6 +493,9 @@ set_universal_pos_db(db)
 set_sync_db(db)
 set_settings_db(db)
 set_financial_db(db)
+
+# Connect ticket processor for automatic winning detection
+set_ticket_processor(process_all_tickets_for_result)
 
 # Include all routers
 app.include_router(super_admin_router)
