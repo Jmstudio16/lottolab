@@ -644,6 +644,10 @@ async def print_ticket_universal(
 <body>
     <button class="print-btn no-print" onclick="window.print()">IMPRIMER</button>
     
+    <div class="logo-section">
+        <img src="{display_logo}" alt="Logo" onerror="this.style.display='none'" />
+    </div>
+    
     <div class="header">
         <div class="company-name">{company.get('name', 'LOTTOLAB')}</div>
         {f'<div class="sub-header">{receipt_header}</div>' if receipt_header else ''}
