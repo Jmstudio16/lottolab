@@ -13,6 +13,9 @@ import { SuperUsersPage } from '@/pages/SuperUsersPage';
 import { SuperPlansPage } from '@/pages/SuperPlansPage';
 import { SuperActivityLogsPage } from '@/pages/SuperActivityLogsPage';
 import { SuperSettingsPage } from '@/pages/SuperSettingsPage';
+import { SuperLotteryCatalogPage } from '@/pages/SuperLotteryCatalogPage';
+import { SuperGlobalSchedulesPage } from '@/pages/SuperGlobalSchedulesPage';
+import { SuperGlobalResultsPage } from '@/pages/SuperGlobalResultsPage';
 
 // Company Admin Pages
 import { CompanyDashboardPage } from '@/pages/CompanyDashboardPage';
@@ -26,6 +29,10 @@ import { ReportsPage } from '@/pages/ReportsPage';
 import { CompanyUsersPage } from '@/pages/CompanyUsersPage';
 import { CompanyActivityLogsPage } from '@/pages/CompanyActivityLogsPage';
 import { CompanySettingsPage } from '@/pages/CompanySettingsPage';
+import { CompanyBranchesPage } from '@/pages/CompanyBranchesPage';
+import { CompanyConfigurationPage } from '@/pages/CompanyConfigurationPage';
+import { CompanyStatisticsPage } from '@/pages/CompanyStatisticsPage';
+import { CompanyDailyReportsPage } from '@/pages/CompanyDailyReportsPage';
 
 // Agent Pages (LIMITED ACCESS)
 import { AgentPOSPage } from '@/pages/AgentPOSPage';
