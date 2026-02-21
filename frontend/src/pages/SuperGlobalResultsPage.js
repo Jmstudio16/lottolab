@@ -365,6 +365,6 @@ export const SuperGlobalResultsPage = () => {
           </div>
         )}
       </div>
-    </div>
+    </AdminLayout>
   );
 };
