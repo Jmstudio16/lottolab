@@ -1,7 +1,6 @@
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from pydantic import ValidationError
 import logging
 
 logger = logging.getLogger(__name__)

@@ -1,18 +1,15 @@
-from fastapi import APIRouter, HTTPException, Depends, Request, Query
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 
 from models import (
     UserRole, Branch, BranchCreate, BranchUpdate,
     Vendor, VendorCreate, VendorUpdate,
     PrimeConfigEnhanced, PrimeConfigCreateEnhanced, PrimeConfigUpdateEnhanced,
-    BlockedNumber, BlockedNumberCreate, BlockedNumberUpdate,
-    SalesLimit, SalesLimitCreate, SalesLimitUpdate,
-    CompanyConfiguration, CompanyConfigurationUpdate,
+    BlockedNumber, BlockedNumberCreate, SalesLimit, SalesLimitCreate, CompanyConfiguration, CompanyConfigurationUpdate,
     EliminationRequest, EliminationRequestCreate,
-    DailyReport, GlobalLottery, GlobalScheduleEnhanced, GlobalResultEnhanced,
-    CompanyLotteryAvailability, ActivityLog
+    DailyReport
 )
 from auth import decode_token
 from utils import generate_id, get_current_timestamp

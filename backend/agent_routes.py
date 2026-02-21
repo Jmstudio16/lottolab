@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import List, Optional
+from typing import Optional
 from datetime import datetime, timezone, timedelta
 import random
 import string

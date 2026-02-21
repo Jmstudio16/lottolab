@@ -7,8 +7,7 @@ from models import (
     UserRole, GlobalLottery, GlobalLotteryCreate, GlobalLotteryUpdate,
     GlobalScheduleEnhanced, GlobalScheduleCreateEnhanced, GlobalScheduleUpdateEnhanced,
     GlobalResultEnhanced, GlobalResultCreateEnhanced,
-    CompanyEnhanced, CompanyUpdateSuper, POSDeviceEnhanced,
-    Agent, Vendor, Ticket, ActivityLog
+    CompanyEnhanced, CompanyUpdateSuper
 )
 from auth import decode_token
 from utils import generate_id, get_current_timestamp

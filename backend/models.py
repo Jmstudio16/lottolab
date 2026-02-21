@@ -1,6 +1,5 @@
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 from typing import Optional, List, Dict, Any
-from datetime import datetime
 from enum import Enum
 
 class UserRole(str, Enum):

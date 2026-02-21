@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import List, Optional
-from datetime import datetime, timezone
 
 from models import *
 from auth import get_password_hash, decode_token

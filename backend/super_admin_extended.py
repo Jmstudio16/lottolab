@@ -7,12 +7,12 @@ SUPER ADMIN EXTENDED ROUTES
 """
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import List, Optional
+from typing import Optional
 from datetime import datetime, timezone
 
 from models import (
-    UserRole, Lottery, GlobalSchedule, GlobalScheduleCreate,
-    GlobalResult, GlobalResultCreate, Ticket, Agent, POSDevice, ActivityLog
+    UserRole, GlobalSchedule, GlobalScheduleCreate,
+    GlobalResult, GlobalResultCreate
 )
 from auth import decode_token
 from utils import generate_id, get_current_timestamp

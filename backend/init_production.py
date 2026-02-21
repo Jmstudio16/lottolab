@@ -4,7 +4,6 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
-from auth import get_password_hash
 from utils import generate_id
 
 ROOT_DIR = Path(__file__).parent
