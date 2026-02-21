@@ -1,95 +1,127 @@
 # LOTTOLAB - Multi-Tenant Lottery SaaS Platform
 
 ## Product Overview
-LOTTOLAB is a production-ready, multi-tenant lottery management SaaS platform designed for managing lottery sales across multiple companies. Inspired by PeopleHub HRMS UI design with a professional dark mode theme featuring gold and blue accents.
+LOTTOLAB is a production-ready, multi-tenant lottery management SaaS platform with STRICT Role-Based Access Control (RBAC) separating Company Admin and Agent roles completely.
 
-## Core Architecture
-- **Frontend**: React with Tailwind CSS, shadcn/ui components
-- **Backend**: FastAPI with MongoDB (motor async driver)
-- **Authentication**: JWT-based with role-based access control
-- **Multi-tenancy**: Strict `company_id` isolation on all data operations
+## RBAC Architecture
 
-## User Roles (RBAC)
-1. **SUPER_ADMIN**: Platform-wide administration
-2. **COMPANY_ADMIN**: Company-level full control
-3. **COMPANY_MANAGER**: Company operations management
-4. **AUDITOR_READONLY**: View-only access
-5. **AGENT_POS**: Point of sale operations
+### Role Hierarchy
+```
+SUPER_ADMIN     → Platform-wide administration
+COMPANY_ADMIN   → Company-level FULL control
+COMPANY_MANAGER → Company operations management  
+AUDITOR_READONLY → View-only access
+AGENT_POS       → LIMITED access (POS only)
+```
 
-## Implemented Features
+### Access Matrix
 
-### Phase 1: Super Admin Portal ✅
-- **Dashboard**: Platform statistics overview
-- **Companies**: Full CRUD for tenant companies
-- **Users**: Manage all platform users
-- **Plans**: Subscription plan management
-- **Activity Logs**: Platform-wide audit trail
-- **Global Settings**: System configuration
+| Feature | Company Admin | Company Manager | Auditor | Agent |
+|---------|--------------|-----------------|---------|-------|
+| Dashboard | ✅ | ✅ | ✅ | ❌ |
+| Agents CRUD | ✅ | ✅ | ❌ | ❌ |
+| POS Devices CRUD | ✅ | ✅ | ❌ | ❌ |
+| Lottery Catalog | ✅ | ✅ | ❌ | ❌ |
+| Schedules CRUD | ✅ | ✅ | ❌ | ❌ |
+| Results CRUD | ✅ | ✅ | ❌ | ❌ |
+| ALL Tickets | ✅ | ✅ | ✅ | ❌ |
+| Reports (ALL) | ✅ | ✅ | ✅ | ❌ |
+| Company Users | ✅ | ❌ | ❌ | ❌ |
+| Activity Logs | ✅ | ❌ | ✅ | ❌ |
+| Settings | ✅ | ❌ | ❌ | ❌ |
+| POS Terminal | ❌ | ❌ | ❌ | ✅ |
+| My Tickets | ❌ | ❌ | ❌ | ✅ |
+| My Sales | ❌ | ❌ | ❌ | ✅ |
 
-### Phase 2: Company Admin Portal ✅ (Implemented Feb 21, 2026)
-| Module | Status | Description |
-|--------|--------|-------------|
-| Dashboard | ✅ | Company KPIs: tickets today, sales, agents, open lotteries |
-| Agents | ✅ | Full CRUD with login credentials, status toggle |
-| POS Devices | ✅ | CRUD with IMEI validation, agent assignment, activate/block |
-| Lottery Catalog | ✅ | Enable/disable lotteries for company |
-| Schedules | ✅ | CRUD for lottery open/close/draw times by day |
-| Results | ✅ | Create and view winning numbers |
-| Tickets | ✅ | View filtered list (agent, status, date range) |
-| Reports | ✅ | Sales summary by period (today/week/month) |
-| Company Users | ✅ | CRUD for Manager/Auditor roles |
-| Activity Logs | ✅ | Company-scoped audit trail with filters |
-| Settings | ✅ | Timezone, currency, sales parameters, receipt config |
+## Company Admin Portal (FULL ACCESS)
 
-### Phase 3: POS Interface (Existing)
-- Agent login
-- Lottery selection
-- Ticket creation
-- Receipt printing
+### Sidebar Menu
+- Dashboard
+- Agents
+- POS Devices
+- Lottery Catalog
+- Schedules
+- Results
+- Tickets (ALL)
+- Reports (ALL)
+- Company Users
+- Activity Logs
+- Settings
+
+### Permissions
+- Create/Edit/Delete Agents
+- Assign POS devices to agents
+- Enable/disable lotteries
+- Manage schedules
+- Create/view results
+- View ALL company tickets
+- View ALL sales reports
+- Manage company staff
+- Configure company settings
+
+## Agent Portal (LIMITED ACCESS)
+
+### Sidebar Menu
+- POS Terminal
+- My Tickets
+- My Sales
+- Logout
+
+### Permissions
+- ✅ Login
+- ✅ Access POS terminal
+- ✅ Sell tickets
+- ✅ View ONLY own tickets
+- ✅ View ONLY own sales summary
+- ❌ Create agents
+- ❌ Create POS devices
+- ❌ Modify schedules
+- ❌ Modify results
+- ❌ Access company settings
+- ❌ Access company reports
+- ❌ Access company users
+- ❌ Access other agents data
 
 ## API Endpoints
 
-### Company Routes (`/api/company/*`)
+### Company Routes (Admin/Manager only)
 ```
-GET/POST/PUT/DELETE /pos-devices      - POS device management
-PUT /pos-devices/{id}/activate|block  - Device status
-PUT /pos-devices/{id}/assign/{agent}  - Agent assignment
-
-GET/POST/PUT/DELETE /agents           - Agent management
-GET/POST/PUT/DELETE /schedules        - Schedule management
-GET/POST /tickets                     - Ticket listing
-GET/POST/DELETE /results              - Results management
-GET /reports/summary                  - Sales reports
-GET/POST/PUT/DELETE /users            - Company staff
-GET /activity-logs                    - Audit logs
-GET/PUT /settings                     - Company config
+/api/company/agents         - Agents CRUD
+/api/company/pos-devices    - POS devices CRUD
+/api/company/schedules      - Schedules CRUD
+/api/company/tickets        - ALL company tickets
+/api/company/results        - Results CRUD
+/api/company/reports        - Company reports
+/api/company/users          - Company staff CRUD
+/api/company/activity-logs  - Audit logs
+/api/company/settings       - Company config
 ```
 
-## Database Collections
-- `companies`, `users`, `agents`, `pos_devices`
-- `lotteries`, `company_lotteries`, `schedules`
-- `tickets`, `results`, `activity_logs`, `company_settings`
+### Agent Routes (Agent only)
+```
+/api/agent/profile          - Agent's own profile
+/api/agent/my-tickets       - Agent's own tickets ONLY
+/api/agent/my-sales         - Agent's own sales ONLY
+/api/agent/pos/lotteries    - Open lotteries
+/api/agent/pos/sell         - Sell ticket
+/api/agent/pos/daily-summary - Agent's daily stats
+```
 
 ## Test Credentials
 | Role | Email | Password |
 |------|-------|----------|
 | Super Admin | jefferson@jmstudio.com | JMStudio@2026! |
 | Company Admin | admin@lotopam.com | Admin123! |
-| Agent | agent001@lotopam.com | Agent123! |
+| Agent | testagent001@lotopam.com | Test123! |
 
-## Testing Status
-- **Backend**: 100% (31/31 tests passed)
-- **Frontend**: All 9 Company Admin pages loading without errors
-- **P0 Bug (Agents page crash)**: FIXED
-
-## Future Tasks (Backlog)
-1. Advanced Reports (custom date ranges, export to PDF/Excel)
-2. Automated ticket verification with results
-3. Support for all 50 US states
-4. Thermal printer integration
-5. Mobile-responsive POS optimization
-6. Real-time notifications
-7. Agent commission tracking
+## RBAC Validation Results
+- ✅ Agent cannot access /company/* routes (403 Forbidden)
+- ✅ Agent automatically redirected to /agent/pos
+- ✅ Agent sees limited menu (POS Terminal, My Tickets, My Sales)
+- ✅ Agent can only view own tickets
+- ✅ Company Admin has full access to all company features
+- ✅ Ticket sale by agent works correctly
+- ✅ Multi-tenant isolation maintained
 
 ---
 *Last Updated: February 21, 2026*
