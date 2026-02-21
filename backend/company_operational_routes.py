@@ -1169,3 +1169,150 @@ async def generate_daily_report(
     )
     
     return report
+
+
+# ============ DEVICE SESSION MANAGEMENT ============
+@company_operational_router.get("/device-sessions")
+async def get_company_device_sessions(
+    current_user: dict = Depends(get_company_user),
+    status: Optional[str] = None
+):
+    """Get all device sessions for the company"""
+    company_id = current_user.get("company_id")
+    
+    query = {"company_id": company_id}
+    if status:
+        query["status"] = status
+    
+    sessions = await db.device_sessions.find(query, {"_id": 0}).sort("last_seen_at", -1).to_list(500)
+    
+    return sessions
+
+@company_operational_router.put("/device-sessions/{session_id}/block")
+async def block_company_device_session(
+    session_id: str,
+    request: Request,
+    current_user: dict = Depends(get_company_user)
+):
+    """Block a device session"""
+    require_write_access(current_user)
+    company_id = current_user.get("company_id")
+    
+    result = await db.device_sessions.update_one(
+        {"session_id": session_id, "company_id": company_id},
+        {"$set": {"status": "blocked", "blocked_at": get_current_timestamp(), "blocked_by": current_user["user_id"]}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    await log_activity(
+        db=db,
+        action_type="DEVICE_SESSION_BLOCKED",
+        entity_type="device_session",
+        entity_id=session_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={"session_id": session_id},
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {"message": "Session blocked"}
+
+@company_operational_router.put("/device-sessions/{session_id}/unblock")
+async def unblock_company_device_session(
+    session_id: str,
+    request: Request,
+    current_user: dict = Depends(get_company_user)
+):
+    """Unblock a device session"""
+    require_write_access(current_user)
+    company_id = current_user.get("company_id")
+    
+    result = await db.device_sessions.update_one(
+        {"session_id": session_id, "company_id": company_id},
+        {"$set": {"status": "active"}, "$unset": {"blocked_at": "", "blocked_by": ""}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    await log_activity(
+        db=db,
+        action_type="DEVICE_SESSION_UNBLOCKED",
+        entity_type="device_session",
+        entity_id=session_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={"session_id": session_id},
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {"message": "Session unblocked"}
+
+# ============ AGENT PERMISSION MANAGEMENT ============
+@company_operational_router.get("/agent-permissions")
+async def get_all_agent_permissions(current_user: dict = Depends(get_company_user)):
+    """Get all agent permissions for the company"""
+    company_id = current_user.get("company_id")
+    
+    permissions = await db.agent_permissions.find({"company_id": company_id}, {"_id": 0}).to_list(500)
+    
+    # Enrich with agent info
+    for perm in permissions:
+        agent = await db.users.find_one({"user_id": perm["agent_id"]}, {"_id": 0, "password_hash": 0})
+        if agent:
+            perm["agent_name"] = agent.get("name")
+            perm["agent_email"] = agent.get("email")
+    
+    return permissions
+
+@company_operational_router.put("/agents/{agent_id}/device-permission")
+async def set_company_agent_device_permission(
+    agent_id: str,
+    permission: str,  # ANY_DEVICE or POS_ONLY
+    request: Request,
+    current_user: dict = Depends(get_company_user)
+):
+    """Set agent's device login permission"""
+    require_write_access(current_user)
+    company_id = current_user.get("company_id")
+    
+    if permission not in ["ANY_DEVICE", "POS_ONLY"]:
+        raise HTTPException(status_code=400, detail="Invalid permission. Use ANY_DEVICE or POS_ONLY")
+    
+    # Verify agent belongs to company
+    agent = await db.users.find_one({
+        "user_id": agent_id,
+        "company_id": company_id,
+        "role": UserRole.AGENT_POS
+    })
+    
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    await db.agent_permissions.update_one(
+        {"agent_id": agent_id},
+        {"$set": {
+            "agent_id": agent_id,
+            "company_id": company_id,
+            "login_permission": permission,
+            "updated_at": get_current_timestamp(),
+            "updated_by": current_user["user_id"]
+        }},
+        upsert=True
+    )
+    
+    await log_activity(
+        db=db,
+        action_type="AGENT_PERMISSION_UPDATED",
+        entity_type="agent",
+        entity_id=agent_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={"permission": permission, "agent_name": agent.get("name")},
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {"message": f"Permission updated: {permission}"}
+
