@@ -206,7 +206,7 @@ async def get_vendors(current_user: dict = Depends(get_company_user)):
 
 @company_operational_router.post("/vendors", response_model=Vendor)
 async def create_vendor(
-    vendor_data: VendorCreate,
+    vendor_data: VendorCreateModel,
     request: Request,
     current_user: dict = Depends(get_company_user)
 ):
