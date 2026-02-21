@@ -140,6 +140,30 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/super/lottery-catalog"
+              element={
+                <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                  <SuperLotteryCatalogPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/super/global-schedules"
+              element={
+                <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                  <SuperGlobalSchedulesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/super/global-results"
+              element={
+                <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                  <SuperGlobalResultsPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* ================== COMPANY ADMIN ROUTES ================== */}
             {/* Company Admin has FULL access to company management */}
