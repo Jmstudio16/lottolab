@@ -1,89 +1,86 @@
 <analysis>**original_problem_statement:**
-The user's objective is to finalize the LOTTOLAB multi-tenant lottery SaaS platform to be 100% Production Ready for deployment on Hostinger. The project evolved from a basic concept to a Universal Lottery Terminal with FULL REAL-TIME SYNC. The current and final set of requirements focuses on implementing the critical missing pieces identified in a system audit.
+The user has provided a series of large, detailed MEGA PROMPTS to build the LOTTOLAB SaaS application to be 100% production-ready. The final implemented features include:
 
-**PRODUCT REQUIREMENTS (From Latest User Message - MEGA PROMPT FINAL):**
-*   **1. Ticket Check System:** Implement  to verify if a ticket is a winner by comparing it against  and calculating the payout amount based on .
-*   **2. Ticket Payout System:** Implement  to process winning tickets. This must verify the ticket status, create a  record, update the ticket status to , update the agent's balance, and log the activity.
-*   **3. Agent Balance System:** Create an  collection to track , , and . The balance must be updated in real-time with every sale and payout.
-*   **4. Automatic Winning Detection:** Implement a background service that automatically scans and updates all relevant tickets to  or  status as soon as a Super Admin enters new results into .
-*   **5. Admin Visibility:** Company and Super Admins must have full visibility into agent balances, ticket payout history, and winning tickets.
-*   **6. Security and Performance:** All new endpoints must be secured with JWT, enforce multi-tenant isolation, and be optimized for high throughput (10,000 tickets/minute).
-*   **7. New DB Collections:** Create  and  collections.
+1.  **Critical Security Update:** Remove all visible and database-level demo accounts to secure the application for production use.
+2.  **Complete Financial Cycle:** Implement the entire financial logic, including an  system, , a  endpoint for verifying winning tickets, a  endpoint for processing payments, and an automated background service for detecting winning tickets when results are published. The existing ticket sale endpoint () must be integrated with the agent balance system.
+3.  **Super Admin Result Management:** Create a comprehensive, Super-Admin-only system for publishing, editing, and deleting lottery results. This system must sync results in real-time to all Company Admin and Agent POS dashboards. Company Admins and Agents should have read-only access.
+4.  **Full Company & Agent Creation Flow:**
+    *   Build a Super Admin page to create new companies, including their initial admin user, subscription plan, and operational limits.
+    *   Implement a Login as Company Admin feature for Super Admins.
+    *   Build a Company Admin page to create new agents, including device assignment, credit limits, and permissions.
+    *   Give Super Admins full control over the global lottery catalog (create, edit, activate/deactivate), with changes syncing automatically to all devices.
+5.  **Agent POS Lottery Interface (Current task):** Create the main lottery selection page for POS agents (). This interface must display available lotteries as cards, each with a **real-time countdown timer** showing the time remaining until sales close. The system must automatically open and close lotteries based on their schedules, and the backend must enforce these closing times to prevent sales after the cutoff.
 
 **User's preferred language**: French
 
 **what currently exists?**
-The agent has successfully implemented two major features:
-1.  **FULL REAL-TIME SYNC System**: The backend is complete with all necessary CRUD endpoints for Company Admins (Agents, POS, Tickets, Reports, Logs, Settings) and enhanced sync endpoints (, ) that push configuration changes to agent devices in real time. This was validated by the testing agent (33/33 tests passed).
-2.  **Universal Logo System**: A full-stack feature allowing a global system logo and custom company-specific logos. This includes backend endpoints for settings management, an S3-like file storage structure (), and frontend integration across all layouts (Admin, Agent, Login) and on printed tickets.
-
-The agent also performed a self-audit, identifying the exact gaps that the user has now requested to be filled as the final production-blocking task.
+The application is a nearly complete multi-tenant lottery SaaS platform.
+-   **Backend**: A robust FastAPI backend with multi-tenant logic, RBAC, and JWT security. It includes full CRUD and management endpoints for Super Admins, Company Admins, and Agents. The complete financial lifecycle (balances, ticket checking, payouts, auto-win detection) is implemented and was tested. A comprehensive result management system is also in place.
+-   **Frontend**: A React-based frontend with distinct layouts and dashboards for Super Admins, Company Admins, and Agents. Key features like company creation, agent creation, and results management are fully built. The demo accounts have been removed from the login page UI.
+-   **Database**: MongoDB is used to store all application data, including users, companies, agents, tickets, results, balances, and logs.
 
 **Last working item**:
-The agent received a MEGA PROMPT FINAL from the user detailing the last four critical features required for the application to be 100% production-ready. The agent acknowledged the request and was about to begin implementation.
-    - Last item agent was working: Preparing to implement the critical Payout, Balance, and Winning-Ticket-Detection systems.
-    - Status: NOT STARTED
-    - Agent Testing Done: N/A
+The agent was implementing the Agent POS lottery selection page, which is meant to display available lotteries with real-time countdown timers.
+    - Last item agent was working: Debugging why lotteries were not appearing on the  page. The agent correctly identified that the frontend was looking for a  key in the API response, while the backend was sending the data under the  key.
+    - Status: IN PROGRESS
+    - Agent Testing Done: N
     - Which testing method agent to use? both
-    - User Testing Done: N/A
+    - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-  - **Issue 1: Implement Final Production-Blocking Features (Priority: P0)**
+  - Issue 1: Fix Lottery Display on Agent POS Page (Priority: P0)
 
   **Issues Detail:**
-  - **Issue 1: Implement Final Production-Blocking Features**
-     - **Description**: This is the final and most critical task before the system can be considered production-ready. It involves building the entire financial and prize-handling logic of the application.
-     - **Attempted fixes**: The agent completed a self-audit to identify these gaps, but no code has been written for these specific features yet.
+  - Issue 1: 
+     - **Description**: The  component is fetching lottery data but fails to render it because it references an incorrect key () in the API response object. The correct key is .
+     - **Attempted fixes**: The agent diagnosed the issue by inspecting the backend API response () and comparing it with the frontend code. The fix has not been applied yet.
      - **Next debug checklist**:
-       1.  Create the  and  collections in .
-       2.  Implement the  endpoint.
-       3.  Implement the  endpoint, ensuring it updates the agent's balance.
-       4.  Modify the ticket selling logic () to debit the agent's balance.
-       5.  Implement the background service for automatic winning ticket detection triggered by new results being added.
-       6.  Update Company/Super Admin frontend pages to display agent balances and payout histories.
-     - **Why fix this issue and what will be achieved with the fix?**: This will complete the core business logic, making the platform a viable, production-ready enterprise SaaS system capable of handling real money and transactions.
-     - **Status**: NOT STARTED
+       1.  Edit .
+       2.  Locate the  hook that fetches data from .
+       3.  Change the state update logic to use  instead of .
+       4.  Verify that the lottery cards now render correctly on the page.
+     - **Why fix this issue and what will be achieved with the fix?**: This is a critical blocker for the entire Agent POS ticket-selling workflow. Fixing it will unblock the implementation of the countdown timer and the rest of the POS interface.
+     - **Status**:  IN PROGRESS
      - **Is recurring issue?**: N
      - **Should Test frontend/backend/both after fix?**: Both
      - **Blocked on other issue**: None
 
 **In progress Task List**:
-- None.
+  - Task 1: Complete Agent POS Lottery Selection Page (Priority: P0)
+
+ Task Detail:
+  - Task 1: 
+     - **Where to resume**: After applying the fix for the lottery display, continue with the implementation in .
+       1. Implement the real-time countdown timer for each lottery card using its  and the current time. The timer should update every second.
+       2. Implement the auto-close logic: when a timer reaches , the card's status badge should change to CLOSED and the card should become un-clickable.
+       3. Implement the closing soon visual state (e.g., orange badge) when the timer is below a certain threshold (e.g., 15 minutes).
+       4. Ensure the backend () correctly rejects ticket sale attempts for lotteries that are closed.
+     - **What will be achieved with this?**: A production-ready, dynamic POS interface that allows agents to see available lotteries and their real-time closing status, preventing sales for closed draws.
+     - **Status**: IN PROGRESS
+     - **Should Test frontend/backend/both after fix?**: Both
+     - **Blocked on something**: Issue 1: Fix Lottery Display on Agent POS Page.
 
 **Upcoming and Future Tasks**
-**Upcoming Tasks (P0 - Current Mandate):**
-*   **P0.1**: Create  and  DB collections.
-*   **P0.2**: Implement  endpoint.
-*   **P0.3**: Implement  endpoint with agent balance updates.
-*   **P0.4**: Implement the automatic winning detection service.
-*   **P0.5**: Integrate agent balance deductions into the existing ticket sale endpoint.
-*   **P0.6**: Build frontend views for Admins to see balances and payout history.
+**Upcoming Tasks:**
+*   **P0**: Implement the ticket creation UI. After an agent selects an open lottery on the  page, they need to be navigated to a new screen to input the customer's numbers and complete the sale.
+*   **P1**: Enhance Admin dashboards with more detailed financial reports (e.g., agent profit/loss, commission reports, sales trends).
+*   **P2**: Clean up old, commented-out routes in  and  to finalize the codebase.
 
-**Future Tasks (Optional improvements identified during audit):**
-*   WebSocket-based real-time push notifications (to replace polling).
-*   SMS/Email notifications for winners.
-*   Enhanced audit trail for ticket reprints.
-*   Automated device deactivation after a period of inactivity.
-*   Automated agent commission calculation and reporting.
-*   PDF/CSV export for reports.
-*   API rate limiting.
-*   QR code scanning for ticket verification.
+**Future Tasks:**
+*   Implement WebSocket-based real-time push notifications to replace API polling.
+*   Implement SMS/Email notifications for winners.
+*   Add QR code scanning for ticket verification.
+*   Add PDF/CSV export functionality for all reports.
 
 **Completed work in this session**
-- **FULL REAL-TIME SYNC System (Backend DONE & Tested):**
-  - Implemented all Company Admin CRUD endpoints ().
-  - Implemented enhanced sync/config endpoints ().
-  - Implemented a full audit trail for sales, cancellations, and reprints.
-  - Resolved routing conflicts between old and new API files.
-  - Passed all 33 backend tests from .
-- **Universal Logo System (Full Stack DONE & Tested):**
-  - Created backend endpoints for managing global and company-specific logos ().
-  - Implemented file upload logic and folder structure for logos.
-  - Integrated the logo display across all frontend layouts, login pages, and on printed tickets using a React Context ().
-  - Created a new Profile / Settings page for Company Admins.
+- **Financial Lifecycle System (DONE & Tested):** Implemented and tested the complete backend logic for agent balances, ticket checking, ticket payouts, and automatic winning-ticket detection.
+- **Security Hardening (DONE):** Removed all hardcoded demo accounts from the login page UI and backend.
+- **Super Admin Result Management (DONE & Tested):** Created a full-stack feature for Super Admins to manage lottery results, with real-time sync and read-only views for other user roles.
+- **Company & Agent Management (DONE & Tested):** Built the complete frontend and backend for Super Admins to create companies and for Company Admins to create agents with detailed permissions.
+- **Agent POS Interface (IN PROGRESS):** Created the initial page () and diagnosed a key bug preventing the display of lotteries.
 
 **Earlier issues found/mentioned but not fixed**
-- The self-audit revealed several non-critical missing features which are now listed under Future Tasks. The critical items from the audit are now the current P0 task.
+- None. All identified issues were resolved.
 
 **Known issue recurrence from previous fork**
   - None.
@@ -92,78 +89,63 @@ The agent received a MEGA PROMPT FINAL from the user detailing the last four cri
 
 
 **Key Technical Concepts**
-- **Backend**: FastAPI, MongoDB (), Pydantic.
-- **Frontend**: React, , , Tailwind CSS, React Context.
-- **Architecture**: Multi-tenant SaaS with RBAC.
-- **Core Concept**: Real-Time Synchronization via API polling and versioned configurations.
+- **Backend**: FastAPI, MongoDB (), Pydantic, JWT for auth.
+- **Frontend**: React, , , Tailwind CSS,  for time manipulation.
+- **Real-Time UI**: Using JavaScript  for client-side countdown timers on the POS interface.
+- **Architecture**: Multi-tenant SaaS with Role-Based Access Control (RBAC).
 
 **key DB schema**
-- **Existing:** , , , , ,  (tickets), , , , , , .
-- **To be created:**
-  - : {agent_id, company_id, credit_limit, current_balance, available_balance, ...}
-  - : {ticket_id, agent_id, payout_amount, payout_status, paid_by, paid_at, ...}
+- ****: {agent_id, company_id, credit_limit, current_balance, available_balance, total_sales, total_payouts, ...}
+- ****: {ticket_id, agent_id, payout_amount, payout_status, paid_by, paid_at, ...}
+- ****: {lottery_game_id, draw_date, winning_numbers, ...}
 
 **changes in tech stack**
   - None.
 
 **All files of reference**
-- **New/Created:**
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-- **Modified:**
-  - 
-  - 
-  -  (refactored to remove duplicate endpoints)
-  - 
-  - 
-  - 
-  - 
-  - 
+- **New Backend:** , 
+- **New Frontend:** , , , , , .
+- **Modified:** , , , , , , , .
 
 **Areas that need refactoring**:
--  and  contain commented-out code for endpoints that have been superseded by  and . These files should be cleaned up or the old routes fully removed to avoid future confusion.
-- The obsolete  should be deleted.
+- Some older route files (, ) contain commented-out code that should be removed to avoid confusion.
 
 **key api endpoints**
-- **Recently Implemented:**
-  - All CRUD under  (agents, pos-devices, lottery-catalog, pos-rules, etc.)
-  -  (V2 - includes logos)
-  -  (V2)
-  -  (V2 - includes logo)
-  -  (for logo upload)
-- **To be Created (P0 Task):**
-  - 
-  - 
+- : Checks if a ticket is a winner.
+- : Processes payout for a winning ticket.
+- : Gets financial overview for admins.
+- : Creates a company and its admin user.
+- : Login as Company Admin.
+- : Creates an agent, their device, and balance record.
+- : Updates a lottery result.
+- : (Modified) Provides device configuration, including available lotteries and their schedules.
+- : (Modified) Validates agent balance and lottery closing time before selling a ticket.
 
 **Critical Info for New Agent**
-- **PRIORITY**: Your ONLY task is to implement the four critical production-blocking features: **Ticket Check, Ticket Payout, Agent Balance, and Automatic Winning Detection**. The user wants the system 100% ready for deployment.
-- **START WITH BACKEND**: Follow the user's instructions to build the database collections and backend endpoints first.
-- **USER LANGUAGE**: The user communicates exclusively in **French**. All  interactions and  summaries MUST be in French.
-- **CONTEXT IS HIGH**: The previous agent completed a huge amount of work, including a full backend implementation for real-time sync and a full-stack implementation for the logo system. The codebase is now significantly more mature. Review the new files (, , ) to understand the current architecture.
+- **Primary Goal:** Your immediate task is to fix the bug in  and then complete the implementation of the real-time countdown timer feature as per the user's detailed prompt.
+- **User Language:** The user communicates exclusively in **French**. All  interactions and  summaries MUST be in French.
+- **User Prompts:** The user provides extremely detailed, sequential MEGA PROMPTS. Follow them precisely. The next logical prompt will likely be the ticket creation screen that follows lottery selection.
 
 **documents and test reports created in this job**
--  (from testing agent run on sync system)
--  (updated with logo system requirements)
+-  (19/19 tests passed for the financial cycle)
+-  (Continuously updated with all new features)
 
-**Last 10 User Messages and any pending HUMAN messages**
-- **User (Messages 277 & 278):** **(PENDING - HIGHEST PRIORITY)** Provided the MEGA PROMPT FINAL with precise, technical specifications for implementing the four critical missing features (Ticket Check, Payout, Agent Balance, Auto-Winning-Detection) to make the system 100% production-ready.
-- **User (Messages 267 & 276):** Requested and received a comprehensive PRODUCTION READY AUDIT of the entire system. The agent's audit identified the exact gaps that the user then requested to be filled in the final prompt.
-- **User (Messages 106 & 107):** Provided a detailed MEGA PROMPT to implement a complete, full-stack Universal Logo System, which the agent successfully completed.
-- **Older messages:** Pertain to the implementation and testing of the FULL REAL-TIME SYNC backend system.
+**Last 10 User Messages and any pending HUMAN messages** 
+- The last four user messages were large, sequential MEGA PROMPTS detailing major features to be built:
+  1.   **Agent POS Lottery Interface with Countdown:** The current in-progress task.
+  2.   **Company/Agent Creation & Lottery Control:** A full management system for Super Admins. (Completed)
+  3.   **Super Admin Result Management:** A complete system for managing lottery results. (Completed)
+  4.   **Financial Cycle & Security:** The core financial logic and removal of demo accounts. (Completed)
 
 **Project Health Check:**
-- **Broken**: The financial lifecycle of a ticket is broken. There is no mechanism to check for wins, pay out prizes, or manage agent credit/balances. This is the P0 task to fix.
-- **Mocked**: No mocked parts remain in the core admin/agent flows, but the new frontend views for agent balances and payout history will need to be created.
+- **Broken**: The main Agent POS feature for selling tickets is broken due to the bug on the lottery selection page. This is the highest priority to fix.
+- **Mocked**: None.
 
 **3rd Party Integrations**
 - None.
 
 **Testing status**
-  - Testing agent used after significant changes: YES. The backend sync system passed 33/33 tests.
+  - Testing agent used after significant changes: YES. The agent ran a full suite of tests after implementing the financial cycle, with 19/19 passing.
   - Troubleshoot agent used after agent stuck in loop: NO
   - Test files created: []
   - Known regressions: None.
@@ -174,4 +156,4 @@ The agent received a MEGA PROMPT FINAL from the user detailing the last four cri
 - **Agent**:  / 
 
 **What agent forgot to execute**
-- The agent has not forgotten anything. It successfully identified the remaining production blockers through a self-audit, and the user has now formally requested their implementation. The current task list directly addresses all known critical gaps.</analysis>
+- The agent correctly identified the root cause of the bug on the  but did not get to apply the one-line fix before the end of the session. The next action is to apply that fix.</analysis>
