@@ -367,6 +367,143 @@ async def create_agent(
     return {"message": "Agent créé avec succès", "agent_id": user_id}
 
 
+@company_admin_router.post("/agents/full-create")
+async def create_agent_full(
+    data: dict,
+    request: Request,
+    current_user: dict = Depends(get_company_admin)
+):
+    """
+    Create agent with:
+    - User account
+    - Agent policy with permissions
+    - POS device (if IMEI provided)
+    - Agent balance record
+    """
+    company_id = require_admin(current_user)
+    
+    # Validate required fields
+    if not data.get("name") and not (data.get("first_name") and data.get("last_name")):
+        raise HTTPException(status_code=400, detail="Le nom est requis")
+    if not data.get("email"):
+        raise HTTPException(status_code=400, detail="L'email est requis")
+    if not data.get("password"):
+        raise HTTPException(status_code=400, detail="Le mot de passe est requis")
+    
+    # Check email uniqueness
+    existing = await db.users.find_one({"email": data["email"]})
+    if existing:
+        raise HTTPException(status_code=400, detail="Cet email existe déjà")
+    
+    now = get_current_timestamp()
+    user_id = generate_id("user_")
+    
+    full_name = data.get("name") or f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
+    
+    # 1. Create user record
+    user_doc = {
+        "user_id": user_id,
+        "email": data["email"],
+        "password_hash": get_password_hash(data["password"]),
+        "name": full_name,
+        "role": UserRole.AGENT_POS,
+        "company_id": company_id,
+        "status": data.get("status", "ACTIVE"),
+        "created_at": now,
+        "updated_at": now
+    }
+    await db.users.insert_one(user_doc)
+    
+    # 2. Create agent policy with permissions
+    policy_id = generate_id("policy_")
+    policy_doc = {
+        "id": policy_id,
+        "company_id": company_id,
+        "agent_id": user_id,
+        "first_name": data.get("first_name", full_name.split()[0] if full_name else ""),
+        "last_name": data.get("last_name", " ".join(full_name.split()[1:]) if full_name else ""),
+        "phone": data.get("phone"),
+        "address": data.get("address"),
+        "branch_id": data.get("branch_id"),
+        "zone": data.get("zone"),
+        "allowed_device_types": ["POS", "COMPUTER", "PHONE", "TABLET"],
+        "must_use_imei": bool(data.get("imei")),
+        "max_credit_limit": data.get("credit_limit", 50000.0),
+        "max_win_limit": data.get("winning_limit", 100000.0),
+        "commission_percent": data.get("commission_percent", 5.0),
+        "supervisor_percent": data.get("supervisor_percent", 0.0),
+        "can_void_ticket": data.get("can_cancel_tickets", True),
+        "can_pay_winners": data.get("can_pay_winners", True),
+        "can_reprint_ticket": data.get("can_reprint_tickets", True),
+        "status": "active",
+        "created_at": now,
+        "updated_at": now
+    }
+    await db.agent_policies.insert_one(policy_doc)
+    
+    # 3. Create agent balance record
+    balance_id = generate_id("bal_")
+    balance_doc = {
+        "balance_id": balance_id,
+        "agent_id": user_id,
+        "company_id": company_id,
+        "credit_limit": data.get("credit_limit", 50000.0),
+        "current_balance": 0.0,
+        "available_balance": data.get("credit_limit", 50000.0),
+        "total_sales": 0.0,
+        "total_payouts": 0.0,
+        "total_winnings": 0.0,
+        "created_at": now,
+        "updated_at": now
+    }
+    await db.agent_balances.insert_one(balance_doc)
+    
+    # 4. Create POS device if IMEI provided
+    device_id = None
+    if data.get("imei"):
+        device_id = generate_id("pos_")
+        device_doc = {
+            "device_id": device_id,
+            "company_id": company_id,
+            "assigned_agent_id": user_id,
+            "imei": data["imei"],
+            "device_name": data.get("device_name") or f"{full_name}'s Device",
+            "device_type": data.get("device_type", "MOBILE"),
+            "status": "ACTIVE",
+            "created_at": now,
+            "updated_at": now
+        }
+        await db.pos_devices.insert_one(device_doc)
+    
+    # Increment config version
+    await increment_config_version(company_id, "AGENT_CREATED", current_user["user_id"])
+    
+    await log_activity(
+        db=db,
+        action_type="AGENT_FULL_CREATED",
+        entity_type="agent",
+        entity_id=user_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={
+            "agent_name": full_name,
+            "email": data["email"],
+            "device_id": device_id,
+            "credit_limit": data.get("credit_limit", 50000.0)
+        },
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {
+        "message": "Agent créé avec succès avec permissions et solde",
+        "agent_id": user_id,
+        "balance_id": balance_id,
+        "device_id": device_id,
+        "email": data["email"],
+        "name": full_name
+    }
+
+
 @company_admin_router.put("/agents/{agent_id}")
 async def update_agent(
     agent_id: str,
