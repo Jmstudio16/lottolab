@@ -80,12 +80,12 @@ export const CompanyActivityLogsPage = () => {
           <div className="flex flex-wrap gap-4 items-end">
             <div className="min-w-[200px]">
               <label className="text-xs text-slate-400 mb-1 block">Action Type</label>
-              <Select value={filters.action_type} onValueChange={(val) => setFilters({...filters, action_type: val})}>
+              <Select value={filters.action_type || "all"} onValueChange={(val) => setFilters({...filters, action_type: val === "all" ? "" : val})}>
                 <SelectTrigger className="bg-slate-950 border-slate-700 text-white" data-testid="filter-action-type">
                   <SelectValue placeholder="All actions" />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-900 border-slate-700">
-                  <SelectItem value="" className="text-white">All actions</SelectItem>
+                  <SelectItem value="all" className="text-white">All actions</SelectItem>
                   <SelectItem value="AGENT_CREATED" className="text-white">Agent Created</SelectItem>
                   <SelectItem value="AGENT_UPDATED" className="text-white">Agent Updated</SelectItem>
                   <SelectItem value="POS_DEVICE_CREATED" className="text-white">POS Device Created</SelectItem>
