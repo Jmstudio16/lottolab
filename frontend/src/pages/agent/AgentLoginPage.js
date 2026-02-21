@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   LogIn, 
@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -24,6 +25,22 @@ export const AgentLoginPage = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [logoUrl, setLogoUrl] = useState('/assets/logos/lottolab-logo.png');
+
+  useEffect(() => {
+    // Fetch system logo
+    const fetchSystemLogo = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/system/settings`);
+        if (response.data.system_logo_url) {
+          setLogoUrl(response.data.system_logo_url);
+        }
+      } catch (err) {
+        console.log('Using default logo');
+      }
+    };
+    fetchSystemLogo();
+  }, []);
 
   const getDeviceIcon = () => {
     const width = window.innerWidth;
