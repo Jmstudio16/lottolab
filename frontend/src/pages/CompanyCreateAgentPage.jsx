@@ -404,12 +404,12 @@ export const CompanyCreateAgentPage = () => {
                 {branches.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-slate-300">Succursale</Label>
-                    <Select value={formData.branch_id} onValueChange={(v) => setFormData({...formData, branch_id: v})}>
+                    <Select value={formData.branch_id || "none"} onValueChange={(v) => setFormData({...formData, branch_id: v === "none" ? "" : v})}>
                       <SelectTrigger className="bg-slate-900 border-slate-600 text-white">
                         <SelectValue placeholder="Aucune succursale" />
                       </SelectTrigger>
                       <SelectContent className="bg-slate-800 border-slate-700">
-                        <SelectItem value="">Aucune</SelectItem>
+                        <SelectItem value="none">Aucune</SelectItem>
                         {branches.map(b => (
                           <SelectItem key={b.branch_id} value={b.branch_id}>{b.name}</SelectItem>
                         ))}
