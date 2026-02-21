@@ -50,7 +50,7 @@ async def get_all_platform_users(
 async def create_platform_user(
     user_data: UserCreate,
     request: Request,
-    current_user: dict = Depends(lambda: get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     if current_user["role"] != UserRole.SUPER_ADMIN:
         raise HTTPException(status_code=403, detail="Access denied")
@@ -96,7 +96,7 @@ async def update_platform_user(
     user_id: str,
     updates: UserUpdate,
     request: Request,
-    current_user: dict = Depends(lambda: get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     if current_user["role"] != UserRole.SUPER_ADMIN:
         raise HTTPException(status_code=403, detail="Access denied")
@@ -128,7 +128,7 @@ async def update_platform_user(
 async def delete_platform_user(
     user_id: str,
     request: Request,
-    current_user: dict = Depends(lambda: get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     if current_user["role"] != UserRole.SUPER_ADMIN:
         raise HTTPException(status_code=403, detail="Access denied")
@@ -157,7 +157,7 @@ async def delete_platform_user(
 
 # ============ PLANS MANAGEMENT ============
 @super_admin_router.get("/plans", response_model=List[Plan])
-async def get_all_plans(current_user: dict = Depends(lambda: get_current_user)):
+async def get_all_plans(current_user: dict = Depends(get_current_user)):
     if current_user["role"] != UserRole.SUPER_ADMIN:
         raise HTTPException(status_code=403, detail="Access denied")
     
@@ -168,7 +168,7 @@ async def get_all_plans(current_user: dict = Depends(lambda: get_current_user)):
 async def create_plan(
     plan_data: PlanCreate,
     request: Request,
-    current_user: dict = Depends(lambda: get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     if current_user["role"] != UserRole.SUPER_ADMIN:
         raise HTTPException(status_code=403, detail="Access denied")
@@ -209,7 +209,7 @@ async def update_plan(
     plan_id: str,
     updates: PlanUpdate,
     request: Request,
-    current_user: dict = Depends(lambda: get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     if current_user["role"] != UserRole.SUPER_ADMIN:
         raise HTTPException(status_code=403, detail="Access denied")
@@ -239,7 +239,7 @@ async def update_plan(
 
 # ============ LICENSES MANAGEMENT ============
 @super_admin_router.get("/licenses", response_model=List[License])
-async def get_all_licenses(current_user: dict = Depends(lambda: get_current_user)):
+async def get_all_licenses(current_user: dict = Depends(get_current_user)):
     if current_user["role"] != UserRole.SUPER_ADMIN:
         raise HTTPException(status_code=403, detail="Access denied")
     
@@ -250,7 +250,7 @@ async def get_all_licenses(current_user: dict = Depends(lambda: get_current_user
 async def create_license(
     license_data: LicenseCreate,
     request: Request,
-    current_user: dict = Depends(lambda: get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     if current_user["role"] != UserRole.SUPER_ADMIN:
         raise HTTPException(status_code=403, detail="Access denied")
@@ -310,7 +310,7 @@ async def create_license(
 # ============ ACTIVITY LOGS ============
 @super_admin_router.get("/activity-logs", response_model=List[ActivityLog])
 async def get_activity_logs(
-    current_user: dict = Depends(lambda: get_current_user),
+    current_user: dict = Depends(get_current_user),
     action_type: Optional[str] = None,
     entity_type: Optional[str] = None,
     company_id: Optional[str] = None,
@@ -332,7 +332,7 @@ async def get_activity_logs(
 
 # ============ SYSTEM SETTINGS ============
 @super_admin_router.get("/settings", response_model=SystemSettings)
-async def get_system_settings(current_user: dict = Depends(lambda: get_current_user)):
+async def get_system_settings(current_user: dict = Depends(get_current_user)):
     if current_user["role"] != UserRole.SUPER_ADMIN:
         raise HTTPException(status_code=403, detail="Access denied")
     
@@ -361,7 +361,7 @@ async def get_system_settings(current_user: dict = Depends(lambda: get_current_u
 async def update_system_settings(
     updates: SettingsUpdate,
     request: Request,
-    current_user: dict = Depends(lambda: get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     if current_user["role"] != UserRole.SUPER_ADMIN:
         raise HTTPException(status_code=403, detail="Access denied")
