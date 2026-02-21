@@ -102,12 +102,23 @@ export const AgentLoginPage = () => {
     >
       <Card className="w-full max-w-md bg-slate-800/90 backdrop-blur border-slate-700 shadow-2xl">
         <CardHeader className="text-center space-y-4 pb-2">
-          <div className="mx-auto p-4 bg-emerald-900/30 rounded-full w-fit">
-            {getDeviceIcon()}
+          <div className="mx-auto">
+            <img 
+              src={logoUrl} 
+              alt="Logo" 
+              className="h-20 w-auto mx-auto"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = '/assets/logos/lottolab-logo.png';
+              }}
+            />
           </div>
           <div>
             <CardTitle className="text-2xl font-bold text-white">LOTTOLAB</CardTitle>
             <p className="text-slate-400 mt-1">Terminal Agent Universel</p>
+          </div>
+          <div className="flex justify-center">
+            {getDeviceIcon()}
           </div>
         </CardHeader>
         
