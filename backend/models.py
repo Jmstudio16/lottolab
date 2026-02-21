@@ -317,3 +317,79 @@ class CompanyDashboardStats(BaseModel):
     sales_today: float = 0.0
     active_agents: int = 0
     open_lotteries: int = 0
+
+# ============ SCHEDULES ============
+class Schedule(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    schedule_id: str
+    company_id: str
+    lottery_id: str
+    lottery_name: str
+    day_of_week: int  # 0=Monday, 6=Sunday
+    open_time: str  # HH:MM format
+    close_time: str  # HH:MM format
+    draw_time: str  # HH:MM format
+    is_active: bool = True
+    created_at: str
+    updated_at: str
+
+class ScheduleCreate(BaseModel):
+    lottery_id: str
+    day_of_week: int
+    open_time: str
+    close_time: str
+    draw_time: str
+    is_active: bool = True
+
+class ScheduleUpdate(BaseModel):
+    open_time: Optional[str] = None
+    close_time: Optional[str] = None
+    draw_time: Optional[str] = None
+    is_active: Optional[bool] = None
+
+# ============ COMPANY SETTINGS ============
+class CompanySettings(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    settings_id: str
+    company_id: str
+    timezone: str = "America/Port-au-Prince"
+    currency: str = "HTG"
+    stop_sales_before_draw_minutes: int = 5
+    allow_ticket_void: bool = True
+    max_ticket_amount: float = 10000.0
+    min_ticket_amount: float = 10.0
+    auto_print_ticket: bool = True
+    receipt_header: Optional[str] = None
+    receipt_footer: Optional[str] = None
+    updated_at: str
+    updated_by: Optional[str] = None
+
+class CompanySettingsUpdate(BaseModel):
+    timezone: Optional[str] = None
+    currency: Optional[str] = None
+    stop_sales_before_draw_minutes: Optional[int] = None
+    allow_ticket_void: Optional[bool] = None
+    max_ticket_amount: Optional[float] = None
+    min_ticket_amount: Optional[float] = None
+    auto_print_ticket: Optional[bool] = None
+    receipt_header: Optional[str] = None
+    receipt_footer: Optional[str] = None
+
+# ============ REPORTS ============
+class SalesReport(BaseModel):
+    total_tickets: int = 0
+    total_sales: float = 0.0
+    total_wins: float = 0.0
+    net_revenue: float = 0.0
+    sales_by_agent: List[Dict[str, Any]] = []
+    sales_by_lottery: List[Dict[str, Any]] = []
+    period_start: str
+    period_end: str
+
+# ============ AGENT UPDATE ============
+class AgentUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    status: Optional[str] = None
+    can_void_ticket: Optional[bool] = None
+    pos_device_id: Optional[str] = None
