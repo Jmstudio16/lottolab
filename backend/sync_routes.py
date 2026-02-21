@@ -804,6 +804,39 @@ async def get_today_results(current_agent: dict = Depends(get_current_agent)):
     return results
 
 
+@sync_router.get("/device/results")
+async def get_device_results(
+    current_agent: dict = Depends(get_current_agent),
+    limit: int = 100
+):
+    """Get all results for agent device display with auto-sync"""
+    company_id = current_agent.get("company_id")
+    
+    # Get enabled lotteries for this company
+    company_lotteries = await db.company_lotteries.find(
+        {"company_id": company_id, "enabled": True},
+        {"_id": 0, "lottery_id": 1}
+    ).to_list(200)
+    lottery_ids = [cl["lottery_id"] for cl in company_lotteries]
+    
+    if not lottery_ids:
+        return []
+    
+    # Get recent results (last 14 days)
+    end_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    start_date = (datetime.now(timezone.utc) - timedelta(days=14)).strftime("%Y-%m-%d")
+    
+    results = await db.global_results.find(
+        {
+            "lottery_id": {"$in": lottery_ids},
+            "draw_date": {"$gte": start_date, "$lte": end_date}
+        },
+        {"_id": 0}
+    ).sort([("draw_date", -1), ("created_at", -1)]).limit(limit).to_list(limit)
+    
+    return results
+
+
 @sync_router.get("/results/history")
 async def get_results_history(
     current_agent: dict = Depends(get_current_agent),
