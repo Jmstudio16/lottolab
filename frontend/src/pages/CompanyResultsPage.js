@@ -1,168 +1,158 @@
 import React, { useEffect, useState } from 'react';
 import { AdminLayout } from '@/components/AdminLayout';
 import apiClient from '@/api/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Plus, Trophy } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Trophy, Eye, Calendar, RefreshCw, Filter } from 'lucide-react';
 
+// READ-ONLY Results page for Company Admin
+// Results are entered globally by Super Admin
 export const CompanyResultsPage = () => {
   const [results, setResults] = useState([]);
-  const [lotteries, setLotteries] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [formData, setFormData] = useState({
-    lottery_id: '',
-    draw_datetime: '',
-    winning_numbers: ''
-  });
+  const [filterDate, setFilterDate] = useState('');
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchResults();
+  }, [filterDate]);
 
-  const fetchData = async () => {
+  const fetchResults = async () => {
     try {
-      const [resultsRes, lotteriesRes] = await Promise.all([
-        apiClient.get('/company/results'),
-        apiClient.get('/company/lotteries')
-      ]);
-      setResults(resultsRes.data);
-      setLotteries(lotteriesRes.data.filter(l => l.enabled));
+      setLoading(true);
+      // Fetch global results (read-only for company admin)
+      const params = {};
+      if (filterDate) params.draw_date = filterDate;
+      const res = await apiClient.get('/company/results', { params });
+      setResults(res.data);
     } catch (error) {
-      toast.error('Failed to load data');
+      toast.error('Erreur lors du chargement des résultats');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await apiClient.post('/company/results', formData);
-      toast.success('Result posted successfully!');
-      setShowCreateModal(false);
-      fetchData();
-      setFormData({
-        lottery_id: '',
-        draw_datetime: '',
-        winning_numbers: ''
-      });
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to post result');
-    }
-  };
-
-  if (loading) {
+  if (loading && results.length === 0) {
     return (
-      <AdminLayout title="Results" subtitle="Manage lottery results" role="COMPANY_ADMIN">
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <AdminLayout title="Results (View)" subtitle="Vue des résultats de loterie - Lecture seule" role="COMPANY_ADMIN">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
         </div>
       </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout title="Results" subtitle="Manage lottery results" role="COMPANY_ADMIN">
+    <AdminLayout title="Results (View)" subtitle="Vue des résultats de loterie - Lecture seule" role="COMPANY_ADMIN">
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <p className="text-slate-400">Total: {results.length} results</p>
-          <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-            <DialogTrigger asChild>
-              <Button className="button-primary" data-testid="post-result-button">
-                <Plus className="w-4 h-4 mr-2" />
-                Post Result
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-card border-slate-700">
-              <DialogHeader>
-                <DialogTitle className="text-white">Post Lottery Result</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label className="text-slate-300">Lottery</Label>
-                  <select
-                    value={formData.lottery_id}
-                    onChange={(e) => setFormData({...formData, lottery_id: e.target.value})}
-                    required
-                    className="w-full px-3 py-2 rounded-md bg-slate-950 border border-slate-700 text-white"
-                    data-testid="result-lottery-select"
-                  >
-                    <option value="">Select lottery</option>
-                    {lotteries.map(lottery => (
-                      <option key={lottery.lottery_id} value={lottery.lottery_id}>
-                        {lottery.lottery_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <Label className="text-slate-300">Draw Date & Time</Label>
-                  <Input
-                    type="datetime-local"
-                    value={formData.draw_datetime}
-                    onChange={(e) => setFormData({...formData, draw_datetime: new Date(e.target.value).toISOString()})}
-                    required
-                    className="bg-slate-950 border-slate-700 text-white"
-                    data-testid="result-datetime-input"
-                  />
-                </div>
-                <div>
-                  <Label className="text-slate-300">Winning Numbers</Label>
-                  <Input
-                    value={formData.winning_numbers}
-                    onChange={(e) => setFormData({...formData, winning_numbers: e.target.value})}
-                    placeholder="e.g., 1234 or 12-34-56"
-                    required
-                    className="bg-slate-950 border-slate-700 text-white font-mono text-lg"
-                    data-testid="result-numbers-input"
-                  />
-                </div>
-                <Button type="submit" className="w-full button-primary" data-testid="submit-result-button">
-                  Post Result
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+        {/* Header with read-only indicator */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-500/20 rounded-lg">
+              <Eye className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <span className="text-slate-300">{results.length} résultats</span>
+              <p className="text-slate-500 text-sm">Entré par Super Admin - Lecture seule</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="date"
+                value={filterDate}
+                onChange={(e) => setFilterDate(e.target.value)}
+                className="pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-amber-500"
+                data-testid="filter-date"
+              />
+            </div>
+            {filterDate && (
+              <button
+                onClick={() => setFilterDate('')}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors text-sm"
+              >
+                Effacer
+              </button>
+            )}
+            <button
+              onClick={fetchResults}
+              className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors"
+              data-testid="refresh-results"
+            >
+              <RefreshCw className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
+        {/* Results list - READ ONLY */}
         <div className="bg-card border border-slate-700/50 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full" data-testid="results-readonly-table">
               <thead className="bg-slate-900/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Lottery</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Draw Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Winning Numbers</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Source</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Posted</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Loterie</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">État</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Tirage</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Numéros Gagnants</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Bonus</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Vérifié</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
                 {results.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-6 py-8 text-center text-slate-500">
-                      No results posted yet
+                    <td colSpan="7" className="px-6 py-12 text-center text-slate-400">
+                      <Trophy className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p>Aucun résultat trouvé</p>
+                      <p className="text-sm mt-1">Les résultats sont entrés par le Super Admin</p>
                     </td>
                   </tr>
                 ) : (
                   results.map((result) => (
                     <tr key={result.result_id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-white">{result.lottery_name}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-white">
+                        {result.lottery_name}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-400">
+                        {result.state_code || '-'}
+                      </td>
                       <td className="px-6 py-4 text-sm text-slate-300">
-                        {new Date(result.draw_datetime).toLocaleString()}
+                        {result.draw_date}
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-lg font-mono font-bold text-yellow-400">
-                          {result.winning_numbers}
+                        <span className="px-2 py-1 bg-slate-700 text-slate-300 text-xs rounded">
+                          {result.draw_name || '-'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-400">{result.source}</td>
-                      <td className="px-6 py-4 text-sm text-slate-400">
-                        {new Date(result.created_at).toLocaleDateString()}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          {result.winning_numbers?.split(/[-,\s]+/).filter(n => n).map((num, idx) => (
+                            <span
+                              key={idx}
+                              className={`w-10 h-10 flex items-center justify-center rounded-full font-bold text-lg ${
+                                idx === 0 ? 'bg-amber-500 text-black' :
+                                idx === 1 ? 'bg-slate-400 text-black' :
+                                'bg-amber-700 text-white'
+                              }`}
+                            >
+                              {num}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-cyan-400 font-mono">
+                        {result.bonus_number || '-'}
+                      </td>
+                      <td className="px-6 py-4">
+                        {result.is_verified ? (
+                          <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded-full">
+                            Vérifié
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">
+                            En attente
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -170,6 +160,16 @@ export const CompanyResultsPage = () => {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* Read-only notice */}
+        <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-4 text-center">
+          <Eye className="w-6 h-6 mx-auto mb-2 text-amber-400" />
+          <p className="text-slate-400 text-sm">
+            Les résultats des loteries sont entrés globalement par le Super Admin.
+            <br />
+            Cette vue est en lecture seule. Tous les résultats sont automatiquement visibles.
+          </p>
         </div>
       </div>
     </AdminLayout>
