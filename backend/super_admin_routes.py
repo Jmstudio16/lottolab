@@ -405,3 +405,400 @@ async def update_system_settings(
     )
     
     return SystemSettings(**settings)
+
+
+
+# ============ COMPANY FULL CREATE WITH ADMIN ============
+@super_admin_router.post("/companies/full-create")
+async def create_company_with_admin(
+    data: dict,
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Create a complete company with:
+    - Company record
+    - Company Admin user
+    - Default settings and permissions
+    """
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Validate required fields
+    if not data.get("name"):
+        raise HTTPException(status_code=400, detail="Company name is required")
+    if not data.get("admin_email"):
+        raise HTTPException(status_code=400, detail="Admin email is required")
+    if not data.get("admin_password"):
+        raise HTTPException(status_code=400, detail="Admin password is required")
+    
+    # Check if company slug exists
+    slug = data.get("slug", data["name"].lower().replace(" ", "-"))
+    existing_company = await db.companies.find_one({"slug": slug})
+    if existing_company:
+        raise HTTPException(status_code=400, detail="Une entreprise avec ce nom existe déjà")
+    
+    # Check if admin email exists
+    existing_user = await db.users.find_one({"email": data["admin_email"]})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
+    
+    now = get_current_timestamp()
+    company_id = generate_id("comp_")
+    admin_user_id = generate_id("user_")
+    
+    # Create company
+    company_doc = {
+        "company_id": company_id,
+        "name": data["name"],
+        "slug": slug,
+        "contact_email": data.get("contact_email", data["admin_email"]),
+        "contact_phone": data.get("contact_phone", ""),
+        "address": data.get("address", ""),
+        "country": data.get("country", "HT"),
+        "timezone": data.get("timezone", "America/Port-au-Prince"),
+        "currency": data.get("currency", "HTG"),
+        "plan": data.get("plan", "Basic"),
+        "status": data.get("status", "ACTIVE"),
+        "activation_date": data.get("activation_date", now),
+        "expiration_date": data.get("expiration_date"),
+        "max_agents": data.get("max_agents", 5),
+        "max_pos_devices": data.get("max_pos_devices", 10),
+        "max_daily_sales": data.get("max_daily_sales", 100000),
+        "company_logo_url": None,
+        "created_at": now,
+        "updated_at": now
+    }
+    
+    await db.companies.insert_one(company_doc)
+    
+    # Create admin user
+    admin_doc = {
+        "user_id": admin_user_id,
+        "email": data["admin_email"],
+        "password_hash": get_password_hash(data["admin_password"]),
+        "name": data.get("admin_name", "Admin"),
+        "role": UserRole.COMPANY_ADMIN,
+        "status": "ACTIVE",
+        "company_id": company_id,
+        "permissions": ["full_access"],
+        "created_at": now,
+        "updated_at": now
+    }
+    
+    await db.users.insert_one(admin_doc)
+    
+    # Create default company config version
+    await db.company_config_versions.insert_one({
+        "company_id": company_id,
+        "version": 1,
+        "last_changed": now
+    })
+    
+    # Log activity
+    await log_activity(
+        db=db,
+        action_type="COMPANY_CREATED_WITH_ADMIN",
+        entity_type="company",
+        entity_id=company_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={
+            "company_name": data["name"],
+            "admin_email": data["admin_email"],
+            "plan": data.get("plan", "Basic")
+        },
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {
+        "message": "Entreprise et compte admin créés avec succès",
+        "company_id": company_id,
+        "admin_user_id": admin_user_id,
+        "company_name": data["name"],
+        "admin_email": data["admin_email"]
+    }
+
+
+# ============ LOGIN AS COMPANY ADMIN ============
+@super_admin_router.post("/companies/{company_id}/impersonate")
+async def login_as_company_admin(
+    company_id: str,
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Super Admin can impersonate any Company Admin for debugging/support.
+    Returns a token that allows Super Admin to access company as admin.
+    """
+    from auth import create_token
+    
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Find company
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Find company admin
+    company_admin = await db.users.find_one({
+        "company_id": company_id,
+        "role": UserRole.COMPANY_ADMIN
+    }, {"_id": 0})
+    
+    if not company_admin:
+        raise HTTPException(status_code=404, detail="Company admin not found")
+    
+    # Create impersonation token
+    token = create_token({
+        "user_id": company_admin["user_id"],
+        "email": company_admin["email"],
+        "role": UserRole.COMPANY_ADMIN,
+        "company_id": company_id,
+        "impersonated_by": current_user["user_id"]
+    })
+    
+    # Log activity
+    await log_activity(
+        db=db,
+        action_type="SUPER_ADMIN_IMPERSONATE",
+        entity_type="company",
+        entity_id=company_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={
+            "company_name": company["name"],
+            "impersonated_user": company_admin["email"]
+        },
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {
+        "token": token,
+        "company_id": company_id,
+        "company_name": company["name"],
+        "admin_email": company_admin["email"],
+        "admin_name": company_admin.get("name"),
+        "redirect_url": "/company/dashboard"
+    }
+
+
+# ============ GET COMPANY FULL DETAILS ============
+@super_admin_router.get("/companies/{company_id}/full")
+async def get_company_full_details(
+    company_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get full details of a company including agents, POS, stats"""
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Get counts
+    agents_count = await db.users.count_documents({
+        "company_id": company_id,
+        "role": UserRole.AGENT_POS
+    })
+    
+    pos_count = await db.pos_devices.count_documents({
+        "company_id": company_id
+    })
+    
+    admin = await db.users.find_one({
+        "company_id": company_id,
+        "role": UserRole.COMPANY_ADMIN
+    }, {"_id": 0, "password_hash": 0})
+    
+    # Get recent tickets count
+    tickets_today = await db.lottery_transactions.count_documents({
+        "company_id": company_id,
+        "created_at": {"$gte": get_current_timestamp()[:10]}
+    })
+    
+    # Get balance summary
+    balances = await db.agent_balances.find(
+        {"company_id": company_id},
+        {"_id": 0}
+    ).to_list(100)
+    
+    total_balance = sum(b.get("current_balance", 0) for b in balances)
+    total_sales = sum(b.get("total_sales", 0) for b in balances)
+    
+    return {
+        **company,
+        "stats": {
+            "agents_count": agents_count,
+            "pos_devices_count": pos_count,
+            "tickets_today": tickets_today,
+            "total_agent_balance": total_balance,
+            "total_sales": total_sales
+        },
+        "admin": admin
+    }
+
+
+# ============ UPLOAD COMPANY LOGO (SUPER ADMIN) ============
+@super_admin_router.post("/companies/{company_id}/logo")
+async def upload_company_logo_super(
+    company_id: str,
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
+    """Super Admin can upload logo for any company"""
+    from fastapi import UploadFile, File
+    import os
+    import shutil
+    
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Note: This endpoint requires form data handling
+    # The actual file upload is handled in settings_routes.py
+    # This is a placeholder that can be enhanced
+    
+    return {"message": "Use /api/settings/logo/company endpoint for logo upload"}
+
+
+# ============ GLOBAL VISIBILITY - ALL DATA ============
+@super_admin_router.get("/global/stats")
+async def get_global_stats(current_user: dict = Depends(get_current_user)):
+    """Get global platform statistics"""
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Count all entities
+    companies_count = await db.companies.count_documents({"status": "ACTIVE"})
+    agents_count = await db.users.count_documents({"role": UserRole.AGENT_POS, "status": "ACTIVE"})
+    pos_count = await db.pos_devices.count_documents({"status": "ACTIVE"})
+    tickets_today = await db.lottery_transactions.count_documents({
+        "created_at": {"$gte": get_current_timestamp()[:10]}
+    })
+    
+    # Get total sales
+    total_sales_pipeline = [
+        {"$group": {"_id": None, "total": {"$sum": "$total_amount"}}}
+    ]
+    sales_result = await db.lottery_transactions.aggregate(total_sales_pipeline).to_list(1)
+    total_sales = sales_result[0]["total"] if sales_result else 0
+    
+    # Get results count
+    results_count = await db.global_results.count_documents({})
+    lotteries_count = await db.global_lotteries.count_documents({"is_active": True})
+    
+    return {
+        "companies": companies_count,
+        "agents": agents_count,
+        "pos_devices": pos_count,
+        "tickets_today": tickets_today,
+        "total_sales": total_sales,
+        "results_published": results_count,
+        "lotteries_active": lotteries_count
+    }
+
+
+@super_admin_router.get("/global/all-agents")
+async def get_all_agents_global(
+    current_user: dict = Depends(get_current_user),
+    company_id: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 500
+):
+    """Get all agents across all companies"""
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    query = {"role": UserRole.AGENT_POS}
+    if company_id:
+        query["company_id"] = company_id
+    if status:
+        query["status"] = status
+    
+    agents = await db.users.find(
+        query,
+        {"_id": 0, "password_hash": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Enrich with company names and balances
+    for agent in agents:
+        company = await db.companies.find_one(
+            {"company_id": agent.get("company_id")},
+            {"_id": 0, "name": 1}
+        )
+        agent["company_name"] = company.get("name") if company else "N/A"
+        
+        balance = await db.agent_balances.find_one(
+            {"agent_id": agent["user_id"]},
+            {"_id": 0}
+        )
+        agent["balance"] = balance if balance else None
+    
+    return agents
+
+
+@super_admin_router.get("/global/all-pos")
+async def get_all_pos_global(
+    current_user: dict = Depends(get_current_user),
+    company_id: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 500
+):
+    """Get all POS devices across all companies"""
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    query = {}
+    if company_id:
+        query["company_id"] = company_id
+    if status:
+        query["status"] = status
+    
+    devices = await db.pos_devices.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Enrich with company names
+    for device in devices:
+        company = await db.companies.find_one(
+            {"company_id": device.get("company_id")},
+            {"_id": 0, "name": 1}
+        )
+        device["company_name"] = company.get("name") if company else "N/A"
+    
+    return devices
+
+
+@super_admin_router.get("/global/all-tickets")
+async def get_all_tickets_global(
+    current_user: dict = Depends(get_current_user),
+    company_id: Optional[str] = None,
+    status: Optional[str] = None,
+    date: Optional[str] = None,
+    limit: int = 500
+):
+    """Get all tickets across all companies"""
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    query = {}
+    if company_id:
+        query["company_id"] = company_id
+    if status:
+        query["status"] = status
+    if date:
+        query["created_at"] = {"$gte": date, "$lt": date + "T23:59:59"}
+    
+    tickets = await db.lottery_transactions.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    return tickets
