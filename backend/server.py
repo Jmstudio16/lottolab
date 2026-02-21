@@ -19,6 +19,7 @@ from super_admin_global_routes import super_admin_global_router, set_super_admin
 from company_routes import company_router, set_company_db
 from company_operational_routes import company_operational_router, set_company_operational_db
 from agent_routes import agent_router, set_agent_db
+from universal_pos_routes import universal_pos_router, set_universal_pos_db
 from error_handlers import validation_exception_handler, generic_exception_handler
 
 ROOT_DIR = Path(__file__).parent
@@ -483,11 +484,13 @@ set_super_admin_global_db(db)
 set_company_db(db)
 set_company_operational_db(db)
 set_agent_db(db)
+set_universal_pos_db(db)
 app.include_router(super_admin_router)
 app.include_router(super_admin_global_router)
 app.include_router(company_router)
 app.include_router(company_operational_router)
 app.include_router(agent_router)
+app.include_router(universal_pos_router)
 app.include_router(api_router)
 
 app.add_middleware(
