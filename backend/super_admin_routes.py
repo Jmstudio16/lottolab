@@ -21,7 +21,7 @@ def init_super_admin_routes(database, auth_dependency):
 # ============ USERS MANAGEMENT ============
 @super_admin_router.get("/users", response_model=List[User])
 async def get_all_platform_users(
-    current_user: dict = Depends(lambda: get_current_user),
+    current_user: dict = Depends(get_current_user),
     search: Optional[str] = None,
     role: Optional[str] = None,
     status: Optional[str] = None,
