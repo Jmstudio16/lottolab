@@ -6,8 +6,7 @@ from datetime import datetime, timezone, timedelta
 from models import (
     UserRole, User, UserCreate, Agent, AgentCreate, AgentUpdate, AgentStatus,
     POSDevice, POSDeviceCreate, POSDeviceUpdate,
-    Schedule, ScheduleCreate, ScheduleUpdate,
-    Ticket, Result, ResultCreate, ActivityLog,
+    Ticket, ActivityLog,
     CompanySettings, CompanySettingsUpdate, SalesReport
 )
 from auth import get_password_hash, decode_token
