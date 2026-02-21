@@ -206,7 +206,7 @@ async def get_open_lotteries(current_user: dict = Depends(get_agent_user)):
                             "number_format": lottery.get("number_format", "3-digit")
                         })
                         break
-                except:
+                except Exception:
                     continue
     
     return open_lotteries
