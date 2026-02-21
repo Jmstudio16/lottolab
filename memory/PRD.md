@@ -29,12 +29,20 @@ LOTTOLAB is a multi-tenant Lottery SaaS platform with hierarchical RBAC model (S
 - **Logo Priority**: Company logo > System logo
 - **Logo Display**: Appears on sidebar, login pages, tickets, dashboards
 
-#### 4. Financial Lifecycle System (NEW - 2026-02-21)
+#### 4. Financial Lifecycle System (2026-02-21)
 - **Agent Balance Management**: `agent_balances` collection tracks credit_limit, current_balance, available_balance
 - **Ticket Check**: `POST /api/tickets/check` verifies wins against `global_results`
 - **Ticket Payout**: `POST /api/tickets/payout` processes payments and updates balances
 - **Automatic Winning Detection**: Background service processes tickets when results are entered
 - **Balance Integration**: Ticket sales automatically deduct from agent's available balance
+
+#### 5. Result Management System (NEW - 2026-02-21)
+- **Super Admin Control**: Only SUPER_ADMIN can publish, edit, delete results
+- **Auto Sync**: Results automatically sync to all Company Admins and Agents
+- **State Lottery Support**: 50 US states supported with emoji flags
+- **Draw Types**: Morning, Midday, Evening, Night
+- **Winning Numbers Display**: Professional colored balls (Gold/Silver/Bronze)
+- **Auto Ticket Processing**: When results are published, all pending tickets are automatically checked
 
 ---
 
