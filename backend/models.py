@@ -77,6 +77,12 @@ class UserCreate(BaseModel):
     role: UserRole
     company_id: Optional[str] = None
 
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    role: Optional[UserRole] = None
+    status: Optional[str] = None
+    company_id: Optional[str] = None
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
@@ -193,17 +199,6 @@ class ResultCreate(BaseModel):
     draw_datetime: str
     winning_numbers: str
 
-class ActivityLog(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    log_id: str
-    action_type: str
-    entity_type: str
-    entity_id: str
-    performed_by: str
-    company_id: Optional[str] = None
-    metadata: Dict[str, Any] = {}
-    created_at: str
-
 class Plan(BaseModel):
     model_config = ConfigDict(extra="ignore")
     plan_id: str
@@ -227,7 +222,17 @@ class PlanCreate(BaseModel):
     max_pos_devices: int = 10
     features: List[str] = []
 
-class CompanyLicense(BaseModel):
+class PlanUpdate(BaseModel):
+    name: Optional[str] = None
+    price: Optional[float] = None
+    max_agents: Optional[int] = None
+    max_tickets_per_day: Optional[int] = None
+    max_lotteries: Optional[int] = None
+    max_pos_devices: Optional[int] = None
+    features: Optional[List[str]] = None
+    status: Optional[str] = None
+
+class License(BaseModel):
     model_config = ConfigDict(extra="ignore")
     license_id: str
     company_id: str
@@ -282,6 +287,8 @@ class SettingsUpdate(BaseModel):
     verification_code_length: Optional[int] = None
     maintenance_mode: Optional[bool] = None
     allow_company_registration: Optional[bool] = None
+
+class DashboardStats(BaseModel):
     total_companies: int = 0
     active_companies: int = 0
     total_agents: int = 0
