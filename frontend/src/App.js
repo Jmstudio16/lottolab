@@ -92,12 +92,7 @@ function App() {
               path="/super/users"
               element={
                 <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
-                  <div className="min-h-screen bg-background flex items-center justify-center">
-                    <div className="text-center text-slate-400">
-                      <h2 className="text-2xl font-barlow font-bold text-white mb-2">Users Management</h2>
-                      <p>Coming in next iteration</p>
-                    </div>
-                  </div>
+                  <SuperUsersPage />
                 </ProtectedRoute>
               }
             />
@@ -105,12 +100,7 @@ function App() {
               path="/super/plans"
               element={
                 <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
-                  <div className="min-h-screen bg-background flex items-center justify-center">
-                    <div className="text-center text-slate-400">
-                      <h2 className="text-2xl font-barlow font-bold text-white mb-2">Plans & Licenses</h2>
-                      <p>Coming in next iteration</p>
-                    </div>
-                  </div>
+                  <SuperPlansPage />
                 </ProtectedRoute>
               }
             />
@@ -118,12 +108,7 @@ function App() {
               path="/super/activity-logs"
               element={
                 <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
-                  <div className="min-h-screen bg-background flex items-center justify-center">
-                    <div className="text-center text-slate-400">
-                      <h2 className="text-2xl font-barlow font-bold text-white mb-2">Activity Logs</h2>
-                      <p>Coming in next iteration</p>
-                    </div>
-                  </div>
+                  <SuperActivityLogsPage />
                 </ProtectedRoute>
               }
             />
@@ -131,12 +116,7 @@ function App() {
               path="/super/settings"
               element={
                 <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
-                  <div className="min-h-screen bg-background flex items-center justify-center">
-                    <div className="text-center text-slate-400">
-                      <h2 className="text-2xl font-barlow font-bold text-white mb-2">Settings</h2>
-                      <p>Coming in next iteration</p>
-                    </div>
-                  </div>
+                  <SuperSettingsPage />
                 </ProtectedRoute>
               }
             />
