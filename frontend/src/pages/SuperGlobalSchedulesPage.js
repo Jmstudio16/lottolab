@@ -134,8 +134,8 @@ export const SuperGlobalSchedulesPage = () => {
     : schedules;
 
   return (
-    <div className="min-h-screen bg-slate-950 p-6">
-      <div className="max-w-7xl mx-auto">
+    <AdminLayout role="SUPER_ADMIN">
+      <div className="p-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
