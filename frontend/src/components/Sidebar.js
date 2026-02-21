@@ -22,7 +22,9 @@ import {
   Sliders,
   ChartLine,
   ShoppingBag,
-  Image
+  Image,
+  Wallet,
+  Banknote
 } from 'lucide-react';
 import { useAuth } from '@/api/auth';
 import Logo from './Logo';
