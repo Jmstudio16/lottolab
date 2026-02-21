@@ -300,14 +300,24 @@ async def get_company_agents(current_user: dict = Depends(get_current_user)):
     return [Agent(**a) for a in agents]
 
 @api_router.post("/company/agents", response_model=Agent)
-async def create_agent(agent_data: AgentCreate, current_user: dict = Depends(get_current_user)):
+async def create_agent(agent_data: AgentCreate, request: Request, current_user: dict = Depends(get_current_user)):
     company_id = current_user.get("company_id")
     if not company_id or current_user["role"] not in [UserRole.COMPANY_ADMIN, UserRole.COMPANY_MANAGER]:
         raise HTTPException(status_code=403, detail="Access denied")
     
+    # Validate email is provided
+    if not agent_data.email:
+        raise HTTPException(status_code=400, detail="Email is required for agent creation")
+    
+    # Check if username already exists
     existing = await db.agents.find_one({"company_id": company_id, "username": agent_data.username})
     if existing:
-        raise HTTPException(status_code=400, detail="Username already exists")
+        raise HTTPException(status_code=400, detail="Username already exists in your company")
+    
+    # Check if email already exists
+    existing_email = await db.users.find_one({"email": agent_data.email})
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Email already exists")
     
     agent_id = generate_id("agent_")
     user_id = generate_id("user_")
@@ -315,12 +325,13 @@ async def create_agent(agent_data: AgentCreate, current_user: dict = Depends(get
     
     user_doc = {
         "user_id": user_id,
-        "email": agent_data.email or f"{agent_data.username}@pos.lottolab.local",
+        "email": agent_data.email,
         "password_hash": get_password_hash(agent_data.password),
         "name": agent_data.name,
         "role": UserRole.AGENT_POS,
         "company_id": company_id,
         "status": "ACTIVE",
+        "last_login": None,
         "created_at": now,
         "updated_at": now
     }
@@ -341,6 +352,18 @@ async def create_agent(agent_data: AgentCreate, current_user: dict = Depends(get
     )
     
     await db.agents.insert_one(agent.model_dump())
+    
+    await log_activity(
+        db=db,
+        action_type="AGENT_CREATED",
+        entity_type="agent",
+        entity_id=agent_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={"agent_name": agent_data.name, "username": agent_data.username},
+        ip_address=request.client.host if request.client else None
+    )
+    
     return agent
 
 @api_router.put("/company/agents/{agent_id}", response_model=Agent)
