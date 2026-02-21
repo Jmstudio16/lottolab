@@ -299,6 +299,155 @@ class SystemSettings(BaseModel):
     updated_at: str
     updated_by: Optional[str] = None
 
+# ============ BRANCH/SUCCURSALE ============
+class Branch(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    branch_id: str
+    company_id: str
+    name: str
+    code: str
+    address: Optional[str] = None
+    city: Optional[str] = None
+    phone: Optional[str] = None
+    manager_id: Optional[str] = None
+    manager_name: Optional[str] = None
+    status: str = "ACTIVE"
+    created_at: str
+    updated_at: Optional[str] = None
+
+class BranchCreate(BaseModel):
+    name: str
+    code: str
+    address: Optional[str] = None
+    city: Optional[str] = None
+    phone: Optional[str] = None
+    manager_id: Optional[str] = None
+
+class BranchUpdate(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    phone: Optional[str] = None
+    manager_id: Optional[str] = None
+    status: Optional[str] = None
+
+# ============ VENDOR/VENDEUR ============
+class Vendor(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    vendor_id: str
+    company_id: str
+    branch_id: Optional[str] = None
+    name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    commission_rate: float = 0.0
+    status: str = "ACTIVE"
+    created_at: str
+    updated_at: Optional[str] = None
+
+class VendorCreate(BaseModel):
+    name: str
+    branch_id: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    commission_rate: float = 0.0
+
+# ============ PRIME (PAYOUT) CONFIG ============
+class PrimeConfig(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    prime_id: str
+    company_id: str
+    bet_type: str  # BORLETTE, LOTO3, LOTO4, MARIAGE, etc.
+    bet_code: str  # 20, 30, 40, etc.
+    payout_first: float = 0.0
+    payout_second: float = 0.0
+    payout_third: float = 0.0
+    description: Optional[str] = None
+    is_active: bool = True
+    updated_at: Optional[str] = None
+
+class PrimeConfigCreate(BaseModel):
+    bet_type: str
+    bet_code: str
+    payout_first: float
+    payout_second: float = 0.0
+    payout_third: float = 0.0
+    description: Optional[str] = None
+
+# ============ BLOCKED NUMBERS ============
+class BlockedNumber(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    block_id: str
+    company_id: str
+    lottery_id: Optional[str] = None
+    number: str
+    block_type: str = "FULL"  # FULL, PARTIAL
+    max_amount: Optional[float] = None
+    reason: Optional[str] = None
+    created_by: str
+    created_at: str
+    expires_at: Optional[str] = None
+
+# ============ LIMITS ============
+class SalesLimit(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    limit_id: str
+    company_id: str
+    lottery_id: Optional[str] = None
+    agent_id: Optional[str] = None
+    number: Optional[str] = None
+    bet_type: Optional[str] = None
+    max_amount: float
+    period: str = "DAILY"  # DAILY, DRAW
+    created_at: str
+    updated_at: Optional[str] = None
+
+# ============ GLOBAL SCHEDULE (SUPER ADMIN) ============
+class GlobalSchedule(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    schedule_id: str
+    lottery_id: str
+    lottery_name: str
+    day_of_week: int  # 0=Monday, 6=Sunday, -1=All days
+    draw_name: str  # "Midday", "Evening", etc.
+    open_time: str  # HH:MM
+    close_time: str  # HH:MM
+    draw_time: str  # HH:MM
+    is_active: bool = True
+    created_at: str
+    updated_at: Optional[str] = None
+
+class GlobalScheduleCreate(BaseModel):
+    lottery_id: str
+    day_of_week: int = -1
+    draw_name: str
+    open_time: str
+    close_time: str
+    draw_time: str
+    is_active: bool = True
+
+# ============ GLOBAL RESULT (SUPER ADMIN) ============
+class GlobalResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    result_id: str
+    lottery_id: str
+    lottery_name: str
+    draw_date: str  # YYYY-MM-DD
+    draw_name: str  # "Midday", "Evening"
+    winning_numbers: str
+    bonus_number: Optional[str] = None
+    entered_by: str
+    entered_by_name: Optional[str] = None
+    created_at: str
+    updated_at: Optional[str] = None
+
+class GlobalResultCreate(BaseModel):
+    lottery_id: str
+    draw_date: str
+    draw_name: str
+    winning_numbers: str
+    bonus_number: Optional[str] = None
+
 class SettingsUpdate(BaseModel):
     platform_name: Optional[str] = None
     default_currency: Optional[str] = None
