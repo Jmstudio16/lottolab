@@ -398,13 +398,37 @@ async def sell_lottery_ticket(
     
     if schedule:
         stop_minutes = config.get("stop_sales_before_draw_minutes", 5) if config else 5
-        draw_time_str = schedule.get("draw_time", "00:00")
+        closing_time_str = schedule.get("closing_time") or schedule.get("draw_time", "00:00")
+        opening_time_str = schedule.get("opening_time", "00:00")
         
-        # Parse draw time
-        draw_hour, draw_minute = map(int, draw_time_str.split(":"))
+        # Parse times
+        close_hour, close_minute = map(int, closing_time_str.split(":"))
+        open_hour, open_minute = map(int, opening_time_str.split(":"))
+        
         now = datetime.now(timezone.utc)
-        draw_datetime = now.replace(hour=draw_hour, minute=draw_minute, second=0, microsecond=0)
         
+        # Create datetime objects for today
+        close_datetime = now.replace(hour=close_hour, minute=close_minute, second=0, microsecond=0)
+        open_datetime = now.replace(hour=open_hour, minute=open_minute, second=0, microsecond=0)
+        
+        # Check if lottery is not yet open
+        if now < open_datetime:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cette loterie n'est pas encore ouverte. Ouverture à {opening_time_str}"
+            )
+        
+        # Check if lottery is closed
+        if now >= close_datetime:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"LOTERIE FERMÉE. Fermeture à {closing_time_str}"
+            )
+        
+        # Also check draw time cutoff
+        draw_time_str = schedule.get("draw_time", "00:00")
+        draw_hour, draw_minute = map(int, draw_time_str.split(":"))
+        draw_datetime = now.replace(hour=draw_hour, minute=draw_minute, second=0, microsecond=0)
         cutoff_time = draw_datetime - timedelta(minutes=stop_minutes)
         
         if now >= cutoff_time:
