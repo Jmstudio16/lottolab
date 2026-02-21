@@ -304,6 +304,17 @@ async def get_agents(current_user: dict = Depends(get_current_user)):
     agents = await db.agents.find({"company_id": company_id}, {"_id": 0}).to_list(1000)
     return [Agent(**a) for a in agents]
 
+@company_router.get("/agents/{agent_id}", response_model=Agent)
+async def get_agent_detail(agent_id: str, current_user: dict = Depends(get_current_user)):
+    """Get single agent by agent_id"""
+    company_id = require_company_access(current_user)
+    
+    agent_doc = await db.agents.find_one({"agent_id": agent_id, "company_id": company_id}, {"_id": 0})
+    if not agent_doc:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    return Agent(**agent_doc)
+
 @company_router.post("/agents", response_model=Agent)
 async def create_agent(
     agent_data: AgentCreate, 
