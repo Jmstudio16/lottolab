@@ -218,7 +218,7 @@ async def get_company_settings(current_user: dict = Depends(get_current_user)):
     }
 
 
-@settings_router.put("/company/settings")
+@settings_router.put("/company/profile")
 async def update_company_settings(
     updates: CompanySettingsUpdate,
     request: Request,
