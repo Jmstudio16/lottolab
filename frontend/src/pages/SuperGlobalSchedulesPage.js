@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/api/auth';
+import { AdminLayout } from '@/components/AdminLayout';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { 
