@@ -40,7 +40,8 @@ export const CompanyAgentsPage = () => {
     e.preventDefault();
     try {
       await apiClient.post('/company/agents', formData);
-      toast.success('Agent created successfully!');\n      setShowCreateModal(false);
+      toast.success('Agent created successfully!');
+      setShowCreateModal(false);
       fetchAgents();
       setFormData({
         name: '',
