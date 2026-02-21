@@ -33,7 +33,7 @@ const SuperAdminMenu = [
   { path: '/super/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/super/lottery-catalog', label: 'Lottery Catalog', icon: Globe },
   { path: '/super/global-schedules', label: 'Global Schedules', icon: Clock },
-  { path: '/super/global-results', label: 'Global Results', icon: Award },
+  { path: '/super/result-management', label: 'RESULT MANAGEMENT', icon: Trophy },
   { path: '/super/companies', label: 'Companies', icon: Building2 },
   { path: '/super/users', label: 'Users', icon: Users },
   { path: '/super/plans', label: 'Plans & Licenses', icon: Package },
