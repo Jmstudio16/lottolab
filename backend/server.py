@@ -515,7 +515,8 @@ async def create_ticket(ticket_data: TicketCreate, current_user: dict = Depends(
     
     total_amount = sum(play.amount for play in ticket_data.plays)
     
-    qr_payload = f"{ticket_code}|{verification_code}|{company_id}"\n    qr_code_data = generate_qr_code(qr_payload)
+    qr_payload = f"{ticket_code}|{verification_code}|{company_id}"
+    qr_code_data = generate_qr_code(qr_payload)
     
     now = get_current_timestamp()
     
