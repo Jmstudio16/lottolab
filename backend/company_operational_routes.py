@@ -698,7 +698,7 @@ async def delete_blocked_number(
 async def get_sales_limits(current_user: dict = Depends(get_company_user)):
     company_id = current_user["company_id"]
     limits = await db.sales_limits.find({"company_id": company_id}, {"_id": 0}).to_list(1000)
-    return [SalesLimit(**l) for l in limits]
+    return [SalesLimit(**lim) for lim in limits]
 
 @company_operational_router.post("/sales-limits", response_model=SalesLimit)
 async def create_sales_limit(
