@@ -119,22 +119,6 @@ export const LoginPage = () => {
             </Button>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-slate-900/50 border border-slate-700/50 rounded-lg">
-            <p className="text-xs text-slate-400 mb-2 font-semibold">Demo Accounts:</p>
-            <div className="space-y-2 text-xs text-slate-300">
-              <div>
-                <span className="text-yellow-400 font-mono">Super Admin:</span> jefferson@jmstudio.com
-              </div>
-              <div>
-                <span className="text-blue-400 font-mono">Company Admin:</span> admin@lotopam.com
-              </div>
-              <div>
-                <span className="text-green-400 font-mono">Agent POS:</span> agent001@pos.lottolab.local
-              </div>
-            </div>
-          </div>
-
           <div className="mt-6 text-center text-xs text-slate-500">
             © JM STUDIO - LOTTOLAB
           </div>
