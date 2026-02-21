@@ -720,7 +720,7 @@ class GlobalResultCreateEnhanced(BaseModel):
     bonus_number: Optional[str] = None
 
 # ============ VENDOR ============
-class VendorCreate(BaseModel):
+class VendorCreateModel(BaseModel):
     name: str
     branch_id: Optional[str] = None
     phone: Optional[str] = None
