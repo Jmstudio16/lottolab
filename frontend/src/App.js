@@ -178,6 +178,14 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/super/result-management"
+              element={
+                <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                  <SuperResultManagementPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* ================== COMPANY ADMIN ROUTES ================== */}
             <Route
