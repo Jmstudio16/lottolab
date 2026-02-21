@@ -1,22 +1,36 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import List, Optional
 from datetime import datetime, timezone
 
 from models import *
-from auth import get_password_hash
+from auth import get_password_hash, decode_token
 from utils import generate_id, get_current_timestamp
 from activity_logger import log_activity
 
 super_admin_router = APIRouter(prefix="/api/super")
+security = HTTPBearer()
 
-# This will be injected in server.py
+# Will be set from server.py
 db = None
-get_current_user = None
 
-def init_super_admin_routes(database, auth_dependency):
-    global db, get_current_user
+def set_db(database):
+    global db
     db = database
-    get_current_user = auth_dependency
+
+# Auth dependency for super admin routes
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    user_id = payload.get("user_id")
+    user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    return user
 
 # ============ USERS MANAGEMENT ============
 @super_admin_router.get("/users", response_model=List[User])
