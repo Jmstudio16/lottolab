@@ -363,12 +363,23 @@ function App() {
               }
             >
               <Route path="dashboard" element={<AgentDashboardPage />} />
+              <Route path="lottery-selection" element={<AgentLotterySelectionPage />} />
               <Route path="new-ticket" element={<AgentNewTicketPage />} />
               <Route path="tickets" element={<AgentTicketsPage />} />
               <Route path="results" element={<AgentResultsPage />} />
               <Route path="reports" element={<AgentReportsPage />} />
               <Route index element={<Navigate to="/agent/dashboard" replace />} />
             </Route>
+
+            {/* POS Routes - Same as Agent */}
+            <Route
+              path="/pos/new-ticket"
+              element={
+                <ProtectedRoute allowedRoles={['AGENT_POS']}>
+                  <AgentLotterySelectionPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Legacy POS route redirect */}
             <Route
