@@ -5,7 +5,7 @@ from datetime import datetime, timezone, timedelta
 
 from models import (
     UserRole, Branch, BranchCreate, BranchUpdate,
-    Vendor, VendorCreate, VendorUpdate,
+    Vendor, VendorCreateModel, VendorUpdate,
     PrimeConfigEnhanced, PrimeConfigCreateEnhanced, PrimeConfigUpdateEnhanced,
     BlockedNumber, BlockedNumberCreate, SalesLimit, SalesLimitCreate, CompanyConfiguration, CompanyConfigurationUpdate,
     EliminationRequest, EliminationRequestCreate,
