@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import List, Optional
 from datetime import datetime, timezone
@@ -17,10 +17,17 @@ super_admin_global_router = APIRouter(prefix="/api/super")
 security = HTTPBearer()
 
 db = None
+# Function to process tickets - will be set by server.py
+process_tickets_for_result = None
 
 def set_super_admin_global_db(database):
     global db
     db = database
+
+def set_ticket_processor(processor_func):
+    """Set the ticket processing function from financial_routes"""
+    global process_tickets_for_result
+    process_tickets_for_result = processor_func
 
 async def get_super_admin_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
