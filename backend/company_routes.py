@@ -528,7 +528,7 @@ async def get_results(
     limit: int = 200
 ):
     """View results - READ ONLY. Results are entered globally by Super Admin."""
-    company_id = require_company_access(current_user)
+    require_company_access(current_user)
     
     # Get global results
     query = {}
