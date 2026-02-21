@@ -461,7 +461,7 @@ async def delete_agent(
 @company_router.get("/schedules")
 async def get_schedules(current_user: dict = Depends(get_current_user)):
     """View schedules - READ ONLY. Schedules are managed globally by Super Admin."""
-    company_id = require_company_access(current_user)
+    require_company_access(current_user)
     
     # Get global schedules
     global_schedules = await db.global_schedules.find({"is_active": True}, {"_id": 0}).to_list(1000)
