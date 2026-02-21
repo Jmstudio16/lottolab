@@ -208,12 +208,80 @@ class Plan(BaseModel):
     model_config = ConfigDict(extra="ignore")
     plan_id: str
     name: str
+    price: float = 0.0
     max_agents: int
     max_tickets_per_day: int
     max_lotteries: int
+    max_pos_devices: int = 10
+    features: List[str] = []
+    status: str = "ACTIVE"
+    created_at: str
+    updated_at: str
+
+class PlanCreate(BaseModel):
+    name: str
+    price: float = 0.0
+    max_agents: int
+    max_tickets_per_day: int
+    max_lotteries: int
+    max_pos_devices: int = 10
     features: List[str] = []
 
-class DashboardStats(BaseModel):
+class CompanyLicense(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    license_id: str
+    company_id: str
+    company_name: str
+    plan_id: str
+    plan_name: str
+    start_date: str
+    expiry_date: str
+    status: str = "ACTIVE"
+    created_at: str
+    updated_at: str
+
+class LicenseCreate(BaseModel):
+    company_id: str
+    plan_id: str
+    start_date: str
+    expiry_date: str
+
+class ActivityLog(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    log_id: str
+    action_type: str
+    entity_type: str
+    entity_id: str
+    performed_by: str
+    performed_by_name: Optional[str] = None
+    company_id: Optional[str] = None
+    company_name: Optional[str] = None
+    metadata: Dict[str, Any] = {}
+    ip_address: Optional[str] = None
+    created_at: str
+
+class SystemSettings(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    settings_id: str = "system_settings"
+    platform_name: str = "LOTTOLAB"
+    platform_logo: Optional[str] = None
+    default_currency: str = "HTG"
+    default_timezone: str = "America/Port-au-Prince"
+    ticket_code_length: int = 12
+    verification_code_length: int = 12
+    maintenance_mode: bool = False
+    allow_company_registration: bool = False
+    updated_at: str
+    updated_by: Optional[str] = None
+
+class SettingsUpdate(BaseModel):
+    platform_name: Optional[str] = None
+    default_currency: Optional[str] = None
+    default_timezone: Optional[str] = None
+    ticket_code_length: Optional[int] = None
+    verification_code_length: Optional[int] = None
+    maintenance_mode: Optional[bool] = None
+    allow_company_registration: Optional[bool] = None
     total_companies: int = 0
     active_companies: int = 0
     total_agents: int = 0
