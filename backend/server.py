@@ -651,7 +651,9 @@ async def get_all_lotteries():
 
 # Initialize super admin routes with database
 set_db(db)
+set_company_db(db)
 app.include_router(super_admin_router)
+app.include_router(company_router)
 app.include_router(api_router)
 
 app.add_middleware(
