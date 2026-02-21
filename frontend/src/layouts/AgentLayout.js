@@ -36,7 +36,7 @@ const AgentSidebar = ({ isOpen, onClose }) => {
 
   const navItems = [
     { path: '/agent/dashboard', icon: Home, label: 'Tableau de bord' },
-    { path: '/agent/new-ticket', icon: PlusCircle, label: 'Nouveau Ticket' },
+    { path: '/agent/lottery-selection', icon: PlusCircle, label: 'Nouveau Ticket' },
     { path: '/agent/tickets', icon: Ticket, label: 'Mes Tickets' },
     { path: '/agent/results', icon: Trophy, label: 'Résultats' },
     { path: '/agent/reports', icon: BarChart3, label: 'Rapports' },
