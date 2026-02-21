@@ -77,28 +77,29 @@ const RoleBasedRedirect = () => {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <div className="App">
-          <Toaster 
-            position="top-right" 
-            theme="dark"
-            toastOptions={{
-              style: {
-                background: '#1e293b',
-                border: '1px solid #334155',
-                color: '#f1f5f9',
-              },
-              className: 'font-sans',
-              duration: 3000,
-            }}
-          />
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/agent/login" element={<AgentLoginPage />} />
-            
-            {/* Root redirect */}
-            <Route path="/" element={<RoleBasedRedirect />} />
+      <LogoProvider>
+        <BrowserRouter>
+          <div className="App">
+            <Toaster 
+              position="top-right" 
+              theme="dark"
+              toastOptions={{
+                style: {
+                  background: '#1e293b',
+                  border: '1px solid #334155',
+                  color: '#f1f5f9',
+                },
+                className: 'font-sans',
+                duration: 3000,
+              }}
+            />
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/agent/login" element={<AgentLoginPage />} />
+              
+              {/* Root redirect */}
+              <Route path="/" element={<RoleBasedRedirect />} />
 
             {/* ================== SUPER ADMIN ROUTES ================== */}
             <Route
