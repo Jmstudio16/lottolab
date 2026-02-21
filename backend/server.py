@@ -219,7 +219,7 @@ async def get_all_activity_logs(current_user: dict = Depends(get_current_user)):
 @api_router.get("/company/dashboard/stats", response_model=CompanyDashboardStats)
 async def get_company_dashboard_stats(current_user: dict = Depends(get_current_user)):
     company_id = current_user.get("company_id")
-    if not company_id:
+    if not company_id or current_user["role"] not in [UserRole.COMPANY_ADMIN, UserRole.COMPANY_MANAGER, UserRole.AUDITOR_READONLY]:
         raise HTTPException(status_code=403, detail="Access denied")
     
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
