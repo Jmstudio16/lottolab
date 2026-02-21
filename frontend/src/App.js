@@ -34,10 +34,16 @@ import { CompanyConfigurationPage } from '@/pages/CompanyConfigurationPage';
 import { CompanyStatisticsPage } from '@/pages/CompanyStatisticsPage';
 import { CompanyDailyReportsPage } from '@/pages/CompanyDailyReportsPage';
 
-// Agent Pages (LIMITED ACCESS)
-import { AgentPOSPage } from '@/pages/AgentPOSPage';
-import { AgentMyTicketsPage } from '@/pages/AgentMyTicketsPage';
-import { AgentMySalesPage } from '@/pages/AgentMySalesPage';
+// Agent Universal Terminal Pages (NEW)
+import { AgentLayout } from '@/layouts/AgentLayout';
+import { 
+  AgentLoginPage,
+  AgentDashboardPage, 
+  AgentNewTicketPage, 
+  AgentTicketsPage, 
+  AgentResultsPage, 
+  AgentReportsPage 
+} from '@/pages/agent';
 
 const RoleBasedRedirect = () => {
   const { user, loading } = useAuth();
@@ -59,7 +65,7 @@ const RoleBasedRedirect = () => {
     SUPER_ADMIN: '/super/dashboard',
     COMPANY_ADMIN: '/company/dashboard',
     COMPANY_MANAGER: '/company/dashboard',
-    AGENT_POS: '/agent/pos',  // Agents go to their POS, NOT company dashboard
+    AGENT_POS: '/agent/dashboard',  // Agents go to universal dashboard
     AUDITOR_READONLY: '/company/dashboard'
   };
 
@@ -87,6 +93,7 @@ function App() {
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/agent/login" element={<AgentLoginPage />} />
             
             {/* Root redirect */}
             <Route path="/" element={<RoleBasedRedirect />} />
@@ -166,7 +173,6 @@ function App() {
             />
 
             {/* ================== COMPANY ADMIN ROUTES ================== */}
-            {/* Company Admin has FULL access to company management */}
             <Route
               path="/company/dashboard"
               element={
@@ -288,37 +294,32 @@ function App() {
               }
             />
 
-            {/* ================== AGENT ROUTES (LIMITED ACCESS) ================== */}
-            {/* Agents can ONLY access these routes - NOT company admin pages */}
+            {/* ================== UNIVERSAL AGENT TERMINAL ROUTES ================== */}
+            {/* Agent routes use nested layout for better UX */}
             <Route
-              path="/agent/pos"
+              path="/agent"
               element={
                 <ProtectedRoute allowedRoles={['AGENT_POS']}>
-                  <AgentPOSPage />
+                  <AgentLayout />
                 </ProtectedRoute>
               }
-            />
-            <Route
-              path="/agent/my-tickets"
-              element={
-                <ProtectedRoute allowedRoles={['AGENT_POS']}>
-                  <AgentMyTicketsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/agent/my-sales"
-              element={
-                <ProtectedRoute allowedRoles={['AGENT_POS']}>
-                  <AgentMySalesPage />
-                </ProtectedRoute>
-              }
-            />
+            >
+              <Route path="dashboard" element={<AgentDashboardPage />} />
+              <Route path="new-ticket" element={<AgentNewTicketPage />} />
+              <Route path="tickets" element={<AgentTicketsPage />} />
+              <Route path="results" element={<AgentResultsPage />} />
+              <Route path="reports" element={<AgentReportsPage />} />
+              <Route index element={<Navigate to="/agent/dashboard" replace />} />
+            </Route>
 
             {/* Legacy POS route redirect */}
             <Route
               path="/pos"
-              element={<Navigate to="/agent/pos" replace />}
+              element={<Navigate to="/agent/dashboard" replace />}
+            />
+            <Route
+              path="/agent/pos"
+              element={<Navigate to="/agent/dashboard" replace />}
             />
 
             {/* Catch all - redirect to role-based home */}
