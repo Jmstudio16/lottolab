@@ -218,6 +218,13 @@ async def get_full_device_config(current_agent: dict = Depends(get_current_agent
     )
     config_version = version_doc.get("version", 1) if version_doc else 1
     
+    # ---- 11. LOGOS ----
+    system_settings = await db.system_settings.find_one({}, {"_id": 0})
+    system_logo = system_settings.get("system_logo_url", "/assets/logos/lottolab-logo.png") if system_settings else "/assets/logos/lottolab-logo.png"
+    system_name = system_settings.get("system_name", "LOTTOLAB") if system_settings else "LOTTOLAB"
+    company_logo = company.get("company_logo_url")
+    display_logo = company_logo if company_logo else system_logo
+    
     return {
         "config_version": config_version,
         "company": {
@@ -225,8 +232,14 @@ async def get_full_device_config(current_agent: dict = Depends(get_current_agent
             "name": company["name"],
             "currency": company.get("currency", "HTG"),
             "timezone": company.get("timezone", "America/Port-au-Prince"),
-            "logo_url": company.get("logo_url"),
+            "company_logo_url": company_logo,
             "status": company.get("status", "ACTIVE")
+        },
+        "logos": {
+            "display_logo_url": display_logo,
+            "company_logo_url": company_logo,
+            "system_logo_url": system_logo,
+            "system_name": system_name
         },
         "agent": {
             "agent_id": agent_id,
