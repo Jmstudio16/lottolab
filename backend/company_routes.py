@@ -520,99 +520,29 @@ async def get_ticket(ticket_id: str, current_user: dict = Depends(get_current_us
     
     return Ticket(**ticket)
 
-# ============ RESULTS ============
-@company_router.get("/results", response_model=List[Result])
+# ============ RESULTS (READ-ONLY - Global results managed by Super Admin) ============
+@company_router.get("/results")
 async def get_results(
     current_user: dict = Depends(get_current_user),
     lottery_id: Optional[str] = None,
+    draw_date: Optional[str] = None,
     limit: int = 200
 ):
+    """View results - READ ONLY. Results are entered globally by Super Admin."""
     company_id = require_company_access(current_user)
     
-    query = {"company_id": company_id}
+    # Get global results
+    query = {}
     if lottery_id:
         query["lottery_id"] = lottery_id
+    if draw_date:
+        query["draw_date"] = draw_date
     
-    results = await db.results.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
-    return [Result(**r) for r in results]
+    results = await db.global_results.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    return results
 
-@company_router.post("/results", response_model=Result)
-async def create_result(
-    result_data: ResultCreate,
-    request: Request,
-    current_user: dict = Depends(get_current_user)
-):
-    company_id = require_company_access(current_user, [UserRole.COMPANY_ADMIN, UserRole.COMPANY_MANAGER])
-    
-    lottery = await db.lotteries.find_one({"lottery_id": result_data.lottery_id}, {"_id": 0})
-    if not lottery:
-        raise HTTPException(status_code=404, detail="Lottery not found")
-    
-    # Check for duplicate result
-    existing = await db.results.find_one({
-        "company_id": company_id,
-        "lottery_id": result_data.lottery_id,
-        "draw_datetime": result_data.draw_datetime
-    })
-    if existing:
-        raise HTTPException(status_code=400, detail="Result already exists for this draw")
-    
-    result_id = generate_id("res_")
-    now = get_current_timestamp()
-    
-    result = Result(
-        result_id=result_id,
-        lottery_id=result_data.lottery_id,
-        lottery_name=lottery["lottery_name"],
-        company_id=company_id,
-        draw_datetime=result_data.draw_datetime,
-        winning_numbers=result_data.winning_numbers,
-        source="MANUAL",
-        entered_by=current_user["user_id"],
-        created_at=now
-    )
-    
-    await db.results.insert_one(result.model_dump())
-    
-    await log_activity(
-        db=db,
-        action_type="RESULT_CREATED",
-        entity_type="result",
-        entity_id=result_id,
-        performed_by=current_user["user_id"],
-        company_id=company_id,
-        metadata={"lottery_name": lottery["lottery_name"], "numbers": result_data.winning_numbers},
-        ip_address=request.client.host if request.client else None
-    )
-    
-    return result
-
-@company_router.delete("/results/{result_id}")
-async def delete_result(
-    result_id: str,
-    request: Request,
-    current_user: dict = Depends(get_current_user)
-):
-    company_id = require_company_access(current_user, [UserRole.COMPANY_ADMIN])
-    
-    result = await db.results.find_one({"result_id": result_id, "company_id": company_id}, {"_id": 0})
-    if not result:
-        raise HTTPException(status_code=404, detail="Result not found")
-    
-    await db.results.delete_one({"result_id": result_id, "company_id": company_id})
-    
-    await log_activity(
-        db=db,
-        action_type="RESULT_DELETED",
-        entity_type="result",
-        entity_id=result_id,
-        performed_by=current_user["user_id"],
-        company_id=company_id,
-        metadata={"lottery_name": result.get("lottery_name")},
-        ip_address=request.client.host if request.client else None
-    )
-    
-    return {"message": "Result deleted successfully"}
+# NOTE: POST, PUT, DELETE for results have been REMOVED
+# Results are now entered globally by Super Admin only
 
 # ============ REPORTS ============
 @company_router.get("/reports/summary", response_model=SalesReport)
