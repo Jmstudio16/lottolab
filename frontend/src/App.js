@@ -52,6 +52,7 @@ import {
   AgentResultsPage, 
   AgentReportsPage 
 } from '@/pages/agent';
+import { AgentLotterySelectionPage } from '@/pages/agent/AgentLotterySelectionPage';
 
 const RoleBasedRedirect = () => {
   const { user, loading } = useAuth();
