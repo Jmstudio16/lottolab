@@ -215,6 +215,14 @@ function App() {
               }
             />
             <Route
+              path="/company/agents/create"
+              element={
+                <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
+                  <CompanyCreateAgentPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/company/pos-devices"
               element={
                 <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
