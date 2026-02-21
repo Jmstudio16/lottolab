@@ -306,6 +306,22 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/company/agent-balances"
+              element={
+                <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
+                  <CompanyAgentBalancesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/company/winning-tickets"
+              element={
+                <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
+                  <CompanyWinningTicketsPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* ================== UNIVERSAL AGENT TERMINAL ROUTES ================== */}
             {/* Agent routes use nested layout for better UX */}
