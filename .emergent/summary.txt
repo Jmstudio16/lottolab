@@ -1,82 +1,89 @@
 <analysis>**original_problem_statement:**
-The user's initial goal was to build a multi-tenant Lottery SaaS platform, LOTTOLAB, with a hierarchical RBAC model (, , ). The project has undergone two major pivots.
+The user's objective is to finalize the LOTTOLAB multi-tenant lottery SaaS platform to be 100% Production Ready for deployment on Hostinger. The project evolved from a basic concept to a Universal Lottery Terminal with FULL REAL-TIME SYNC. The current and final set of requirements focuses on implementing the critical missing pieces identified in a system audit.
 
-1.  **First Pivot:** Rebuild the Agent POS system with IMEI-based activation for dedicated hardware terminals.
-2.  **Second Pivot (Message 4):** Evolve the concept into a Universal Lottery Terminal system to support both hardware devices (via IMEI) and all other devices like computers, tablets, and phones (via standard email/password login).
-3.  **Third and Current Pivot (Message 85):** Implement a FULL REAL-TIME SYNC system. This is the current and most critical requirement. It mandates that any configuration change made in the Company Admin portal (e.g., enabling/disabling a lottery, setting betting limits, blocking numbers) must be reflected on all connected agent devices within 5 seconds. Conversely, all actions performed on agent devices (sales, voids, reprints) must be logged and immediately visible in the Company Admin dashboards for a complete, real-time audit trail. This requires replacing all placeholder admin pages with fully functional modules.
-
-**PRODUCT REQUIREMENTS (From Latest User Message - Message 85):**
-*   **Single Source of Truth:** Company Admin configurations are the master record. This requires new database models: , , .
-*   **Full Admin Dashboards:** Company Admin pages for , , , , , and  must be fully implemented with complete CRUD functionality (no placeholders).
-*   **Real-Time Sync Endpoints:** The  and  endpoints must be enhanced to carry all configuration data, versioning, and real-time updates (results, blocked numbers, etc.).
-*   **100% Audit Trail:** All agent actions must be logged in new , , and  tables, which must be viewable by admins.
-*   **Full Agent Management:** Implement a complete Create Agent form and profile page for admins to manage agent details, permissions, credit limits, and assigned devices.
-*   **Strict Permission Flow:** Agents automatically inherit the company's lottery catalog. If an admin disables a game, it must instantly become unavailable for sale on all agent devices.
-*   **Block/Limit Controls:** Implement modules for  and betting  that are synced to and enforced by the POS in real-time.
-*   **Universal Printing:** Create a  endpoint that returns printable HTML for both thermal and standard printers. All printed tickets must be viewable and reprintable from the admin panel.
+**PRODUCT REQUIREMENTS (From Latest User Message - MEGA PROMPT FINAL):**
+*   **1. Ticket Check System:** Implement  to verify if a ticket is a winner by comparing it against  and calculating the payout amount based on .
+*   **2. Ticket Payout System:** Implement  to process winning tickets. This must verify the ticket status, create a  record, update the ticket status to , update the agent's balance, and log the activity.
+*   **3. Agent Balance System:** Create an  collection to track , , and . The balance must be updated in real-time with every sale and payout.
+*   **4. Automatic Winning Detection:** Implement a background service that automatically scans and updates all relevant tickets to  or  status as soon as a Super Admin enters new results into .
+*   **5. Admin Visibility:** Company and Super Admins must have full visibility into agent balances, ticket payout history, and winning tickets.
+*   **6. Security and Performance:** All new endpoints must be secured with JWT, enforce multi-tenant isolation, and be optimized for high throughput (10,000 tickets/minute).
+*   **7. New DB Collections:** Create  and  collections.
 
 **User's preferred language**: French
 
 **what currently exists?**
-The agent has successfully implemented the foundational Universal Agent System (from user message 4). This includes:
-*   **Backend:** A new  with endpoints for agent login (), configuration (), and synchronization (). New models like  have been added to . Initial admin endpoints to view device sessions have been added.
-*   **Frontend:** A complete, functional, and tested agent-facing UI, including a dedicated  and pages for login, dashboard, and new ticket sales. The UI was tested and verified via screenshots and the testing agent.
+The agent has successfully implemented two major features:
+1.  **FULL REAL-TIME SYNC System**: The backend is complete with all necessary CRUD endpoints for Company Admins (Agents, POS, Tickets, Reports, Logs, Settings) and enhanced sync endpoints (, ) that push configuration changes to agent devices in real time. This was validated by the testing agent (33/33 tests passed).
+2.  **Universal Logo System**: A full-stack feature allowing a global system logo and custom company-specific logos. This includes backend endpoints for settings management, an S3-like file storage structure (), and frontend integration across all layouts (Admin, Agent, Login) and on printed tickets.
+
+The agent also performed a self-audit, identifying the exact gaps that the user has now requested to be filled as the final production-blocking task.
 
 **Last working item**:
-The agent had just received the new FULL REAL-TIME SYNC requirements (Message 85) and began implementation by adding the necessary new Pydantic models to .
-    - Last item agent was working: Creating the new Pydantic models (, , , etc.) in  as the first step for the real-time sync feature.
-    - Status: IN PROGRESS
-    - Agent Testing Done: N (for the new sync feature)
+The agent received a MEGA PROMPT FINAL from the user detailing the last four critical features required for the application to be 100% production-ready. The agent acknowledged the request and was about to begin implementation.
+    - Last item agent was working: Preparing to implement the critical Payout, Balance, and Winning-Ticket-Detection systems.
+    - Status: NOT STARTED
+    - Agent Testing Done: N/A
     - Which testing method agent to use? both
-    - User Testing Done: N
+    - User Testing Done: N/A
 
 **All Pending/In progress Issue list**:
-  - **Issue 1: Implement FULL REAL-TIME SYNC System (Priority: P0)**
+  - **Issue 1: Implement Final Production-Blocking Features (Priority: P0)**
 
   **Issues Detail:**
-  - **Issue 1: Implement FULL REAL-TIME SYNC System**
-     - **Description**: This is the current main task from user message 85. It requires a massive overhaul to connect the Company Admin backend to the Agent frontend in real-time. This involves building out the entire Company Admin functionality (agent CRUD, device management, ticket viewers, reports, logs, settings) and ensuring any change is pushed to agent devices within 5 seconds via the sync/config endpoints.
-     - **Attempted fixes**: The agent has created the required Pydantic models in .
+  - **Issue 1: Implement Final Production-Blocking Features**
+     - **Description**: This is the final and most critical task before the system can be considered production-ready. It involves building the entire financial and prize-handling logic of the application.
+     - **Attempted fixes**: The agent completed a self-audit to identify these gaps, but no code has been written for these specific features yet.
      - **Next debug checklist**:
-       1.  Implement backend CRUD endpoints in  for all the new models (, , , , ).
-       2.  Enhance  to return the full configuration payload based on these new models.
-       3.  Build the fully functional frontend pages for the Company Admin dashboard as specified in the requirements.
-       4.  Implement the backend logic and tables for , , and .
-       5.  Create the frontend views in the admin panel for admins to see all tickets, transactions, and logs.
-       6.  Implement the  endpoint.
-     - **Why fix this issue and what will be achieved with the fix?**: This will make the platform production-ready by providing admins with full control and visibility over agent activities in real-time.
-     - **Status**: IN PROGRESS
+       1.  Create the  and  collections in .
+       2.  Implement the  endpoint.
+       3.  Implement the  endpoint, ensuring it updates the agent's balance.
+       4.  Modify the ticket selling logic () to debit the agent's balance.
+       5.  Implement the background service for automatic winning ticket detection triggered by new results being added.
+       6.  Update Company/Super Admin frontend pages to display agent balances and payout histories.
+     - **Why fix this issue and what will be achieved with the fix?**: This will complete the core business logic, making the platform a viable, production-ready enterprise SaaS system capable of handling real money and transactions.
+     - **Status**: NOT STARTED
      - **Is recurring issue?**: N
      - **Should Test frontend/backend/both after fix?**: Both
      - **Blocked on other issue**: None
 
 **In progress Task List**:
-  - **Task 1: Implement FULL REAL-TIME SYNC System (P0)**
-     - **Where to resume**: The Pydantic models are defined in . The next logical step is to implement the backend API endpoints in  that will allow Company Admins to create, read, update, and delete these new configuration entities (e.g., , ).
-     - **What will be achieved with this?**: A fully synchronized, auditable, and production-ready lottery platform where admins have granular real-time control over all agent operations.
-     - **Status**: IN PROGRESS
-     - **Should Test frontend/backend/both after fix?**: Both
-     - **Blocked on something**: None
+- None.
 
 **Upcoming and Future Tasks**
-**Upcoming Tasks (All part of the current P0 effort):**
-*   **P0.1**: Implement all backend CRUD routes for Company Admin management (Lottery Catalog, POS Rules, Agent Policy, Blocked Numbers, Limits).
-*   **P0.2**: Build the full frontend for the Company Admin dashboard, replacing all placeholders with functional pages (Agent CRUD, POS Device CRUD, Ticket viewer, Reports, Logs, Settings).
-*   **P0.3**: Implement the complete ticket sales engine () and audit trail (, , ).
-*   **P0.4**: Implement the universal ticket printing system ().
+**Upcoming Tasks (P0 - Current Mandate):**
+*   **P0.1**: Create  and  DB collections.
+*   **P0.2**: Implement  endpoint.
+*   **P0.3**: Implement  endpoint with agent balance updates.
+*   **P0.4**: Implement the automatic winning detection service.
+*   **P0.5**: Integrate agent balance deductions into the existing ticket sale endpoint.
+*   **P0.6**: Build frontend views for Admins to see balances and payout history.
 
-**Future Tasks:**
-*   Automated ticket verification using QR codes.
-*   Optional push-based real-time updates (WebSockets or similar).
+**Future Tasks (Optional improvements identified during audit):**
+*   WebSocket-based real-time push notifications (to replace polling).
+*   SMS/Email notifications for winners.
+*   Enhanced audit trail for ticket reprints.
+*   Automated device deactivation after a period of inactivity.
+*   Automated agent commission calculation and reporting.
+*   PDF/CSV export for reports.
+*   API rate limiting.
+*   QR code scanning for ticket verification.
 
 **Completed work in this session**
-- **Universal Agent System (DONE):**
-  - **Backend**: Implemented  with endpoints for universal agent login, config, and sync. Added admin endpoints to view device sessions. Tested with .
-  - **Frontend**: Built a complete agent-facing UI with a dedicated layout and pages for login, dashboard, and new ticket creation. Debugged a login issue and verified functionality with screenshots.
-  - **Testing**: The feature passed 100% in a  run, validating backend and frontend functionality.
+- **FULL REAL-TIME SYNC System (Backend DONE & Tested):**
+  - Implemented all Company Admin CRUD endpoints ().
+  - Implemented enhanced sync/config endpoints ().
+  - Implemented a full audit trail for sales, cancellations, and reprints.
+  - Resolved routing conflicts between old and new API files.
+  - Passed all 33 backend tests from .
+- **Universal Logo System (Full Stack DONE & Tested):**
+  - Created backend endpoints for managing global and company-specific logos ().
+  - Implemented file upload logic and folder structure for logos.
+  - Integrated the logo display across all frontend layouts, login pages, and on printed tickets using a React Context ().
+  - Created a new Profile / Settings page for Company Admins.
 
 **Earlier issues found/mentioned but not fixed**
-- The incompleteness of the Company Admin modules, previously a lower-priority issue, has now been elevated to the core of the current P0 task and is actively being addressed.
+- The self-audit revealed several non-critical missing features which are now listed under Future Tasks. The critical items from the audit are now the current P0 task.
 
 **Known issue recurrence from previous fork**
   - None.
@@ -86,79 +93,77 @@ The agent had just received the new FULL REAL-TIME SYNC requirements (Message 85
 
 **Key Technical Concepts**
 - **Backend**: FastAPI, MongoDB (), Pydantic.
-- **Frontend**: React, , , Tailwind CSS.
-- **Architecture**: Multi-tenant SaaS with a strict RBAC model.
-- **Core Concept**: **Real-Time Synchronization** between admin configurations and agent devices, enforced through polling () and a versioned configuration endpoint ().
+- **Frontend**: React, , , Tailwind CSS, React Context.
+- **Architecture**: Multi-tenant SaaS with RBAC.
+- **Core Concept**: Real-Time Synchronization via API polling and versioned configurations.
 
 **key DB schema**
-- **device_sessions** (Created): Tracks all agent logins from any device.
-- **To be created/enforced:**
-  - : Company-level lottery game settings.
-  - : Company-level POS operational rules.
-  - : Agent-specific permissions and limits.
-  - : Agent-level overrides for lottery games.
-  - : Records every ticket sold, including numbers and status.
-  - : Logs every agent action (sell, void, reprint).
-  - : A global audit trail for all significant actions.
-  - : List of numbers that cannot be played.
-  - : Betting limits per draw/game.
+- **Existing:** , , , , ,  (tickets), , , , , , .
+- **To be created:**
+  - : {agent_id, company_id, credit_limit, current_balance, available_balance, ...}
+  - : {ticket_id, agent_id, payout_amount, payout_status, paid_by, paid_at, ...}
 
 **changes in tech stack**
   - None.
 
 **All files of reference**
-- **Created in this session:**
+- **New/Created:**
   - 
   - 
-  - All pages under 
-- **Modified in this session:**
-  - : Heavily modified to add models for the Universal POS and the new Real-Time Sync system.
-  - : Registered the .
-  -  & : Added endpoints to view device sessions.
-  - : Added routes for the new agent UI.
-  - : Patched to fix a login bug.
+  - 
+  - 
+  - 
+  - 
+- **Modified:**
+  - 
+  - 
+  -  (refactored to remove duplicate endpoints)
+  - 
+  - 
+  - 
+  - 
+  - 
 
 **Areas that need refactoring**:
-- The old  and any corresponding old agent frontend pages are now obsolete and should be deleted to prevent confusion.
+-  and  contain commented-out code for endpoints that have been superseded by  and . These files should be cleaned up or the old routes fully removed to avoid future confusion.
+- The obsolete  should be deleted.
 
 **key api endpoints**
-- **Newly Created & Working:**
+- **Recently Implemented:**
+  - All CRUD under  (agents, pos-devices, lottery-catalog, pos-rules, etc.)
+  -  (V2 - includes logos)
+  -  (V2)
+  -  (V2 - includes logo)
+  -  (for logo upload)
+- **To be Created (P0 Task):**
   - 
-  -  (V1 - requires major update)
-  -  (V1 - requires major update)
   - 
-  - 
-- **To be Created/Modified as part of P0 Task:**
-  - CRUD endpoints for all new models (, , etc.).
-  - 
-  - 
-  - Endpoints to view , , and .
 
 **Critical Info for New Agent**
-- **NEW PIVOT - REAL-TIME SYNC**: Your absolute priority is the FULL REAL-TIME SYNC requirement from user message 85. This is not a replacement but an *extension* of the Universal POS system that was just built.
-- **BUILD OUT THE ADMIN PANEL**: The core of the task is to build the fully functional Company Admin backend and frontend. All placeholder pages must be replaced with working modules for managing agents, devices, tickets, reports, and settings.
-- **SYNC IS KEY**: The central architectural challenge is ensuring that any configuration change in the admin panel is fetched and applied by the agent devices via the  endpoint within 5 seconds.
-- **AUDIT EVERYTHING**: Every agent action must generate a corresponding record (, , ) that is immediately visible to the admin.
-- **USER LANGUAGE**: The user communicates in French. Ensure all responses are in French.
+- **PRIORITY**: Your ONLY task is to implement the four critical production-blocking features: **Ticket Check, Ticket Payout, Agent Balance, and Automatic Winning Detection**. The user wants the system 100% ready for deployment.
+- **START WITH BACKEND**: Follow the user's instructions to build the database collections and backend endpoints first.
+- **USER LANGUAGE**: The user communicates exclusively in **French**. All  interactions and  summaries MUST be in French.
+- **CONTEXT IS HIGH**: The previous agent completed a huge amount of work, including a full backend implementation for real-time sync and a full-stack implementation for the logo system. The codebase is now significantly more mature. Review the new files (, , ) to understand the current architecture.
 
 **documents and test reports created in this job**
-- 
-- 
+-  (from testing agent run on sync system)
+-  (updated with logo system requirements)
 
 **Last 10 User Messages and any pending HUMAN messages**
-- **User (Message 85):** **(PENDING - HIGHEST PRIORITY)** Submitted a comprehensive specification for a FULL REAL-TIME SYNC system. This is the new primary task.
-- **User (Message 72):** Prompted the agent to continue (continuer).
-- **Rest of the messages:** Pertain to the successful implementation, debugging, and testing of the Universal Agent System, which is now complete. The agent built the backend, frontend, fixed a login bug, and received a 100% pass from the testing agent before being interrupted by the new requirements.
+- **User (Messages 277 & 278):** **(PENDING - HIGHEST PRIORITY)** Provided the MEGA PROMPT FINAL with precise, technical specifications for implementing the four critical missing features (Ticket Check, Payout, Agent Balance, Auto-Winning-Detection) to make the system 100% production-ready.
+- **User (Messages 267 & 276):** Requested and received a comprehensive PRODUCTION READY AUDIT of the entire system. The agent's audit identified the exact gaps that the user then requested to be filled in the final prompt.
+- **User (Messages 106 & 107):** Provided a detailed MEGA PROMPT to implement a complete, full-stack Universal Logo System, which the agent successfully completed.
+- **Older messages:** Pertain to the implementation and testing of the FULL REAL-TIME SYNC backend system.
 
 **Project Health Check:**
-- **Broken**: The Company Admin portal is functionally broken as it consists of non-operational placeholders.
-- **Mocked**: Nearly all pages under the Company Admin role are mocked and need to be implemented with real data and backend connections as per the new P0 task.
+- **Broken**: The financial lifecycle of a ticket is broken. There is no mechanism to check for wins, pay out prizes, or manage agent credit/balances. This is the P0 task to fix.
+- **Mocked**: No mocked parts remain in the core admin/agent flows, but the new frontend views for agent balances and payout history will need to be created.
 
 **3rd Party Integrations**
 - None.
 
 **Testing status**
-  - Testing agent used after significant changes: YES (for the previous Universal POS feature).
+  - Testing agent used after significant changes: YES. The backend sync system passed 33/33 tests.
   - Troubleshoot agent used after agent stuck in loop: NO
   - Test files created: []
   - Known regressions: None.
@@ -169,4 +174,4 @@ The agent had just received the new FULL REAL-TIME SYNC requirements (Message 85
 - **Agent**:  / 
 
 **What agent forgot to execute**
-- The agent was interrupted by new user requirements. Key features from the previous plan, such as the  endpoint and the ticket printing system, were not implemented. These have now been explicitly included in the new FULL REAL-TIME SYNC P0 task, so they are not forgotten but are part of the current work queue.</analysis>
+- The agent has not forgotten anything. It successfully identified the remaining production blockers through a self-audit, and the user has now formally requested their implementation. The current task list directly addresses all known critical gaps.</analysis>
