@@ -17,6 +17,13 @@ import { CompanyDashboardPage } from '@/pages/CompanyDashboardPage';
 import { CompanyAgentsPage } from '@/pages/CompanyAgentsPage';
 import { CompanyLotteriesPage } from '@/pages/CompanyLotteriesPage';
 import { CompanyResultsPage } from '@/pages/CompanyResultsPage';
+import { POSDevicesPage } from '@/pages/POSDevicesPage';
+import { SchedulesPage } from '@/pages/SchedulesPage';
+import { TicketsPage } from '@/pages/TicketsPage';
+import { ReportsPage } from '@/pages/ReportsPage';
+import { CompanyUsersPage } from '@/pages/CompanyUsersPage';
+import { CompanyActivityLogsPage } from '@/pages/CompanyActivityLogsPage';
+import { CompanySettingsPage } from '@/pages/CompanySettingsPage';
 import { POSPage } from '@/pages/POSPage';
 
 const RoleBasedRedirect = () => {
@@ -139,10 +146,26 @@ function App() {
               }
             />
             <Route
+              path="/company/pos-devices"
+              element={
+                <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
+                  <POSDevicesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/company/lotteries"
               element={
                 <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
                   <CompanyLotteriesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/company/schedules"
+              element={
+                <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
+                  <SchedulesPage />
                 </ProtectedRoute>
               }
             />
@@ -155,41 +178,10 @@ function App() {
               }
             />
             <Route
-              path="/company/pos-devices"
-              element={
-                <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
-                  <div className="min-h-screen bg-background flex items-center justify-center">
-                    <div className="text-center text-slate-400">
-                      <h2 className="text-2xl font-barlow font-bold text-white mb-2">POS Devices</h2>
-                      <p>Coming in next iteration</p>
-                    </div>
-                  </div>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/company/schedules"
-              element={
-                <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
-                  <div className="min-h-screen bg-background flex items-center justify-center">
-                    <div className="text-center text-slate-400">
-                      <h2 className="text-2xl font-barlow font-bold text-white mb-2">Schedules</h2>
-                      <p>Coming in next iteration</p>
-                    </div>
-                  </div>
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/company/tickets"
               element={
                 <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER', 'AUDITOR_READONLY']}>
-                  <div className="min-h-screen bg-background flex items-center justify-center">
-                    <div className="text-center text-slate-400">
-                      <h2 className="text-2xl font-barlow font-bold text-white mb-2">Tickets</h2>
-                      <p>Coming in next iteration</p>
-                    </div>
-                  </div>
+                  <TicketsPage />
                 </ProtectedRoute>
               }
             />
@@ -197,12 +189,7 @@ function App() {
               path="/company/reports"
               element={
                 <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER', 'AUDITOR_READONLY']}>
-                  <div className="min-h-screen bg-background flex items-center justify-center">
-                    <div className="text-center text-slate-400">
-                      <h2 className="text-2xl font-barlow font-bold text-white mb-2">Reports</h2>
-                      <p>Coming in next iteration</p>
-                    </div>
-                  </div>
+                  <ReportsPage />
                 </ProtectedRoute>
               }
             />
@@ -210,12 +197,7 @@ function App() {
               path="/company/users"
               element={
                 <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
-                  <div className="min-h-screen bg-background flex items-center justify-center">
-                    <div className="text-center text-slate-400">
-                      <h2 className="text-2xl font-barlow font-bold text-white mb-2">Company Users</h2>
-                      <p>Coming in next iteration</p>
-                    </div>
-                  </div>
+                  <CompanyUsersPage />
                 </ProtectedRoute>
               }
             />
@@ -223,12 +205,7 @@ function App() {
               path="/company/activity-logs"
               element={
                 <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'AUDITOR_READONLY']}>
-                  <div className="min-h-screen bg-background flex items-center justify-center">
-                    <div className="text-center text-slate-400">
-                      <h2 className="text-2xl font-barlow font-bold text-white mb-2">Activity Logs</h2>
-                      <p>Coming in next iteration</p>
-                    </div>
-                  </div>
+                  <CompanyActivityLogsPage />
                 </ProtectedRoute>
               }
             />
@@ -236,12 +213,7 @@ function App() {
               path="/company/settings"
               element={
                 <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
-                  <div className="min-h-screen bg-background flex items-center justify-center">
-                    <div className="text-center text-slate-400">
-                      <h2 className="text-2xl font-barlow font-bold text-white mb-2">Settings</h2>
-                      <p>Coming in next iteration</p>
-                    </div>
-                  </div>
+                  <CompanySettingsPage />
                 </ProtectedRoute>
               }
             />
