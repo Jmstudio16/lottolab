@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/api/auth';
+import { AdminLayout } from '@/components/AdminLayout';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { 
@@ -79,8 +80,8 @@ export const SuperLotteryCatalogPage = () => {
   const states = [...new Set(lotteries.map(l => l.state_code))].sort();
 
   return (
-    <div className="min-h-screen bg-slate-950 p-6">
-      <div className="max-w-7xl mx-auto">
+    <AdminLayout role="SUPER_ADMIN">
+      <div className="p-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
@@ -245,6 +246,6 @@ export const SuperLotteryCatalogPage = () => {
           </div>
         )}
       </div>
-    </div>
+    </AdminLayout>
   );
 };
