@@ -480,19 +480,25 @@ async def get_all_lotteries():
     lotteries = await db.lotteries.find({}, {"_id": 0}).to_list(1000)
     return [Lottery(**l) for l in lotteries]
 
-# Initialize super admin routes with database
+# Initialize all routes with database
 set_db(db)
 set_super_admin_global_db(db)
 set_company_db(db)
 set_company_operational_db(db)
+set_company_admin_db(db)
 set_agent_db(db)
 set_universal_pos_db(db)
+set_sync_db(db)
+
+# Include all routers
 app.include_router(super_admin_router)
 app.include_router(super_admin_global_router)
 app.include_router(company_router)
 app.include_router(company_operational_router)
+app.include_router(company_admin_router)
 app.include_router(agent_router)
 app.include_router(universal_pos_router)
+app.include_router(sync_router)
 app.include_router(api_router)
 
 app.add_middleware(
