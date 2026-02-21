@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/api/auth';
 import { Button } from '@/components/ui/button';
@@ -6,16 +6,33 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
+import axios from 'axios';
 
-const LOGO_URL = "https://customer-assets.emergentagent.com/job_36e4b3a7-6dc6-43e8-b4c7-e0a52462b3df/artifacts/ztvthede_ChatGPT%20Image%2019%20f%C3%A9vr.%202026%2C%2020_13_22.png";
+const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [logoUrl, setLogoUrl] = useState('/assets/logos/lottolab-logo.png');
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Fetch system logo for login page
+    const fetchSystemLogo = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/system/settings`);
+        if (response.data.system_logo_url) {
+          setLogoUrl(response.data.system_logo_url);
+        }
+      } catch (err) {
+        console.log('Using default logo');
+      }
+    };
+    fetchSystemLogo();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,9 +56,13 @@ export const LoginPage = () => {
           {/* Logo */}
           <div className="text-center mb-8">
             <img 
-              src={LOGO_URL} 
+              src={logoUrl} 
               alt="LOTTOLAB" 
               className="w-48 h-auto mx-auto mb-4"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = '/assets/logos/lottolab-logo.png';
+              }}
             />
             <h1 className="text-2xl font-barlow font-bold uppercase tracking-tight text-white">
               Welcome Back
