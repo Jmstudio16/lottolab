@@ -1,0 +1,197 @@
+<analysis>**original_problem_statement:**
+The user wants to build a full-stack, multi-tenant Lottery SaaS platform called LOTTOLAB, inspired by the UI of PeopleHub HRMS. The system must be production-ready and fully functional, with no placeholder pages.
+
+**PRODUCT REQUIREMENTS:**
+- **Multi-tenancy:** The platform must support multiple Companies, each with its own isolated data (admins, agents, POS devices, tickets, etc.).
+- **RBAC (Role-Based Access Control):**
+    - **SUPER_ADMIN:** Total control over the entire platform (all companies, users, settings).
+    - **COMPANY_ADMIN:** Manages their own company's staff, lotteries, schedules, and sales.
+    - **AGENT_POS:** Sells tickets via a POS interface, only sees open lotteries.
+    - **Other roles:** Manager/Supervisor, Auditor/Read-only.
+- **Core Modules:**
+    - **Super Admin Portal:** Fully functional dashboard to manage companies, users, plans/licenses, activity logs, and global settings.
+    - **Company Admin Portal:** Fully functional dashboard to manage agents, POS devices, lottery schedules, results, tickets, reports, company users, and settings. **This is the current focus.**
+    - **POS Interface:** A fast, simple interface for agents to sell tickets for currently open lotteries.
+- **Key Features:**
+    - **Lottery Management:** Support for USA (NY, FL, etc.) and Haiti lotteries with specific draw times.
+    - **Scheduling Engine:** A system to control when lotteries are open or closed for sales. The POS must respect this schedule.
+    - **Ticket Management:** Generation, storage, and viewing of lottery tickets with unique verification codes and QR codes.
+    - **No Payments:** The system will not have a live payment gateway. Subscriptions are managed manually by the Super Admin.
+- **Tech/Design Specs:**
+    - **UI:** Professional dark mode with gold and blue accents.
+    - **Database:** A comprehensive schema including tables for , , , , , , , , , etc.
+
+The most recent and urgent user request is to **fix all existing bugs and immediately implement all Coming Soon pages within the Company Admin portal**, making them fully functional MVPs connected to the database. The user has explicitly forbidden responses like coming in the next iteration.
+
+**User's preferred language**: French
+
+**what currently exists?**
+A full-stack application (FastAPI backend, React frontend) for the LOTTOLAB SaaS. The Super Admin portal is largely complete and functional, allowing management of companies, users, plans, and global settings. The multi-tenant architecture and authentication for all primary roles (Super Admin, Company Admin, Agent) are in place. The UI follows the requested dark-mode theme. A critical frontend compilation error ( in JS code) was recently fixed.
+
+**Last working item**:
+The agent was responding to an urgent user demand to make the entire Company Admin portal fully functional. The user provided a detailed list of requirements for each Coming Soon page and demanded an immediate fix for a runtime crash on the Agents page.
+    - Last item agent was working: The agent acknowledged the user's MVP COMPLET MAINTENANT (Full MVP now) request and had just started to examine the backend code () to begin implementing the required API endpoints for the Company Admin features.
+    - Status: IN PROGRESS
+    - Agent Testing Done: N
+    - Which testing method agent to use? both
+    - User Testing Done: N
+
+**All Pending/In progress Issue list**:
+  - Issue 1: Runtime Crash on Agents Page (Priority: P0)
+  - Issue 2: Coming Soon Pages in Company Admin Portal (Priority: P1)
+
+  Issues Detail:
+  - **Issue 1: Runtime Crash on Agents Page**
+     - **Description**: The  page crashes with the error: . This is caused by the UI attempting to render a raw error object directly in the JSX.
+     - **Attempted fixes**: The agent has identified the cause but has not yet implemented the fix.
+     - **Next debug checklist**:
+       1. Open .
+       2. Locate the  block in the API call logic.
+       3. Implement a safe error handling mechanism. Instead of rendering the  object, extract the message string: .
+       4. Use this  string in the  call and any UI element meant to display the error.
+     - **Why fix this issue and what will be achieved with the fix?**: This bug makes the Agents page completely unusable, blocking a core administrative function. Fixing it is critical for the app's stability.
+     - **Status**: NOT STARTED
+     - **Is recurring issue?**: Y
+     - **Should Test frontend/backend/both after fix?**: Frontend
+     - **Blocked on other issue**: None
+
+  - **Issue 2: Coming Soon Pages in Company Admin Portal**
+     - **Description**: All pages in the Company Admin sidebar menu (except the dashboard) are non-functional placeholders. The user has demanded they all be implemented as functional MVPs immediately.
+     - **Attempted fixes**: The agent was about to start on the backend endpoints. No code has been written yet.
+     - **Next debug checklist**: This is a feature implementation covered in the In progress Task List.
+     - **Why fix this issue and what will be achieved with the fix?**: This is the primary goal of the current work session. Fulfilling this will deliver the core functionality requested by the user.
+     - **Status**: NOT STARTED
+     - **Is recurring issue?**: Y
+     - **Should Test frontend/backend/both after fix?**: Both
+     - **Blocked on other issue**: None
+
+**In progress Task List**:
+  - **Task 1: Implement All Company Admin Backend Endpoints (Priority: P0)**
+     - **Where to resume**: The agent needs to modify  to add new schemas (, etc.) and then implement all required endpoints in a new file, , and register it in . The user has provided a detailed list of required endpoints and data models for POS Devices, Agents, Schedules, Tickets, Results, Reports, Company Users, Activity Logs, and Settings.
+     - **What will be achieved with this?**: The backend API will be complete, providing all necessary data and actions for the Company Admin frontend pages.
+     - **Status**: NOT STARTED
+     - **Should Test frontend/backend/both after fix?**: Backend
+     - **Blocked on something**: None
+
+**Upcoming and Future Tasks**
+**Upcoming Tasks (Implement Immediately):**
+- **Task 1 (P1):** Implement Frontend for All Company Admin Pages. After the backend endpoints are ready, create the corresponding React components and pages to replace all Coming Soon placeholders. This includes:
+    - : CRUD for POS devices, with assignment to agents.
+    - : Update page to link agents to POS devices.
+    - : A calendar or table view to manage lottery open/close times.
+    - : A filterable list of all company tickets.
+    - : A page to manually post and view lottery results.
+    - : Simple sales reports (e.g., daily sales summary).
+    - : CRUD for company-level staff (Managers, Auditors).
+    - : A viewer for company-scoped audit logs.
+    - : A form for company-specific configurations (timezone, currency).
+
+**Future Tasks:**
+- Implement Phase 2 features as defined by the user: advanced reports, automated ticket verification, full support for all 50 US states, and thermal printer integration.
+
+**Completed work in this session**
+- **Super Admin Portal (DONE):**
+  - Full CRUD for Users, Plans, and Licenses (, ).
+  - Functional Activity Logs and Global Settings pages (, ).
+- **Core System (DONE):**
+  - Implemented multi-tenant database models and authentication.
+  - Seeded the database with initial Super Admin, Company, and Agent data.
+- **Bug Fix (DONE):**
+  - Fixed a critical frontend compilation error caused by invalid  characters in JavaScript files.
+
+**Earlier issues found/mentioned but not fixed**
+   - **Issue 1: Runtime Crash on Agents Page**
+     - **Debug checklist**: See All Pending/In progress Issue list above.
+     - **Why to solve this issue and what will be achieved with this?**: The page is currently broken and unusable. Fixing it is mandatory to manage agents.
+     - **Should Test frontend/backend/both after fix**: Frontend
+     - **Is recurring issue?**: Y
+
+**Known issue recurrence from previous fork**
+- Not applicable.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+- **Backend**: FastAPI, MongoDB with , Pydantic for data validation, JWT for authentication.
+- **Frontend**: React, ,  for API calls, Tailwind CSS for styling.
+- **Architecture**: Multi-tenant SaaS with strict Role-Based Access Control (RBAC).
+
+**key DB schema**
+- **companies**: Tenant information.
+- **users**: All platform users with  and .
+- **agents**: Linked to a  record, contains agent-specific data.
+- **pos_devices**: (To be created) Stores POS device info like IMEI and assigned agent.
+- **schedules**: (To be created/fleshed out) Manages lottery open/close times.
+- **tickets**: All ticket data, linked to , , .
+- **results**: Stores winning numbers for each draw.
+- **activity_logs**: Audit trail for critical actions.
+
+**changes in tech stack**
+- None.
+
+**All files of reference**
+- : Does not exist yet, needs to be created to house all endpoints for the Company Admin portal.
+- : Needs to be updated with new Pydantic models for , , and others as required by the user's prompt.
+- : Needs a runtime bug fix.
+- **New Files**: Multiple new React pages need to be created under  for each Company Admin menu item (e.g., , ).
+
+**Areas that need refactoring**:
+- **Frontend Error Handling**: A global or helper function () should be created to standardize API error handling and prevent crashes from rendering error objects in JSX.
+- **Backend Error Handling**: API error responses should be standardized to a consistent format (e.g., ) to make frontend handling easier.
+
+**key api endpoints**
+- **To be created under  prefix**:
+  -  (CRUD)
+  -  (CRUD, with POS device assignment)
+  -  (CRUD)
+  -  (CRUD)
+  -  (GET with filters)
+  -  (GET)
+  -  (CRUD for company staff)
+  -  (GET with filters)
+  -  (GET/PATCH)
+
+**Critical Info for New Agent**
+- **Urgency is Key**: The user is very direct and has explicitly forbidden delaying tasks to a next iteration. All requested features must be implemented as functional MVPs in this session.
+- **Follow Specs Closely**: The user has provided detailed requirements for the data models, API endpoints, and UI functionality for each of the Company Admin pages. Adhere to these specs.
+- **Fix First, Then Build**: The runtime crash on the  page is a high-priority blocker. Fix this before or alongside building the new features.
+- **Strict Multi-Tenancy**: All new backend endpoints for the Company Admin portal **must** enforce  filtering to ensure data isolation between tenants.
+
+**documents and test reports created in this job**
+- 
+- 
+
+**Last 10 User Messages and any pending HUMAN messages**
+1.  **User (Latest):** Demanded immediate implementation of a full MVP for all Coming Soon Company Admin pages, providing detailed specs for each. Re-iterated the no more next iteration rule and the two critical bugs to fix.
+2.  **Agent:** Acknowledged the user's MVP NOW request and stated it would start with backend endpoints.
+3.  **User:** Posed as the agent, outlining a self-correction plan to fix the bugs and implement the required features.
+4.  **Agent:** Acknowledged the request and stated it would start with the  page.
+5.  **User:** Provided a very detailed prompt demanding fixes for both the compilation and runtime errors, and laid out extensive requirements for all Company Admin pages.
+6.  **Agent:** Confirmed the app is loading after the compilation fix.
+7.  **Agent:** Confirmed the frontend now compiles successfully after fixing the  issue.
+8.  **Agent:** Confirmed no other instances of the compilation bug were found.
+9.  **Agent:** Scanned all frontend files for the compilation bug.
+10. **Agent:** Fixed the compilation bug in .
+
+**Project Health Check:**
+- **Broken**: The  page has a runtime crash. Multiple pages in the Company Admin portal are non-functional placeholders.
+- **Mocked**: None.
+
+**3rd Party Integrations**
+- None.
+
+**Testing status**
+- Testing agent used after significant changes: YES
+- Troubleshoot agent used after agent stuck in loop: NO
+- Test files created: []
+- Known regressions: The  page crashes at runtime.
+
+**Credentials to test flow:**
+- **Super Admin**:  / 
+- **Company Admin**:  / 
+- **Agent**:  / 
+
+**What agent forgot to execute**
+- The agent has not yet fixed the runtime crash on the  (), which is a top-priority, recurring issue reported by the user.
+- The agent has not yet started the implementation of the full Company Admin portal features, which was the main, urgent request from the last several user messages.</analysis>
