@@ -21,11 +21,11 @@ import {
   Store,
   Sliders,
   ChartLine,
-  ShoppingBag
+  ShoppingBag,
+  Image
 } from 'lucide-react';
 import { useAuth } from '@/api/auth';
-
-const LOGO_URL = "https://customer-assets.emergentagent.com/job_36e4b3a7-6dc6-43e8-b4c7-e0a52462b3df/artifacts/ztvthede_ChatGPT%20Image%2019%20f%C3%A9vr.%202026%2C%2020_13_22.png";
+import Logo from './Logo';
 
 const SuperAdminMenu = [
   { path: '/super/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -53,6 +53,7 @@ const CompanyAdminMenu = [
   { path: '/company/daily-reports', label: 'Journalier', icon: BarChart3 },
   { path: '/company/users', label: 'Company Users', icon: Users },
   { path: '/company/activity-logs', label: 'Activity Logs', icon: Activity },
+  { path: '/company/profile-settings', label: 'Logo & Profil', icon: Image },
   { path: '/company/settings', label: 'Settings', icon: Settings },
 ];
 
