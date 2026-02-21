@@ -13,7 +13,7 @@ from models import *
 from auth import verify_password, get_password_hash, create_access_token, decode_token
 from utils import generate_id, generate_ticket_code, generate_verification_code, generate_qr_code, get_current_timestamp
 from activity_logger import log_activity
-from super_admin_routes import super_admin_router, init_super_admin_routes
+from super_admin_routes import super_admin_router, set_db
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
