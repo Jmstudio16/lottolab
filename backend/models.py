@@ -545,3 +545,346 @@ class AgentUpdate(BaseModel):
     status: Optional[str] = None
     can_void_ticket: Optional[bool] = None
     pos_device_id: Optional[str] = None
+
+# ============ ENHANCED COMPANY MODEL FOR SUPER ADMIN ============
+class CompanyEnhanced(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    company_id: str
+    name: str
+    slug: str
+    status: CompanyStatus
+    plan: str = "Basic"
+    license_start: Optional[str] = None
+    license_end: Optional[str] = None
+    currency: str = "HTG"
+    timezone: str = "America/Port-au-Prince"
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    logo_url: Optional[str] = None
+    last_login: Optional[str] = None
+    agents_count: int = 0
+    pos_count: int = 0
+    created_at: str
+    updated_at: str
+
+class CompanyUpdateSuper(BaseModel):
+    name: Optional[str] = None
+    status: Optional[str] = None
+    plan: Optional[str] = None
+    license_start: Optional[str] = None
+    license_end: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    logo_url: Optional[str] = None
+
+# ============ POS DEVICE ENHANCED ============
+class POSDeviceStatus(str, Enum):
+    ACTIVE = "ACTIVE"
+    LOCKED = "LOCKED"
+    DISABLED = "DISABLED"
+    PENDING = "PENDING"
+
+class POSDeviceEnhanced(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    device_id: str
+    company_id: str
+    company_name: Optional[str] = None
+    imei: str
+    device_name: str
+    branch_id: Optional[str] = None
+    branch_name: Optional[str] = None
+    location: Optional[str] = None
+    assigned_agent_id: Optional[str] = None
+    assigned_agent_name: Optional[str] = None
+    assigned_vendor_id: Optional[str] = None
+    assigned_vendor_name: Optional[str] = None
+    status: str = "PENDING"
+    last_seen_at: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: str
+    updated_at: Optional[str] = None
+
+class POSDeviceCreateEnhanced(BaseModel):
+    imei: str
+    device_name: str
+    branch_id: Optional[str] = None
+    location: Optional[str] = None
+    assigned_agent_id: Optional[str] = None
+    assigned_vendor_id: Optional[str] = None
+    notes: Optional[str] = None
+
+class POSDeviceUpdateEnhanced(BaseModel):
+    device_name: Optional[str] = None
+    branch_id: Optional[str] = None
+    location: Optional[str] = None
+    assigned_agent_id: Optional[str] = None
+    assigned_vendor_id: Optional[str] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+# ============ GLOBAL LOTTERY CATALOG (SUPER ADMIN MANAGED) ============
+class LotteryGameType(str, Enum):
+    PICK3 = "PICK3"
+    PICK4 = "PICK4"
+    PICK5 = "PICK5"
+    BORLETTE = "BORLETTE"
+    LOTO3 = "LOTO3"
+    LOTO4 = "LOTO4"
+    LOTO5 = "LOTO5"
+    MARIAGE = "MARIAGE"
+
+class GlobalLottery(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    lottery_id: str
+    state_code: str
+    state_name: str
+    country: str = "USA"
+    lottery_name: str
+    game_type: str
+    description: Optional[str] = None
+    is_active: bool = True
+    created_at: str
+    updated_at: Optional[str] = None
+
+class GlobalLotteryCreate(BaseModel):
+    state_code: str
+    state_name: str
+    country: str = "USA"
+    lottery_name: str
+    game_type: str
+    description: Optional[str] = None
+    is_active: bool = True
+
+class GlobalLotteryUpdate(BaseModel):
+    lottery_name: Optional[str] = None
+    game_type: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+
+# ============ GLOBAL SCHEDULE (SUPER ADMIN MANAGED) ============
+class GlobalScheduleEnhanced(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    schedule_id: str
+    lottery_id: str
+    lottery_name: Optional[str] = None
+    state_code: Optional[str] = None
+    draw_name: str  # "Midday", "Evening", "Night"
+    days_of_week: List[int] = []  # 0=Monday, 6=Sunday, empty=all days
+    open_time: str  # HH:MM
+    close_time: str  # HH:MM
+    draw_time: str  # HH:MM
+    is_active: bool = True
+    created_at: str
+    updated_at: Optional[str] = None
+
+class GlobalScheduleCreateEnhanced(BaseModel):
+    lottery_id: str
+    draw_name: str
+    days_of_week: List[int] = []
+    open_time: str
+    close_time: str
+    draw_time: str
+    is_active: bool = True
+
+class GlobalScheduleUpdateEnhanced(BaseModel):
+    draw_name: Optional[str] = None
+    days_of_week: Optional[List[int]] = None
+    open_time: Optional[str] = None
+    close_time: Optional[str] = None
+    draw_time: Optional[str] = None
+    is_active: Optional[bool] = None
+
+# ============ GLOBAL RESULT (SUPER ADMIN MANAGED) ============
+class GlobalResultEnhanced(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    result_id: str
+    lottery_id: str
+    lottery_name: str
+    state_code: Optional[str] = None
+    draw_date: str  # YYYY-MM-DD
+    draw_name: str  # "Midday", "Evening"
+    winning_numbers: str
+    winning_numbers_parsed: Dict[str, str] = {}  # {"first": "123", "second": "456", "third": "789"}
+    bonus_number: Optional[str] = None
+    entered_by: str
+    entered_by_name: Optional[str] = None
+    is_verified: bool = False
+    created_at: str
+    updated_at: Optional[str] = None
+
+class GlobalResultCreateEnhanced(BaseModel):
+    lottery_id: str
+    draw_date: str
+    draw_name: str
+    winning_numbers: str
+    winning_numbers_parsed: Dict[str, str] = {}
+    bonus_number: Optional[str] = None
+
+# ============ VENDOR ============
+class VendorCreate(BaseModel):
+    name: str
+    branch_id: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    commission_rate: float = 0.0
+
+class VendorUpdate(BaseModel):
+    name: Optional[str] = None
+    branch_id: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    commission_rate: Optional[float] = None
+    status: Optional[str] = None
+
+# ============ PRIME CONFIG (PAYOUT CONFIGURATION) ============
+class PrimeConfigEnhanced(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    prime_id: str
+    company_id: str
+    bet_type: str
+    bet_code: str
+    bet_name: str
+    payout_formula: str  # "60|20|10" for multi-position, "500" for single
+    description: Optional[str] = None
+    is_active: bool = True
+    updated_at: Optional[str] = None
+
+class PrimeConfigCreateEnhanced(BaseModel):
+    bet_type: str
+    bet_code: str
+    bet_name: str
+    payout_formula: str
+    description: Optional[str] = None
+
+class PrimeConfigUpdateEnhanced(BaseModel):
+    bet_name: Optional[str] = None
+    payout_formula: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+
+# ============ COMPANY LOTTERY AVAILABILITY ============
+class CompanyLotteryAvailability(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    company_id: str
+    lottery_id: str
+    lottery_name: Optional[str] = None
+    state_code: Optional[str] = None
+    enabled: bool = True
+    created_at: str
+    updated_at: Optional[str] = None
+
+# ============ BLOCKED NUMBERS ============
+class BlockedNumberCreate(BaseModel):
+    lottery_id: Optional[str] = None
+    number: str
+    block_type: str = "FULL"
+    max_amount: Optional[float] = None
+    reason: Optional[str] = None
+    expires_at: Optional[str] = None
+
+class BlockedNumberUpdate(BaseModel):
+    block_type: Optional[str] = None
+    max_amount: Optional[float] = None
+    reason: Optional[str] = None
+    expires_at: Optional[str] = None
+
+# ============ SALES LIMITS ============
+class SalesLimitCreate(BaseModel):
+    lottery_id: Optional[str] = None
+    agent_id: Optional[str] = None
+    number: Optional[str] = None
+    bet_type: Optional[str] = None
+    limit_type: str = "GLOBAL"  # GLOBAL, LOTTERY, AGENT, NUMBER
+    max_amount: float
+    period: str = "DAILY"
+
+class SalesLimitUpdate(BaseModel):
+    max_amount: Optional[float] = None
+    period: Optional[str] = None
+    is_active: Optional[bool] = None
+
+# ============ COMPANY CONFIGURATION ============
+class CompanyConfiguration(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    config_id: str
+    company_id: str
+    # Betting limits
+    min_bet_amount: float = 10.0
+    max_bet_amount: float = 10000.0
+    max_bet_per_number: float = 5000.0
+    max_bet_per_agent: float = 50000.0
+    # Agent commission
+    agent_commission_percent: float = 10.0
+    # Marriage config
+    marriage_enabled: bool = True
+    marriage_min_amount: float = 25.0
+    marriage_max_amount: float = 5000.0
+    # Other settings
+    stop_sales_before_draw_minutes: int = 5
+    allow_ticket_void: bool = True
+    void_window_minutes: int = 5
+    auto_print_ticket: bool = True
+    receipt_header: Optional[str] = None
+    receipt_footer: Optional[str] = None
+    created_at: str
+    updated_at: Optional[str] = None
+
+class CompanyConfigurationUpdate(BaseModel):
+    min_bet_amount: Optional[float] = None
+    max_bet_amount: Optional[float] = None
+    max_bet_per_number: Optional[float] = None
+    max_bet_per_agent: Optional[float] = None
+    agent_commission_percent: Optional[float] = None
+    marriage_enabled: Optional[bool] = None
+    marriage_min_amount: Optional[float] = None
+    marriage_max_amount: Optional[float] = None
+    stop_sales_before_draw_minutes: Optional[int] = None
+    allow_ticket_void: Optional[bool] = None
+    void_window_minutes: Optional[int] = None
+    auto_print_ticket: Optional[bool] = None
+    receipt_header: Optional[str] = None
+    receipt_footer: Optional[str] = None
+
+# ============ ELIMINATION REQUEST ============
+class EliminationRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    request_id: str
+    company_id: str
+    ticket_id: Optional[str] = None
+    number: Optional[str] = None
+    lottery_id: Optional[str] = None
+    request_type: str  # TICKET, NUMBER
+    reason: str
+    status: str = "PENDING"  # PENDING, APPROVED, REJECTED
+    requested_by: str
+    requested_by_name: Optional[str] = None
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[str] = None
+    created_at: str
+
+class EliminationRequestCreate(BaseModel):
+    ticket_id: Optional[str] = None
+    number: Optional[str] = None
+    lottery_id: Optional[str] = None
+    request_type: str
+    reason: str
+
+# ============ DAILY REPORT ============
+class DailyReport(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    report_id: str
+    company_id: str
+    report_date: str
+    total_tickets: int = 0
+    total_sales: float = 0.0
+    total_wins: float = 0.0
+    total_commissions: float = 0.0
+    net_revenue: float = 0.0
+    sales_by_lottery: List[Dict[str, Any]] = []
+    sales_by_agent: List[Dict[str, Any]] = []
+    sales_by_branch: List[Dict[str, Any]] = []
+    winning_tickets_count: int = 0
+    voided_tickets_count: int = 0
+    generated_at: str
+    generated_by: Optional[str] = None
