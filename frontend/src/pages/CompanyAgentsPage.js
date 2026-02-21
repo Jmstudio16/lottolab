@@ -40,8 +40,7 @@ export const CompanyAgentsPage = () => {
     e.preventDefault();
     try {
       await apiClient.post('/company/agents', formData);
-      toast.success('Agent created successfully!');
-      setShowCreateModal(false);
+      toast.success('Agent created successfully!');\n      setShowCreateModal(false);
       fetchAgents();
       setFormData({
         name: '',
@@ -52,7 +51,32 @@ export const CompanyAgentsPage = () => {
         can_void_ticket: false
       });
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create agent');
+      // Handle structured error response
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        if (typeof errorData === 'object') {
+          // Check if it's our standardized error format
+          if (errorData.message && Array.isArray(errorData.details)) {
+            toast.error(errorData.message);
+            errorData.details.forEach(detail => {
+              if (typeof detail === 'string') {
+                toast.error(detail);
+              } else if (detail.field && detail.message) {
+                toast.error(`${detail.field}: ${detail.message}`);
+              }
+            });
+          } else if (errorData.detail) {
+            // FastAPI HTTPException format
+            toast.error(typeof errorData.detail === 'string' ? errorData.detail : 'Failed to create agent');
+          } else {
+            toast.error('Failed to create agent');
+          }
+        } else {
+          toast.error(errorData);
+        }
+      } else {
+        toast.error('Failed to create agent');
+      }
     }
   };
 
