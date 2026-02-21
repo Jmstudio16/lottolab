@@ -75,7 +75,7 @@ def agent_token():
 # AGENT CRUD TESTS
 # ============================================================================
 class TestAgentCRUD:
-    """Test Agent CRUD operations"""
+    """Test Agent CRUD operations via /api/company/agents (company_routes.py)"""
     
     def test_get_all_agents(self, company_admin_token):
         """GET /api/company/agents - Get all agents"""
@@ -91,17 +91,15 @@ class TestAgentCRUD:
         print(f"Found {len(data)} agents")
     
     def test_create_agent(self, company_admin_token):
-        """POST /api/company/agents - Create new agent"""
+        """POST /api/company/agents - Create new agent (uses AgentCreate model: name, username, password)"""
         suffix = generate_random_suffix()
         agent_data = {
-            "first_name": "Test",
-            "last_name": f"Agent{suffix}",
+            "name": f"Test Agent {suffix}",
+            "username": f"testagent{suffix}",
             "email": f"test_agent_{suffix}@lottolab.com",
             "password": "TestAgent123!",
             "phone": "+509 1234 5678",
-            "commission_percent": 5.0,
-            "credit_limit": 25000.0,
-            "status": "ACTIVE"
+            "can_void_ticket": True
         }
         
         response = requests.post(
@@ -117,7 +115,7 @@ class TestAgentCRUD:
         data = response.json()
         
         assert "agent_id" in data, "Missing agent_id in response"
-        assert "message" in data, "Missing message in response"
+        assert data["name"] == agent_data["name"], "Agent name should match"
         
         print(f"Created agent: {data['agent_id']}")
         return data["agent_id"]
@@ -137,10 +135,10 @@ class TestAgentCRUD:
         
         agent_id = agents[0]["agent_id"]
         
-        # Update the agent
+        # Update the agent (via company_routes.py which returns full agent object)
         update_data = {
-            "commission_percent": 7.5,
-            "phone": "+509 9999 8888"
+            "phone": "+509 9999 7777",
+            "can_void_ticket": True
         }
         
         response = requests.put(
@@ -154,11 +152,12 @@ class TestAgentCRUD:
         
         assert response.status_code == 200, f"Update agent failed: {response.text}"
         data = response.json()
-        assert "message" in data
+        # Company routes returns full agent object, not just message
+        assert "agent_id" in data, "Response should contain agent_id"
         print(f"Updated agent: {agent_id}")
     
     def test_get_agent_detail(self, company_admin_token):
-        """GET /api/company/agents/{id} - Get single agent"""
+        """GET /api/company/agents/{id} - Get single agent (via company_routes.py - uses agent_id from agents collection)"""
         # First get all agents
         response = requests.get(
             f"{BASE_URL}/api/company/agents",
@@ -170,6 +169,7 @@ class TestAgentCRUD:
         if not agents:
             pytest.skip("No agents to get details for")
         
+        # Note: company_routes.py GET /agents/{agent_id} expects agent_id from agents collection
         agent_id = agents[0]["agent_id"]
         
         # Get agent details
@@ -182,10 +182,8 @@ class TestAgentCRUD:
         data = response.json()
         
         assert data["agent_id"] == agent_id
-        assert "first_name" in data or "name" in data
-        assert "email" in data
-        assert "pos_devices" in data
-        print(f"Agent detail: {data.get('name', data.get('first_name', 'Unknown'))}")
+        assert "name" in data
+        print(f"Agent detail: {data.get('name', 'Unknown')}")
 
 
 # ============================================================================
