@@ -490,6 +490,7 @@ set_company_admin_db(db)
 set_agent_db(db)
 set_universal_pos_db(db)
 set_sync_db(db)
+set_settings_db(db)
 
 # Include all routers
 app.include_router(super_admin_router)
@@ -500,6 +501,7 @@ app.include_router(company_admin_router)
 app.include_router(agent_router)
 app.include_router(universal_pos_router)
 app.include_router(sync_router)
+app.include_router(settings_router)
 app.include_router(api_router)
 
 app.add_middleware(
