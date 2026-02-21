@@ -828,3 +828,136 @@ async def seed_lottery_catalog(
     )
     
     return {"message": f"Lottery catalog seeded successfully. Created {created_count} lotteries."}
+
+
+# ============ GLOBAL DEVICE SESSION MANAGEMENT (SUPER ADMIN) ============
+@super_admin_global_router.get("/all-device-sessions")
+async def get_all_device_sessions(
+    current_user: dict = Depends(get_super_admin_user),
+    company_id: Optional[str] = None,
+    status: Optional[str] = None,
+    device_type: Optional[str] = None
+):
+    """Get all device sessions across all companies"""
+    query = {}
+    if company_id:
+        query["company_id"] = company_id
+    if status:
+        query["status"] = status
+    if device_type:
+        query["device_type"] = device_type
+    
+    sessions = await db.device_sessions.find(query, {"_id": 0}).sort("last_seen_at", -1).to_list(1000)
+    
+    # Enrich with company names
+    company_ids = list(set(s.get("company_id") for s in sessions if s.get("company_id")))
+    companies = await db.companies.find({"company_id": {"$in": company_ids}}, {"_id": 0}).to_list(100)
+    company_map = {c["company_id"]: c["name"] for c in companies}
+    
+    for session in sessions:
+        session["company_name"] = company_map.get(session.get("company_id"), "Unknown")
+    
+    return sessions
+
+@super_admin_global_router.put("/device-sessions/{session_id}/block")
+async def super_block_device_session(
+    session_id: str,
+    request: Request,
+    current_user: dict = Depends(get_super_admin_user)
+):
+    """Block any device session globally"""
+    result = await db.device_sessions.update_one(
+        {"session_id": session_id},
+        {"$set": {
+            "status": "blocked",
+            "blocked_at": get_current_timestamp(),
+            "blocked_by": current_user["user_id"],
+            "blocked_by_super_admin": True
+        }}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = await db.device_sessions.find_one({"session_id": session_id}, {"_id": 0})
+    
+    await log_activity(
+        db=db,
+        action_type="DEVICE_SESSION_BLOCKED_BY_SUPER",
+        entity_type="device_session",
+        entity_id=session_id,
+        performed_by=current_user["user_id"],
+        company_id=session.get("company_id") if session else None,
+        metadata={"session_id": session_id, "agent_id": session.get("agent_id") if session else None},
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {"message": "Session blocked by Super Admin"}
+
+@super_admin_global_router.put("/device-sessions/{session_id}/unblock")
+async def super_unblock_device_session(
+    session_id: str,
+    request: Request,
+    current_user: dict = Depends(get_super_admin_user)
+):
+    """Unblock any device session globally"""
+    result = await db.device_sessions.update_one(
+        {"session_id": session_id},
+        {"$set": {"status": "active"}, "$unset": {"blocked_at": "", "blocked_by": "", "blocked_by_super_admin": ""}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = await db.device_sessions.find_one({"session_id": session_id}, {"_id": 0})
+    
+    await log_activity(
+        db=db,
+        action_type="DEVICE_SESSION_UNBLOCKED_BY_SUPER",
+        entity_type="device_session",
+        entity_id=session_id,
+        performed_by=current_user["user_id"],
+        company_id=session.get("company_id") if session else None,
+        metadata={"session_id": session_id},
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {"message": "Session unblocked by Super Admin"}
+
+@super_admin_global_router.get("/device-sessions/stats")
+async def get_device_sessions_stats(current_user: dict = Depends(get_super_admin_user)):
+    """Get device sessions statistics"""
+    total = await db.device_sessions.count_documents({})
+    active = await db.device_sessions.count_documents({"status": "active"})
+    blocked = await db.device_sessions.count_documents({"status": "blocked"})
+    
+    # By device type
+    pipeline = [
+        {"$group": {"_id": "$device_type", "count": {"$sum": 1}}}
+    ]
+    by_type = await db.device_sessions.aggregate(pipeline).to_list(10)
+    
+    # By company
+    pipeline = [
+        {"$group": {"_id": "$company_id", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10}
+    ]
+    by_company = await db.device_sessions.aggregate(pipeline).to_list(10)
+    
+    # Enrich company names
+    company_ids = [c["_id"] for c in by_company if c["_id"]]
+    companies = await db.companies.find({"company_id": {"$in": company_ids}}, {"_id": 0}).to_list(100)
+    company_map = {c["company_id"]: c["name"] for c in companies}
+    
+    for c in by_company:
+        c["company_name"] = company_map.get(c["_id"], "Unknown")
+    
+    return {
+        "total": total,
+        "active": active,
+        "blocked": blocked,
+        "by_device_type": {item["_id"]: item["count"] for item in by_type},
+        "top_companies": by_company
+    }
+
