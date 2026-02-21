@@ -37,10 +37,29 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     return user
 
 def require_company_access(user: dict, allowed_roles: List[str] = None):
+    """
+    STRICT RBAC: Only Company Admin, Manager, and Auditor can access company routes.
+    Agents (AGENT_POS) are EXPLICITLY DENIED access to company admin routes.
+    """
+    # STRICT: Agents cannot access company admin routes
+    if user.get("role") == UserRole.AGENT_POS:
+        raise HTTPException(status_code=403, detail="Access denied. Company Admin role required.")
+    
     if not user.get("company_id"):
         raise HTTPException(status_code=403, detail="No company access")
-    if allowed_roles and user.get("role") not in allowed_roles:
+    
+    # Default allowed roles for company routes (excludes AGENT_POS)
+    default_allowed = [UserRole.COMPANY_ADMIN, UserRole.COMPANY_MANAGER, UserRole.AUDITOR_READONLY]
+    
+    if allowed_roles:
+        # Use provided roles, but ensure AGENT_POS is never allowed
+        check_roles = [r for r in allowed_roles if r != UserRole.AGENT_POS]
+    else:
+        check_roles = default_allowed
+    
+    if user.get("role") not in check_roles:
         raise HTTPException(status_code=403, detail="Access denied for this role")
+    
     return user["company_id"]
 
 # ============ POS DEVICES CRUD ============
