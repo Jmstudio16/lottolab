@@ -189,7 +189,7 @@ async def upload_system_logo(
 # COMPANY SETTINGS (COMPANY ADMIN)
 # ============================================================================
 
-@settings_router.get("/company/settings")
+@settings_router.get("/company/profile")
 async def get_company_settings(current_user: dict = Depends(get_current_user)):
     """Get company settings"""
     await require_company_admin(current_user)
