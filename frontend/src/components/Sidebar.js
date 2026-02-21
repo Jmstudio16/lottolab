@@ -14,7 +14,14 @@ import {
   Trophy,
   BarChart3,
   FileText,
-  LogOut
+  LogOut,
+  Globe,
+  Clock,
+  Award,
+  Store,
+  Sliders,
+  ChartLine,
+  ShoppingBag
 } from 'lucide-react';
 import { useAuth } from '@/api/auth';
 
@@ -22,6 +29,9 @@ const LOGO_URL = "https://customer-assets.emergentagent.com/job_36e4b3a7-6dc6-43
 
 const SuperAdminMenu = [
   { path: '/super/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/super/lottery-catalog', label: 'Lottery Catalog', icon: Globe },
+  { path: '/super/global-schedules', label: 'Global Schedules', icon: Clock },
+  { path: '/super/global-results', label: 'Global Results', icon: Award },
   { path: '/super/companies', label: 'Companies', icon: Building2 },
   { path: '/super/users', label: 'Users', icon: Users },
   { path: '/super/plans', label: 'Plans & Licenses', icon: Package },
@@ -31,13 +41,16 @@ const SuperAdminMenu = [
 
 const CompanyAdminMenu = [
   { path: '/company/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/company/branches', label: 'Succursales', icon: Building2 },
   { path: '/company/agents', label: 'Agents', icon: UserCircle },
   { path: '/company/pos-devices', label: 'POS Devices', icon: Monitor },
   { path: '/company/lotteries', label: 'Lottery Catalog', icon: Ticket },
-  { path: '/company/schedules', label: 'Schedules', icon: CalendarClock },
-  { path: '/company/results', label: 'Results', icon: Trophy },
+  { path: '/company/schedules', label: 'Schedules (View)', icon: CalendarClock },
+  { path: '/company/results', label: 'Results (View)', icon: Trophy },
   { path: '/company/tickets', label: 'Tickets', icon: FileText },
-  { path: '/company/reports', label: 'Reports', icon: BarChart3 },
+  { path: '/company/configuration', label: 'Configuration', icon: Sliders },
+  { path: '/company/statistics', label: 'Statistiques', icon: ChartLine },
+  { path: '/company/daily-reports', label: 'Journalier', icon: BarChart3 },
   { path: '/company/users', label: 'Company Users', icon: Users },
   { path: '/company/activity-logs', label: 'Activity Logs', icon: Activity },
   { path: '/company/settings', label: 'Settings', icon: Settings },
