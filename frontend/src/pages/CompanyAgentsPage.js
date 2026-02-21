@@ -162,6 +162,18 @@ export const CompanyAgentsPage = () => {
                     data-testid="agent-phone-input"
                   />
                 </div>
+                <div>
+                  <Label className="text-slate-300">Email (required)</Label>
+                  <Input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    placeholder="agent@company.com"
+                    required
+                    className="bg-slate-950 border-slate-700 text-white"
+                    data-testid="agent-email-input"
+                  />
+                </div>
                 <Button type="submit" className="w-full button-primary" data-testid="submit-agent-button">
                   Create Agent
                 </Button>
