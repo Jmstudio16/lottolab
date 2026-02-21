@@ -1,72 +1,601 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
-import uuid
-from datetime import datetime, timezone
+from typing import Optional, List
+from datetime import datetime, timezone, timedelta
 
+from models import *
+from auth import verify_password, get_password_hash, create_access_token, decode_token
+from utils import generate_id, generate_ticket_code, generate_verification_code, generate_qr_code, get_current_timestamp
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
 app = FastAPI()
-
-# Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
+security = HTTPBearer()
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
+# Auth Dependency
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    token = credentials.credentials
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
     
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-class StatusCheckCreate(BaseModel):
-    client_name: str
-
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
+    user_id = payload.get("user_id")
+    user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
     
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
+    return user
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+# ============ AUTH ROUTES ============
+@api_router.post("/auth/login", response_model=LoginResponse)
+async def login(credentials: LoginRequest):
+    user_doc = await db.users.find_one({"email": credentials.email}, {"_id": 0})
+    if not user_doc or not verify_password(credentials.password, user_doc.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
     
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
+    user_doc.pop("password_hash", None)
+    user = User(**user_doc)
     
-    return status_checks
+    token = create_access_token({"user_id": user.user_id, "role": user.role, "company_id": user.company_id})
+    
+    redirect_map = {
+        UserRole.SUPER_ADMIN: "/super/dashboard",
+        UserRole.COMPANY_ADMIN: "/company/dashboard",
+        UserRole.COMPANY_MANAGER: "/company/dashboard",
+        UserRole.AGENT_POS: "/pos",
+        UserRole.AUDITOR_READONLY: "/company/dashboard"
+    }
+    
+    return LoginResponse(token=token, user=user, redirect_path=redirect_map.get(user.role, "/"))
 
-# Include the router in the main app
+@api_router.get("/auth/me", response_model=User)
+async def get_me(current_user: dict = Depends(get_current_user)):
+    return User(**current_user)
+
+@api_router.post("/auth/logout")
+async def logout():
+    return {"message": "Logged out successfully"}
+
+# ============ SUPER ADMIN ROUTES ============
+@api_router.get("/super/dashboard/stats", response_model=DashboardStats)
+async def get_super_dashboard_stats(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    total_companies = await db.companies.count_documents({})
+    active_companies = await db.companies.count_documents({"status": CompanyStatus.ACTIVE})
+    total_agents = await db.agents.count_documents({})
+    
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    tickets_today = await db.tickets.count_documents({"created_at": {"$gte": today_start}})
+    
+    return DashboardStats(
+        total_companies=total_companies,
+        active_companies=active_companies,
+        total_agents=total_agents,
+        tickets_today=tickets_today,
+        monthly_revenue=0.0
+    )
+
+@api_router.get("/super/companies", response_model=List[Company])
+async def get_all_companies(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    companies = await db.companies.find({}, {"_id": 0}).to_list(1000)
+    return [Company(**c) for c in companies]
+
+@api_router.post("/super/companies", response_model=Company)
+async def create_company(company_data: CompanyCreate, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    existing = await db.companies.find_one({"slug": company_data.slug})
+    if existing:
+        raise HTTPException(status_code=400, detail="Company slug already exists")
+    
+    company_id = generate_id("comp_")
+    now = get_current_timestamp()
+    
+    company = Company(
+        company_id=company_id,
+        name=company_data.name,
+        slug=company_data.slug,
+        status=CompanyStatus.ACTIVE,
+        plan=company_data.plan,
+        currency=company_data.currency,
+        timezone=company_data.timezone,
+        contact_email=company_data.contact_email,
+        contact_phone=company_data.contact_phone,
+        created_at=now,
+        updated_at=now
+    )
+    
+    await db.companies.insert_one(company.model_dump())
+    
+    await db.activity_logs.insert_one({
+        "log_id": generate_id("log_"),
+        "action_type": "COMPANY_CREATED",
+        "entity_type": "company",
+        "entity_id": company_id,
+        "performed_by": current_user["user_id"],
+        "metadata": {"company_name": company.name},
+        "created_at": now
+    })
+    
+    return company
+
+@api_router.put("/super/companies/{company_id}", response_model=Company)
+async def update_company(company_id: str, updates: dict, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    updates["updated_at"] = get_current_timestamp()
+    await db.companies.update_one({"company_id": company_id}, {"$set": updates})
+    
+    company_doc = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
+    if not company_doc:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    return Company(**company_doc)
+
+@api_router.delete("/super/companies/{company_id}")
+async def delete_company(company_id: str, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    await db.companies.update_one({"company_id": company_id}, {"$set": {"status": CompanyStatus.SUSPENDED}})
+    return {"message": "Company suspended successfully"}
+
+@api_router.get("/super/users", response_model=List[User])
+async def get_all_users(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    users = await db.users.find({}, {"_id": 0, "password_hash": 0}).to_list(1000)
+    return [User(**u) for u in users]
+
+@api_router.post("/super/users", response_model=User)
+async def create_user(user_data: UserCreate, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    existing = await db.users.find_one({"email": user_data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already exists")
+    
+    user_id = generate_id("user_")
+    now = get_current_timestamp()
+    
+    user_doc = {
+        "user_id": user_id,
+        "email": user_data.email,
+        "password_hash": get_password_hash(user_data.password),
+        "name": user_data.name,
+        "role": user_data.role,
+        "company_id": user_data.company_id,
+        "status": "ACTIVE",
+        "created_at": now,
+        "updated_at": now
+    }
+    
+    await db.users.insert_one(user_doc)
+    
+    user_doc.pop("password_hash")
+    return User(**user_doc)
+
+@api_router.get("/super/plans", response_model=List[Plan])
+async def get_plans(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    plans = await db.plans.find({}, {"_id": 0}).to_list(100)
+    return [Plan(**p) for p in plans]
+
+@api_router.get("/super/activity-logs", response_model=List[ActivityLog])
+async def get_all_activity_logs(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    logs = await db.activity_logs.find({}, {"_id": 0}).sort("created_at", -1).limit(500).to_list(500)
+    return [ActivityLog(**log) for log in logs]
+
+# ============ COMPANY ADMIN ROUTES ============
+@api_router.get("/company/dashboard/stats", response_model=CompanyDashboardStats)
+async def get_company_dashboard_stats(current_user: dict = Depends(get_current_user)):
+    company_id = current_user.get("company_id")
+    if not company_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    tickets_today = await db.tickets.count_documents({"company_id": company_id, "created_at": {"$gte": today_start}})
+    
+    pipeline = [
+        {"$match": {"company_id": company_id, "created_at": {"$gte": today_start}}},
+        {"$group": {"_id": None, "total": {"$sum": "$total_amount"}}}
+    ]
+    result = await db.tickets.aggregate(pipeline).to_list(1)
+    sales_today = result[0]["total"] if result else 0.0
+    
+    active_agents = await db.agents.count_documents({"company_id": company_id, "status": AgentStatus.ACTIVE})
+    
+    now = datetime.now(timezone.utc)
+    open_lotteries = 0
+    company_lotteries = await db.company_lotteries.find({"company_id": company_id, "enabled": True}, {"_id": 0}).to_list(100)
+    for cl in company_lotteries:
+        lottery = await db.lotteries.find_one({"lottery_id": cl["lottery_id"]}, {"_id": 0})
+        if lottery and lottery.get("draw_times"):
+            for draw_time_str in lottery["draw_times"]:
+                try:
+                    draw_time = datetime.fromisoformat(draw_time_str.replace("Z", "+00:00"))
+                    open_offset = cl.get("sales_open_offset_minutes") or lottery.get("sales_open_offset_minutes", 240)
+                    close_offset = cl.get("sales_close_offset_minutes") or lottery.get("sales_close_offset_minutes", 5)
+                    
+                    open_time = draw_time - timedelta(minutes=open_offset)
+                    close_time = draw_time - timedelta(minutes=close_offset)
+                    
+                    if open_time <= now <= close_time:
+                        open_lotteries += 1
+                        break
+                except:
+                    continue
+    
+    return CompanyDashboardStats(
+        tickets_today=tickets_today,
+        sales_today=sales_today,
+        active_agents=active_agents,
+        open_lotteries=open_lotteries
+    )
+
+@api_router.get("/company/agents", response_model=List[Agent])
+async def get_company_agents(current_user: dict = Depends(get_current_user)):
+    company_id = current_user.get("company_id")
+    if not company_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    agents = await db.agents.find({"company_id": company_id}, {"_id": 0}).to_list(1000)
+    return [Agent(**a) for a in agents]
+
+@api_router.post("/company/agents", response_model=Agent)
+async def create_agent(agent_data: AgentCreate, current_user: dict = Depends(get_current_user)):
+    company_id = current_user.get("company_id")
+    if not company_id or current_user["role"] not in [UserRole.COMPANY_ADMIN, UserRole.COMPANY_MANAGER]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    existing = await db.agents.find_one({"company_id": company_id, "username": agent_data.username})
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    
+    agent_id = generate_id("agent_")
+    user_id = generate_id("user_")
+    now = get_current_timestamp()
+    
+    user_doc = {
+        "user_id": user_id,
+        "email": agent_data.email or f"{agent_data.username}@pos.lottolab.local",
+        "password_hash": get_password_hash(agent_data.password),
+        "name": agent_data.name,
+        "role": UserRole.AGENT_POS,
+        "company_id": company_id,
+        "status": "ACTIVE",
+        "created_at": now,
+        "updated_at": now
+    }
+    await db.users.insert_one(user_doc)
+    
+    agent = Agent(
+        agent_id=agent_id,
+        company_id=company_id,
+        name=agent_data.name,
+        username=agent_data.username,
+        phone=agent_data.phone,
+        email=agent_data.email,
+        status=AgentStatus.ACTIVE,
+        can_void_ticket=agent_data.can_void_ticket,
+        user_id=user_id,
+        created_at=now,
+        updated_at=now
+    )
+    
+    await db.agents.insert_one(agent.model_dump())
+    return agent
+
+@api_router.put("/company/agents/{agent_id}", response_model=Agent)
+async def update_agent(agent_id: str, updates: dict, current_user: dict = Depends(get_current_user)):
+    company_id = current_user.get("company_id")
+    if not company_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    updates["updated_at"] = get_current_timestamp()
+    await db.agents.update_one({"agent_id": agent_id, "company_id": company_id}, {"$set": updates})
+    
+    agent_doc = await db.agents.find_one({"agent_id": agent_id}, {"_id": 0})
+    if not agent_doc:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    return Agent(**agent_doc)
+
+@api_router.get("/company/pos-devices", response_model=List[POSDevice])
+async def get_pos_devices(current_user: dict = Depends(get_current_user)):
+    company_id = current_user.get("company_id")
+    if not company_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    devices = await db.pos_devices.find({"company_id": company_id}, {"_id": 0}).to_list(1000)
+    return [POSDevice(**d) for d in devices]
+
+@api_router.post("/company/pos-devices", response_model=POSDevice)
+async def create_pos_device(device_data: POSDeviceCreate, current_user: dict = Depends(get_current_user)):
+    company_id = current_user.get("company_id")
+    if not company_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    device_id = generate_id("dev_")
+    now = get_current_timestamp()
+    
+    device = POSDevice(
+        device_id=device_id,
+        company_id=company_id,
+        device_name=device_data.device_name,
+        agent_id=device_data.agent_id,
+        status="ACTIVE",
+        created_at=now
+    )
+    
+    await db.pos_devices.insert_one(device.model_dump())
+    return device
+
+@api_router.get("/company/lotteries")
+async def get_company_lotteries(current_user: dict = Depends(get_current_user)):
+    company_id = current_user.get("company_id")
+    if not company_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    all_lotteries = await db.lotteries.find({}, {"_id": 0}).to_list(1000)
+    company_lotteries = await db.company_lotteries.find({"company_id": company_id}, {"_id": 0}).to_list(1000)
+    
+    enabled_map = {cl["lottery_id"]: cl for cl in company_lotteries}
+    
+    result = []
+    for lottery in all_lotteries:
+        lottery_id = lottery["lottery_id"]
+        lottery["enabled"] = lottery_id in enabled_map and enabled_map[lottery_id].get("enabled", False)
+        result.append(lottery)
+    
+    return result
+
+@api_router.put("/company/lotteries/{lottery_id}/toggle")
+async def toggle_lottery(lottery_id: str, enabled: bool, current_user: dict = Depends(get_current_user)):
+    company_id = current_user.get("company_id")
+    if not company_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    existing = await db.company_lotteries.find_one({"company_id": company_id, "lottery_id": lottery_id})
+    
+    if existing:
+        await db.company_lotteries.update_one(
+            {"company_id": company_id, "lottery_id": lottery_id},
+            {"$set": {"enabled": enabled}}
+        )
+    else:
+        await db.company_lotteries.insert_one({
+            "company_id": company_id,
+            "lottery_id": lottery_id,
+            "enabled": enabled
+        })
+    
+    return {"message": "Lottery toggled successfully"}
+
+@api_router.get("/company/tickets", response_model=List[Ticket])
+async def get_company_tickets(current_user: dict = Depends(get_current_user)):
+    company_id = current_user.get("company_id")
+    if not company_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    tickets = await db.tickets.find({"company_id": company_id}, {"_id": 0}).sort("created_at", -1).limit(500).to_list(500)
+    return [Ticket(**t) for t in tickets]
+
+@api_router.post("/company/results", response_model=Result)
+async def create_result(result_data: ResultCreate, current_user: dict = Depends(get_current_user)):
+    company_id = current_user.get("company_id")
+    if not company_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    lottery = await db.lotteries.find_one({"lottery_id": result_data.lottery_id}, {"_id": 0})
+    if not lottery:
+        raise HTTPException(status_code=404, detail="Lottery not found")
+    
+    result_id = generate_id("res_")
+    now = get_current_timestamp()
+    
+    result = Result(
+        result_id=result_id,
+        lottery_id=result_data.lottery_id,
+        lottery_name=lottery["lottery_name"],
+        company_id=company_id,
+        draw_datetime=result_data.draw_datetime,
+        winning_numbers=result_data.winning_numbers,
+        source="MANUAL",
+        entered_by=current_user["user_id"],
+        created_at=now
+    )
+    
+    await db.results.insert_one(result.model_dump())
+    return result
+
+@api_router.get("/company/results", response_model=List[Result])
+async def get_company_results(current_user: dict = Depends(get_current_user)):
+    company_id = current_user.get("company_id")
+    if not company_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    results = await db.results.find({"company_id": company_id}, {"_id": 0}).sort("created_at", -1).limit(200).to_list(200)
+    return [Result(**r) for r in results]
+
+@api_router.get("/company/activity-logs", response_model=List[ActivityLog])
+async def get_company_activity_logs(current_user: dict = Depends(get_current_user)):
+    company_id = current_user.get("company_id")
+    if not company_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    logs = await db.activity_logs.find({"company_id": company_id}, {"_id": 0}).sort("created_at", -1).limit(200).to_list(200)
+    return [ActivityLog(**log) for log in logs]
+
+# ============ POS ROUTES ============
+@api_router.get("/pos/lotteries/open")
+async def get_open_lotteries(current_user: dict = Depends(get_current_user)):
+    company_id = current_user.get("company_id")
+    if not company_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    now = datetime.now(timezone.utc)
+    
+    company_lotteries = await db.company_lotteries.find({"company_id": company_id, "enabled": True}, {"_id": 0}).to_list(100)
+    
+    open_lotteries = []
+    for cl in company_lotteries:
+        lottery = await db.lotteries.find_one({"lottery_id": cl["lottery_id"]}, {"_id": 0})
+        if not lottery or not lottery.get("draw_times"):
+            continue
+        
+        for draw_time_str in lottery["draw_times"]:
+            try:
+                draw_time = datetime.fromisoformat(draw_time_str.replace("Z", "+00:00"))
+                open_offset = cl.get("sales_open_offset_minutes") or lottery.get("sales_open_offset_minutes", 240)
+                close_offset = cl.get("sales_close_offset_minutes") or lottery.get("sales_close_offset_minutes", 5)
+                
+                open_time = draw_time - timedelta(minutes=open_offset)
+                close_time = draw_time - timedelta(minutes=close_offset)
+                
+                if open_time <= now <= close_time:
+                    lottery["next_draw"] = draw_time_str
+                    lottery["closes_at"] = close_time.isoformat()
+                    open_lotteries.append(lottery)
+                    break
+            except Exception as e:
+                logger.error(f"Error parsing draw time: {e}")
+                continue
+    
+    return open_lotteries
+
+@api_router.post("/pos/tickets", response_model=Ticket)
+async def create_ticket(ticket_data: TicketCreate, current_user: dict = Depends(get_current_user)):
+    company_id = current_user.get("company_id")
+    agent_id = current_user.get("user_id")
+    
+    if not company_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    lottery = await db.lotteries.find_one({"lottery_id": ticket_data.lottery_id}, {"_id": 0})
+    if not lottery:
+        raise HTTPException(status_code=404, detail="Lottery not found")
+    
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    ticket_id = generate_id("tkt_")
+    ticket_code = generate_ticket_code()
+    verification_code = generate_verification_code()
+    
+    total_amount = sum(play.amount for play in ticket_data.plays)
+    
+    qr_payload = f"{ticket_code}|{verification_code}|{company_id}"\n    qr_code_data = generate_qr_code(qr_payload)
+    
+    now = get_current_timestamp()
+    
+    ticket = Ticket(
+        ticket_id=ticket_id,
+        ticket_code=ticket_code,
+        verification_code=verification_code,
+        qr_payload=qr_code_data,
+        agent_id=agent_id,
+        company_id=company_id,
+        lottery_id=ticket_data.lottery_id,
+        lottery_name=lottery["lottery_name"],
+        draw_datetime=ticket_data.draw_datetime,
+        plays=[TicketLine(**play.model_dump()) for play in ticket_data.plays],
+        total_amount=total_amount,
+        currency=company.get("currency", "HTG"),
+        status=TicketStatus.ACTIVE,
+        created_at=now
+    )
+    
+    await db.tickets.insert_one(ticket.model_dump())
+    
+    return ticket
+
+@api_router.get("/pos/tickets/my", response_model=List[Ticket])
+async def get_my_tickets(current_user: dict = Depends(get_current_user)):
+    agent_id = current_user.get("user_id")
+    
+    tickets = await db.tickets.find({"agent_id": agent_id}, {"_id": 0}).sort("created_at", -1).limit(100).to_list(100)
+    return [Ticket(**t) for t in tickets]
+
+@api_router.post("/pos/tickets/verify")
+async def verify_ticket(verification_code: str):
+    ticket = await db.tickets.find_one({"verification_code": verification_code}, {"_id": 0})
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    result = await db.results.find_one({
+        "lottery_id": ticket["lottery_id"],
+        "draw_datetime": ticket["draw_datetime"]
+    }, {"_id": 0})
+    
+    return {
+        "ticket": ticket,
+        "result": result if result else None,
+        "is_winner": False
+    }
+
+@api_router.get("/pos/summary/daily")
+async def get_daily_summary(current_user: dict = Depends(get_current_user)):
+    agent_id = current_user.get("user_id")
+    
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    
+    tickets_count = await db.tickets.count_documents({"agent_id": agent_id, "created_at": {"$gte": today_start}})
+    
+    pipeline = [
+        {"$match": {"agent_id": agent_id, "created_at": {"$gte": today_start}}},
+        {"$group": {"_id": None, "total": {"$sum": "$total_amount"}}}
+    ]
+    result = await db.tickets.aggregate(pipeline).to_list(1)
+    total_sales = result[0]["total"] if result else 0.0
+    
+    return {
+        "tickets_count": tickets_count,
+        "total_sales": total_sales,
+        "date": today_start
+    }
+
+# ============ SHARED ROUTES ============
+@api_router.get("/states", response_model=List[State])
+async def get_states():
+    states = await db.states.find({}, {"_id": 0}).to_list(1000)
+    return [State(**s) for s in states]
+
+@api_router.get("/lotteries", response_model=List[Lottery])
+async def get_all_lotteries():
+    lotteries = await db.lotteries.find({}, {"_id": 0}).to_list(1000)
+    return [Lottery(**l) for l in lotteries]
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -76,13 +605,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
