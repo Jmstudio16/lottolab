@@ -143,10 +143,13 @@ class TestDeviceSync:
         data = response.json()
         
         # Verify response structure
-        assert "results" in data, "Missing results in response"
+        assert "latest_results" in data, "Missing latest_results in response"
         assert "daily_stats" in data, "Missing daily_stats in response"
         assert "balance" in data, "Missing balance in response"
         assert "server_time" in data, "Missing server_time in response"
+        assert "config_version" in data, "Missing config_version in response"
+        assert "config_changed" in data, "Missing config_changed in response"
+        assert "agent_status" in data, "Missing agent_status in response"
         
         # Verify daily_stats structure
         daily_stats = data["daily_stats"]
