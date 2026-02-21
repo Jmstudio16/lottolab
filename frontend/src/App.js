@@ -255,6 +255,38 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/company/branches"
+              element={
+                <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
+                  <CompanyBranchesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/company/configuration"
+              element={
+                <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
+                  <CompanyConfigurationPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/company/statistics"
+              element={
+                <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER', 'AUDITOR_READONLY']}>
+                  <CompanyStatisticsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/company/daily-reports"
+              element={
+                <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER', 'AUDITOR_READONLY']}>
+                  <CompanyDailyReportsPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* ================== AGENT ROUTES (LIMITED ACCESS) ================== */}
             {/* Agents can ONLY access these routes - NOT company admin pages */}
