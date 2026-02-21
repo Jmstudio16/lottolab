@@ -67,10 +67,10 @@ export const Sidebar = ({ role }) => {
     <div className="w-64 h-screen bg-[#020617] border-r border-slate-800 flex flex-col fixed left-0 top-0">
       {/* Logo */}
       <div className="p-6 border-b border-slate-800">
-        <img 
-          src={LOGO_URL} 
-          alt="LOTTOLAB" 
-          className="w-40 h-auto mx-auto"
+        <Logo 
+          size="xl" 
+          className="mx-auto justify-center"
+          useSystemLogo={role === 'SUPER_ADMIN'}
         />
       </div>
       
