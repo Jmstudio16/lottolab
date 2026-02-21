@@ -21,7 +21,6 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 export const AgentLoginPage = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -55,16 +54,22 @@ export const AgentLoginPage = () => {
         throw new Error(data.detail || 'Échec de la connexion');
       }
 
-      // Store token and user info
-      login(data.token, {
+      // Store token and user info manually for agent login
+      const userData = {
         user_id: data.agent_id,
         name: data.agent_name,
         role: 'AGENT_POS',
-        company_id: data.company_id
-      });
+        company_id: data.company_id,
+        email: email
+      };
+      
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(userData));
 
       toast.success(`Bienvenue, ${data.agent_name}!`);
-      navigate('/agent/dashboard');
+      
+      // Force page reload to update auth context
+      window.location.href = '/agent/dashboard';
       
     } catch (err) {
       setError(err.message);
