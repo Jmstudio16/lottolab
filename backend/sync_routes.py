@@ -592,6 +592,15 @@ async def print_ticket_universal(
             width: 80px;
             height: 80px;
         }}
+        .logo-section {{
+            text-align: center;
+            margin-bottom: 6px;
+        }}
+        .logo-section img {{
+            max-width: 60mm;
+            max-height: 25mm;
+            object-fit: contain;
+        }}
         .verification {{
             text-align: center;
             font-size: 0.8em;
