@@ -125,6 +125,14 @@ function App() {
               }
             />
             <Route
+              path="/super/companies/create"
+              element={
+                <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                  <SuperCreateCompanyPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/super/users"
               element={
                 <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
