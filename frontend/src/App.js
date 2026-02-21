@@ -18,11 +18,13 @@ import { SuperLotteryCatalogPage } from '@/pages/SuperLotteryCatalogPage';
 import { SuperGlobalSchedulesPage } from '@/pages/SuperGlobalSchedulesPage';
 import { SuperGlobalResultsPage } from '@/pages/SuperGlobalResultsPage';
 import { SuperResultManagementPage } from '@/pages/SuperResultManagementPage';
+import { SuperCreateCompanyPage } from '@/pages/SuperCreateCompanyPage';
 import { AgentResultsViewPage } from '@/pages/agent/AgentResultsViewPage';
 
 // Company Admin Pages
 import { CompanyDashboardPage } from '@/pages/CompanyDashboardPage';
 import { CompanyAgentsPage } from '@/pages/CompanyAgentsPage';
+import { CompanyCreateAgentPage } from '@/pages/CompanyCreateAgentPage';
 import { CompanyLotteriesPage } from '@/pages/CompanyLotteriesPage';
 import { CompanyResultsPage } from '@/pages/CompanyResultsPage';
 import { POSDevicesPage } from '@/pages/POSDevicesPage';
