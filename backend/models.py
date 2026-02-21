@@ -66,6 +66,7 @@ class User(BaseModel):
     role: UserRole
     company_id: Optional[str] = None
     status: str = "ACTIVE"
+    last_login: Optional[str] = None
     created_at: str
     updated_at: str
 
