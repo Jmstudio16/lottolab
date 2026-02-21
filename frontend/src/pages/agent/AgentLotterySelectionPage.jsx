@@ -318,12 +318,12 @@ export const AgentLotterySelectionPage = () => {
   
   // Combine lotteries with their schedules
   const lotteriesWithSchedules = useMemo(() => {
-    if (!syncData?.lotteries || !syncData?.schedules) return [];
+    if (!syncData?.enabled_lotteries || !syncData?.schedules) return [];
     
     const result = [];
     
     syncData.schedules.forEach(schedule => {
-      const lottery = syncData.lotteries.find(l => l.lottery_id === schedule.lottery_id);
+      const lottery = syncData.enabled_lotteries.find(l => l.lottery_id === schedule.lottery_id);
       if (lottery) {
         result.push({
           lottery,
