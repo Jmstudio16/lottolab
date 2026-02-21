@@ -244,7 +244,7 @@ async def get_all_activity_logs(current_user: dict = Depends(get_current_user)):
     logs = await db.activity_logs.find({}, {"_id": 0}).sort("created_at", -1).limit(500).to_list(500)
     return [ActivityLog(**log) for log in logs]
 
-# ============ COMPANY ADMIN ROUTES ============
+# ============ COMPANY ADMIN ROUTES (Dashboard and Lotteries) ============
 @api_router.get("/company/dashboard/stats", response_model=CompanyDashboardStats)
 async def get_company_dashboard_stats(current_user: dict = Depends(get_current_user)):
     company_id = current_user.get("company_id")
@@ -291,127 +291,6 @@ async def get_company_dashboard_stats(current_user: dict = Depends(get_current_u
         open_lotteries=open_lotteries
     )
 
-@api_router.get("/company/agents", response_model=List[Agent])
-async def get_company_agents(current_user: dict = Depends(get_current_user)):
-    company_id = current_user.get("company_id")
-    if not company_id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
-    agents = await db.agents.find({"company_id": company_id}, {"_id": 0}).to_list(1000)
-    return [Agent(**a) for a in agents]
-
-@api_router.post("/company/agents", response_model=Agent)
-async def create_agent(agent_data: AgentCreate, request: Request, current_user: dict = Depends(get_current_user)):
-    company_id = current_user.get("company_id")
-    if not company_id or current_user["role"] not in [UserRole.COMPANY_ADMIN, UserRole.COMPANY_MANAGER]:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
-    # Validate email is provided
-    if not agent_data.email:
-        raise HTTPException(status_code=400, detail="Email is required for agent creation")
-    
-    # Check if username already exists
-    existing = await db.agents.find_one({"company_id": company_id, "username": agent_data.username})
-    if existing:
-        raise HTTPException(status_code=400, detail="Username already exists in your company")
-    
-    # Check if email already exists
-    existing_email = await db.users.find_one({"email": agent_data.email})
-    if existing_email:
-        raise HTTPException(status_code=400, detail="Email already exists")
-    
-    agent_id = generate_id("agent_")
-    user_id = generate_id("user_")
-    now = get_current_timestamp()
-    
-    user_doc = {
-        "user_id": user_id,
-        "email": agent_data.email,
-        "password_hash": get_password_hash(agent_data.password),
-        "name": agent_data.name,
-        "role": UserRole.AGENT_POS,
-        "company_id": company_id,
-        "status": "ACTIVE",
-        "last_login": None,
-        "created_at": now,
-        "updated_at": now
-    }
-    await db.users.insert_one(user_doc)
-    
-    agent = Agent(
-        agent_id=agent_id,
-        company_id=company_id,
-        name=agent_data.name,
-        username=agent_data.username,
-        phone=agent_data.phone,
-        email=agent_data.email,
-        status=AgentStatus.ACTIVE,
-        can_void_ticket=agent_data.can_void_ticket,
-        user_id=user_id,
-        created_at=now,
-        updated_at=now
-    )
-    
-    await db.agents.insert_one(agent.model_dump())
-    
-    await log_activity(
-        db=db,
-        action_type="AGENT_CREATED",
-        entity_type="agent",
-        entity_id=agent_id,
-        performed_by=current_user["user_id"],
-        company_id=company_id,
-        metadata={"agent_name": agent_data.name, "username": agent_data.username},
-        ip_address=request.client.host if request.client else None
-    )
-    
-    return agent
-
-@api_router.put("/company/agents/{agent_id}", response_model=Agent)
-async def update_agent(agent_id: str, updates: dict, current_user: dict = Depends(get_current_user)):
-    company_id = current_user.get("company_id")
-    if not company_id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
-    updates["updated_at"] = get_current_timestamp()
-    await db.agents.update_one({"agent_id": agent_id, "company_id": company_id}, {"$set": updates})
-    
-    agent_doc = await db.agents.find_one({"agent_id": agent_id}, {"_id": 0})
-    if not agent_doc:
-        raise HTTPException(status_code=404, detail="Agent not found")
-    
-    return Agent(**agent_doc)
-
-@api_router.get("/company/pos-devices", response_model=List[POSDevice])
-async def get_pos_devices(current_user: dict = Depends(get_current_user)):
-    company_id = current_user.get("company_id")
-    if not company_id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
-    devices = await db.pos_devices.find({"company_id": company_id}, {"_id": 0}).to_list(1000)
-    return [POSDevice(**d) for d in devices]
-
-@api_router.post("/company/pos-devices", response_model=POSDevice)
-async def create_pos_device(device_data: POSDeviceCreate, current_user: dict = Depends(get_current_user)):
-    company_id = current_user.get("company_id")
-    if not company_id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
-    device_id = generate_id("dev_")
-    now = get_current_timestamp()
-    
-    device = POSDevice(
-        device_id=device_id,
-        company_id=company_id,
-        device_name=device_data.device_name,
-        agent_id=device_data.agent_id,
-        status="ACTIVE",
-        created_at=now
-    )
-    
-    await db.pos_devices.insert_one(device.model_dump())
-    return device
-
 @api_router.get("/company/lotteries")
 async def get_company_lotteries(current_user: dict = Depends(get_current_user)):
     company_id = current_user.get("company_id")
@@ -453,60 +332,6 @@ async def toggle_lottery(lottery_id: str, enabled: bool, current_user: dict = De
     
     return {"message": "Lottery toggled successfully"}
 
-@api_router.get("/company/tickets", response_model=List[Ticket])
-async def get_company_tickets(current_user: dict = Depends(get_current_user)):
-    company_id = current_user.get("company_id")
-    if not company_id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
-    tickets = await db.tickets.find({"company_id": company_id}, {"_id": 0}).sort("created_at", -1).limit(500).to_list(500)
-    return [Ticket(**t) for t in tickets]
-
-@api_router.post("/company/results", response_model=Result)
-async def create_result(result_data: ResultCreate, current_user: dict = Depends(get_current_user)):
-    company_id = current_user.get("company_id")
-    if not company_id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
-    lottery = await db.lotteries.find_one({"lottery_id": result_data.lottery_id}, {"_id": 0})
-    if not lottery:
-        raise HTTPException(status_code=404, detail="Lottery not found")
-    
-    result_id = generate_id("res_")
-    now = get_current_timestamp()
-    
-    result = Result(
-        result_id=result_id,
-        lottery_id=result_data.lottery_id,
-        lottery_name=lottery["lottery_name"],
-        company_id=company_id,
-        draw_datetime=result_data.draw_datetime,
-        winning_numbers=result_data.winning_numbers,
-        source="MANUAL",
-        entered_by=current_user["user_id"],
-        created_at=now
-    )
-    
-    await db.results.insert_one(result.model_dump())
-    return result
-
-@api_router.get("/company/results", response_model=List[Result])
-async def get_company_results(current_user: dict = Depends(get_current_user)):
-    company_id = current_user.get("company_id")
-    if not company_id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
-    results = await db.results.find({"company_id": company_id}, {"_id": 0}).sort("created_at", -1).limit(200).to_list(200)
-    return [Result(**r) for r in results]
-
-@api_router.get("/company/activity-logs", response_model=List[ActivityLog])
-async def get_company_activity_logs(current_user: dict = Depends(get_current_user)):
-    company_id = current_user.get("company_id")
-    if not company_id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
-    logs = await db.activity_logs.find({"company_id": company_id}, {"_id": 0}).sort("created_at", -1).limit(200).to_list(200)
-    return [ActivityLog(**log) for log in logs]
 
 # ============ POS ROUTES ============
 @api_router.get("/pos/lotteries/open")
