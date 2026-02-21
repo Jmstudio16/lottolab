@@ -416,6 +416,38 @@ async def sell_lottery_ticket(
     # Get company and agent info
     company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
     
+    # Check agent balance (credit limit)
+    agent_balance = await db.agent_balances.find_one({"agent_id": agent_id}, {"_id": 0})
+    
+    if not agent_balance:
+        # Create initial balance for agent
+        policy = await db.agent_policies.find_one({"agent_id": agent_id}, {"_id": 0})
+        credit_limit = policy.get("max_credit_limit", 50000.0) if policy else 50000.0
+        
+        agent_balance = {
+            "balance_id": generate_id("bal_"),
+            "agent_id": agent_id,
+            "company_id": company_id,
+            "credit_limit": credit_limit,
+            "current_balance": 0.0,
+            "available_balance": credit_limit,
+            "total_sales": 0.0,
+            "total_payouts": 0.0,
+            "total_winnings": 0.0,
+            "created_at": get_current_timestamp(),
+            "updated_at": get_current_timestamp()
+        }
+        await db.agent_balances.insert_one(agent_balance)
+    
+    available_balance = agent_balance.get("available_balance", 0)
+    
+    # Check if agent has enough credit
+    if total_amount > available_balance:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Crédit insuffisant. Disponible: {available_balance:.2f}, Requis: {total_amount:.2f}"
+        )
+    
     # Calculate potential win
     prime_configs = await db.prime_configs.find(
         {"company_id": company_id, "is_active": True},
@@ -468,6 +500,40 @@ async def sell_lottery_ticket(
     }
     
     await db.lottery_transactions.insert_one(transaction)
+    
+    # Update agent balance after successful sale
+    new_current_balance = agent_balance.get("current_balance", 0) + total_amount
+    new_available_balance = agent_balance.get("available_balance", 0) - total_amount
+    new_total_sales = agent_balance.get("total_sales", 0) + total_amount
+    
+    await db.agent_balances.update_one(
+        {"agent_id": agent_id},
+        {"$set": {
+            "current_balance": new_current_balance,
+            "available_balance": new_available_balance,
+            "total_sales": new_total_sales,
+            "updated_at": now
+        }}
+    )
+    
+    # Log sale activity
+    await db.activity_logs.insert_one({
+        "log_id": generate_id("log_"),
+        "action_type": "TICKET_SOLD",
+        "entity_type": "ticket",
+        "entity_id": ticket_id,
+        "performed_by": agent_id,
+        "company_id": company_id,
+        "metadata": {
+            "ticket_code": ticket_code,
+            "total_amount": total_amount,
+            "lottery_name": lottery["lottery_name"],
+            "draw_name": sale_data.draw_name,
+            "device_type": device_session.get("device_type", "BROWSER"),
+            "plays_count": len(validated_plays)
+        },
+        "created_at": now
+    })
     
     return LotterySaleResponse(
         ticket_id=ticket_id,
