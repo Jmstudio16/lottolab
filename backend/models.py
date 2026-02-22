@@ -6,6 +6,8 @@ class UserRole(str, Enum):
     SUPER_ADMIN = "SUPER_ADMIN"
     COMPANY_ADMIN = "COMPANY_ADMIN"
     COMPANY_MANAGER = "COMPANY_MANAGER"
+    BRANCH_SUPERVISOR = "BRANCH_SUPERVISOR"  # Superviseur de succursale
+    BRANCH_USER = "BRANCH_USER"  # Utilisateur de succursale
     AGENT_POS = "AGENT_POS"
     AUDITOR_READONLY = "AUDITOR_READONLY"
 
