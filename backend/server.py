@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, WebSocket, WebSocketDisconnect
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.exceptions import RequestValidationError
 from dotenv import load_dotenv
@@ -29,6 +29,8 @@ from settings_routes import settings_router, set_settings_db
 from financial_routes import financial_router, set_financial_db, process_all_tickets_for_result
 from online_routes import online_router, online_admin_router, set_online_db
 from error_handlers import validation_exception_handler, generic_exception_handler
+from websocket_manager import ws_manager, notify_player, notify_admins, NotificationType
+from lottery_engine import set_lottery_engine_db, process_result_for_online_tickets
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
