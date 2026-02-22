@@ -5,7 +5,7 @@ import { useLotoPamAuth } from '../../context/LotoPamAuthContext';
 import LotoPamLayout from '../../layouts/LotoPamLayout';
 import { 
   Gamepad2, Trophy, Wallet, Ticket, ArrowRight, 
-  Star, Zap, Gift, Users, TrendingUp, Clock
+  Star, Zap, Gift, Users, TrendingUp, Clock, Shield
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
