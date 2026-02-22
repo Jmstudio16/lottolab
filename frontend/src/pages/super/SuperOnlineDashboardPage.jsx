@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/api/auth';
-import AdminLayout from '@/components/AdminLayout';
+import { AdminLayout } from '@/components/AdminLayout';
 import { 
   Users, Wallet, ArrowUpCircle, ArrowDownCircle, 
   Ticket, Shield, AlertTriangle, TrendingUp, 
