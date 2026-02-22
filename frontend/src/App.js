@@ -346,26 +346,10 @@ const SaaSApp = () => {
                   }
                 />
                 <Route
-                  path="/company/agents"
+                  path="/company/succursales"
                   element={
                     <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
-                      <CompanyAgentsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/company/agents/create"
-                  element={
-                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
-                      <CompanyCreateAgentPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/company/pos-devices"
-                  element={
-                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
-                      <POSDevicesPage />
+                      <CompanySuccursalesPage />
                     </ProtectedRoute>
                   }
                 />
@@ -434,14 +418,6 @@ const SaaSApp = () => {
                   }
                 />
                 <Route
-                  path="/company/branches"
-                  element={
-                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
-                      <CompanyBranchesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
                   path="/company/configuration"
                   element={
                     <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
@@ -470,14 +446,6 @@ const SaaSApp = () => {
                   element={
                     <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
                       <CompanyProfileSettingsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/company/agent-balances"
-                  element={
-                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
-                      <CompanyAgentBalancesPage />
                     </ProtectedRoute>
                   }
                 />
