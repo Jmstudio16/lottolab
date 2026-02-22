@@ -387,47 +387,129 @@ async def get_online_lotteries(player: dict = Depends(get_online_player)):
 @limiter.limit("30/minute")
 async def create_online_ticket(request: Request, data: OnlineTicketCreate, player: dict = Depends(get_online_player)):
     """Create an online lottery ticket"""
+    from lottery_engine import validate_bet_limits, check_fraud_patterns, is_draw_open, PAYOUT_MULTIPLIERS
+    
+    # Validate plays format
+    plays_list = [dict(p) for p in data.plays]
+    
+    # Check bet limits
+    is_valid, error_msg = await validate_bet_limits(player["player_id"], plays_list)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+    
+    # Check for fraud patterns
+    is_suspicious, fraud_reason = await check_fraud_patterns(player["player_id"], plays_list)
+    if is_suspicious:
+        raise HTTPException(status_code=429, detail=fraud_reason)
+    
     # Get wallet
     wallet = await db.online_wallets.find_one({"player_id": player["player_id"]})
     
     # Calculate total
-    total_amount = sum(play.get("amount", 0) for play in data.plays)
+    total_amount = sum(play.get("amount", 0) for play in plays_list)
     
     if not wallet or wallet["balance"] < total_amount:
-        raise HTTPException(status_code=400, detail="Insufficient balance")
+        raise HTTPException(status_code=400, detail="Solde insuffisant")
     
     # Get lottery info
     lottery = await db.global_lotteries.find_one({"lottery_id": data.game_id}, {"_id": 0})
     if not lottery:
-        raise HTTPException(status_code=404, detail="Lottery not found")
+        raise HTTPException(status_code=404, detail="Loterie non trouvée")
     
     # Get schedule
     schedule = await db.global_schedules.find_one({"schedule_id": data.schedule_id}, {"_id": 0})
     if not schedule:
-        raise HTTPException(status_code=404, detail="Schedule not found")
+        raise HTTPException(status_code=404, detail="Tirage non trouvé")
     
-    # Check if schedule is open
+    # Check if draw is open
+    draw_open, close_time, seconds_remaining = is_draw_open(schedule)
+    if not draw_open:
+        raise HTTPException(status_code=400, detail="Ce tirage est fermé")
+    
     now = datetime.now(timezone.utc)
-    close_time = schedule.get("close_time", "23:59")
-    close_datetime = datetime.strptime(f"{now.strftime('%Y-%m-%d')} {close_time}", "%Y-%m-%d %H:%M")
-    close_datetime = close_datetime.replace(tzinfo=timezone.utc)
-    
-    if now >= close_datetime:
-        raise HTTPException(status_code=400, detail="This draw is closed")
-    
     now_str = get_current_timestamp()
     ticket_id = generate_id("otkt_")
     
-    # Deduct from wallet
-    await db.online_wallets.update_one(
-        {"player_id": player["player_id"]},
+    # Calculate potential win based on bet types and multipliers
+    potential_win = 0
+    for play in plays_list:
+        num_length = len(play.get("number", ""))
+        bet_type = play.get("bet_type", "straight").lower()
+        amount = play.get("amount", 0)
+        multiplier = PAYOUT_MULTIPLIERS.get(bet_type, {}).get(num_length, 500)
+        potential_win += amount * multiplier
+    
+    # Deduct from wallet atomically
+    update_result = await db.online_wallets.update_one(
+        {"player_id": player["player_id"], "balance": {"$gte": total_amount}},
         {
             "$inc": {"balance": -total_amount},
             "$set": {"updated_at": now_str}
         }
     )
     
-    # Create transaction
+    if update_result.modified_count == 0:
+        raise HTTPException(status_code=400, detail="Solde insuffisant ou changé")
+    
+    # Create transaction record
+    await db.online_wallet_transactions.insert_one({
+        "transaction_id": generate_id("txn_"),
+        "player_id": player["player_id"],
+        "type": "bet_debit",
+        "amount": total_amount,
+        "reference": ticket_id,
+        "status": "approved",
+        "created_at": now_str,
+        "processed_at": now_str
+    })
+    
+    # Create ticket with draw info
+    ticket_doc = {
+        "ticket_id": ticket_id,
+        "player_id": player["player_id"],
+        "game_id": data.game_id,
+        "game_name": lottery["lottery_name"],
+        "lottery_id": lottery["lottery_id"],
+        "schedule_id": data.schedule_id,
+        "draw_type": schedule.get("draw_type") or schedule.get("draw_name"),
+        "draw_time": schedule.get("draw_time"),
+        "draw_date": now.strftime("%Y-%m-%d"),
+        "plays": plays_list,
+        "total_amount": total_amount,
+        "potential_win": potential_win,
+        "actual_win": 0.0,
+        "status": "pending",
+        "result_id": None,
+        "result_processed_at": None,
+        "winning_plays": None,
+        "created_at": now_str,
+        "device_info": request.headers.get("user-agent", ""),
+        "ip_hash": str(hash(request.client.host))[:8]
+    }
+    await db.online_tickets.insert_one(ticket_doc)
+    
+    # Notify player about ticket creation
+    from websocket_manager import notify_player, NotificationType
+    await notify_player(player["player_id"], NotificationType.WALLET_DEBITED, {
+        "amount": total_amount,
+        "reason": "bet",
+        "ticket_id": ticket_id
+    })
+    
+    return {
+        "message": "Ticket créé avec succès",
+        "ticket": {
+            "ticket_id": ticket_id,
+            "game_name": lottery["lottery_name"],
+            "draw_type": schedule.get("draw_type") or schedule.get("draw_name"),
+            "draw_time": schedule.get("draw_time"),
+            "plays": plays_list,
+            "total_amount": total_amount,
+            "potential_win": potential_win,
+            "status": "pending",
+            "seconds_until_close": seconds_remaining
+        }
+    }
     await db.online_wallet_transactions.insert_one({
         "transaction_id": generate_id("txn_"),
         "player_id": player["player_id"],
