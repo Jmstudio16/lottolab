@@ -510,52 +510,6 @@ async def create_online_ticket(request: Request, data: OnlineTicketCreate, playe
             "seconds_until_close": seconds_remaining
         }
     }
-    await db.online_wallet_transactions.insert_one({
-        "transaction_id": generate_id("txn_"),
-        "player_id": player["player_id"],
-        "type": WalletTransactionType.BET_DEBIT.value,
-        "amount": total_amount,
-        "reference": ticket_id,
-        "status": WalletTransactionStatus.APPROVED.value,
-        "created_at": now_str,
-        "processed_at": now_str
-    })
-    
-    # Calculate potential win
-    potential_win = total_amount * 500  # Example multiplier
-    
-    # Create ticket
-    ticket_doc = {
-        "ticket_id": ticket_id,
-        "player_id": player["player_id"],
-        "game_id": data.game_id,
-        "game_name": lottery["lottery_name"],
-        "schedule_id": data.schedule_id,
-        "draw_type": schedule.get("draw_type"),
-        "draw_date": now.strftime("%Y-%m-%d"),
-        "plays": data.plays,
-        "total_amount": total_amount,
-        "potential_win": potential_win,
-        "actual_win": 0.0,
-        "status": OnlineTicketStatus.PENDING.value,
-        "created_at": now_str,
-        "device_info": request.headers.get("user-agent", ""),
-        "ip_hash": str(hash(request.client.host))[:8]
-    }
-    await db.online_tickets.insert_one(ticket_doc)
-    
-    return {
-        "message": "Ticket created successfully",
-        "ticket": {
-            "ticket_id": ticket_id,
-            "game_name": lottery["lottery_name"],
-            "draw_type": schedule.get("draw_type"),
-            "plays": data.plays,
-            "total_amount": total_amount,
-            "potential_win": potential_win,
-            "status": "pending"
-        }
-    }
 
 
 @online_router.get("/tickets")
