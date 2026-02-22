@@ -970,6 +970,8 @@ async def process_withdrawal(data: TransactionMarkPaid, admin: dict = Depends(ge
 @online_admin_router.post("/withdrawals/reject")
 async def reject_withdrawal(data: TransactionApproval, admin: dict = Depends(get_super_admin)):
     """Reject a withdrawal and refund balance"""
+    from websocket_manager import notify_player, NotificationType
+    
     transaction = await db.online_wallet_transactions.find_one(
         {"transaction_id": data.transaction_id, "type": "withdraw_request", "status": "pending"}
     )
@@ -978,12 +980,14 @@ async def reject_withdrawal(data: TransactionApproval, admin: dict = Depends(get
         raise HTTPException(status_code=404, detail="Transaction not found or already processed")
     
     now = get_current_timestamp()
+    player_id = transaction["player_id"]
+    amount = transaction["amount"]
     
     # Refund wallet
     await db.online_wallets.update_one(
-        {"player_id": transaction["player_id"]},
+        {"player_id": player_id},
         {
-            "$inc": {"balance": transaction["amount"]},
+            "$inc": {"balance": amount},
             "$set": {"updated_at": now}
         }
     )
@@ -999,7 +1003,14 @@ async def reject_withdrawal(data: TransactionApproval, admin: dict = Depends(get
         }}
     )
     
-    return {"message": "Withdrawal rejected and balance refunded"}
+    # Notify player about rejected withdrawal
+    await notify_player(player_id, NotificationType.WITHDRAWAL_REJECTED, {
+        "amount": amount,
+        "reason": data.notes or "Retrait annulé par l'administration",
+        "refunded": True
+    })
+    
+    return {"message": "Retrait rejeté et solde remboursé"}
 
 
 @online_admin_router.get("/tickets")
