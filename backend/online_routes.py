@@ -136,9 +136,18 @@ async def register_player(request: Request, data: OnlinePlayerRegister):
 @limiter.limit("10/minute")
 async def login_player(request: Request, data: OnlinePlayerLogin):
     """Login an online player"""
+    from lottery_engine import check_login_allowed, record_login_attempt
+    
+    # Check if login is allowed (not locked out)
+    login_allowed, lock_message = await check_login_allowed(data.email)
+    if not login_allowed:
+        raise HTTPException(status_code=403, detail=lock_message)
+    
     player = await db.online_players.find_one({"email": data.email.lower()}, {"_id": 0})
     
     if not player or not verify_password(data.password, player.get("password_hash", "")):
+        # Record failed attempt
+        await record_login_attempt(data.email, success=False)
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     if player.get("status") == "suspended":
@@ -147,12 +156,8 @@ async def login_player(request: Request, data: OnlinePlayerLogin):
     if player.get("status") == "blocked":
         raise HTTPException(status_code=403, detail="Account blocked.")
     
-    # Update last login
-    now = get_current_timestamp()
-    await db.online_players.update_one(
-        {"player_id": player["player_id"]},
-        {"$set": {"last_login_at": now}}
-    )
+    # Record successful login
+    await record_login_attempt(data.email, success=True)
     
     # Get wallet
     wallet = await db.online_wallets.find_one({"player_id": player["player_id"]}, {"_id": 0})
