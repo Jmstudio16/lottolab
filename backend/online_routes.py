@@ -974,6 +974,8 @@ async def get_online_settings(admin: dict = Depends(get_super_admin)):
             "enabled_lottery_ids": []
         }
         await db.online_settings.insert_one(settings)
+        # Remove _id from returned settings
+        settings.pop("_id", None)
     
     return settings
 
