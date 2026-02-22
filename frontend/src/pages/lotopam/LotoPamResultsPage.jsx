@@ -131,48 +131,59 @@ const LotoPamResultsPage = () => {
 
                 {/* Results Grid */}
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {groupedResults[date].map((result, index) => (
-                    <div
-                      key={result.result_id || index}
-                      className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 hover:border-yellow-500/30 transition-colors"
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <h3 className="font-bold text-white">{result.lottery_name}</h3>
-                          <p className="text-sm text-slate-400">{result.state_code}</p>
-                        </div>
-                        <span className="px-2 py-1 bg-purple-500/20 text-purple-400 text-xs font-medium rounded">
-                          {result.draw_type}
-                        </span>
-                      </div>
-
-                      {/* Winning Numbers */}
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {(result.winning_numbers || []).map((num, i) => (
-                          <div
-                            key={i}
-                            className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-slate-900 font-bold text-lg shadow-lg shadow-yellow-500/20"
-                          >
-                            {num}
+                  {groupedResults[date].map((result, index) => {
+                    // Parse winning_numbers - could be string, array, or object
+                    let numbers = [];
+                    if (Array.isArray(result.winning_numbers)) {
+                      numbers = result.winning_numbers;
+                    } else if (typeof result.winning_numbers === 'string') {
+                      numbers = result.winning_numbers.split(/[-,\s]+/).filter(n => n.trim());
+                    } else if (result.winning_numbers_parsed) {
+                      numbers = Object.values(result.winning_numbers_parsed);
+                    }
+                    
+                    return (
+                      <div
+                        key={result.result_id || index}
+                        className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 hover:border-yellow-500/30 transition-colors"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h3 className="font-bold text-white">{result.lottery_name}</h3>
+                            <p className="text-sm text-slate-400">{result.state_code}</p>
                           </div>
-                        ))}
-                        {(!result.winning_numbers || result.winning_numbers.length === 0) && (
-                          <span className="text-slate-500">Numéros non disponibles</span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="flex items-center gap-1 text-slate-400">
-                          <Clock className="w-4 h-4" />
-                          {result.draw_time || '--:--'}
-                        </span>
-                        {result.created_at && (
-                          <span className="text-slate-500">
-                            {new Date(result.created_at).toLocaleTimeString('fr-FR', {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
+                          <span className="px-2 py-1 bg-purple-500/20 text-purple-400 text-xs font-medium rounded">
+                            {result.draw_type}
                           </span>
+                        </div>
+
+                        {/* Winning Numbers */}
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {numbers.slice(0, 6).map((num, i) => (
+                            <div
+                              key={i}
+                              className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-slate-900 font-bold text-lg shadow-lg shadow-yellow-500/20"
+                            >
+                              {num}
+                            </div>
+                          ))}
+                          {numbers.length === 0 && (
+                            <span className="text-slate-500">Numéros non disponibles</span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="flex items-center gap-1 text-slate-400">
+                            <Clock className="w-4 h-4" />
+                            {result.draw_time || '--:--'}
+                          </span>
+                          {result.created_at && (
+                            <span className="text-slate-500">
+                              {new Date(result.created_at).toLocaleTimeString('fr-FR', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
                         )}
                       </div>
                     </div>
