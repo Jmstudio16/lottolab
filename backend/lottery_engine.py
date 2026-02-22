@@ -152,7 +152,7 @@ async def process_result_for_online_tickets(result: dict) -> dict:
     winning_numbers = parse_winning_numbers(winning_numbers_raw)
     
     if not winning_numbers:
-        print(f"[LotteryEngine] No winning numbers found for result")
+        print("[LotteryEngine] No winning numbers found for result")
         return {"processed": 0, "winners": 0, "total_payout": 0}
     
     # Find all pending tickets for this lottery and draw
