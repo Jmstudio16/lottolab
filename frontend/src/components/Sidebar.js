@@ -51,10 +51,7 @@ const SuperAdminMenu = [
 
 const CompanyAdminMenu = [
   { path: '/company/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/company/branches', label: 'Succursales', icon: Building2 },
-  { path: '/company/agents', label: 'Agents', icon: UserCircle },
-  { path: '/company/agent-balances', label: 'Soldes Agents', icon: Wallet },
-  { path: '/company/pos-devices', label: 'POS Devices', icon: Monitor },
+  { path: '/company/succursales', label: 'Succursales', icon: Store },
   { path: '/company/lotteries', label: 'Lottery Catalog', icon: Ticket },
   { path: '/company/schedules', label: 'Schedules (View)', icon: CalendarClock },
   { path: '/company/results', label: 'Results (View)', icon: Trophy },
@@ -62,7 +59,7 @@ const CompanyAdminMenu = [
   { path: '/company/winning-tickets', label: 'Gagnants & Paiements', icon: Banknote },
   { path: '/company/configuration', label: 'Configuration', icon: Sliders },
   { path: '/company/statistics', label: 'Statistiques', icon: ChartLine },
-  { path: '/company/daily-reports', label: 'Journalier', icon: BarChart3 },
+  { path: '/company/daily-reports', label: 'Rapports', icon: BarChart3 },
   { path: '/company/users', label: 'Company Users', icon: Users },
   { path: '/company/activity-logs', label: 'Activity Logs', icon: Activity },
   { path: '/company/profile-settings', label: 'Logo & Profil', icon: Image },
