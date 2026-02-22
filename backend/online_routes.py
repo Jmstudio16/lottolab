@@ -234,8 +234,10 @@ async def get_wallet(player: dict = Depends(get_online_player)):
 @limiter.limit("10/minute")
 async def request_deposit(request: Request, data: DepositRequest, player: dict = Depends(get_online_player)):
     """Request a deposit (pending admin approval)"""
+    from websocket_manager import notify_admins, NotificationType
+    
     if data.amount < 100:
-        raise HTTPException(status_code=400, detail="Minimum deposit is 100 HTG")
+        raise HTTPException(status_code=400, detail="Le dépôt minimum est de 100 HTG")
     
     now = get_current_timestamp()
     transaction_id = generate_id("txn_")
@@ -256,8 +258,18 @@ async def request_deposit(request: Request, data: DepositRequest, player: dict =
     }
     await db.online_wallet_transactions.insert_one(transaction_doc)
     
+    # Notify admins about new deposit
+    await notify_admins(NotificationType.NEW_DEPOSIT, {
+        "transaction_id": transaction_id,
+        "player_id": player["player_id"],
+        "player_name": player.get("full_name"),
+        "amount": data.amount,
+        "method": data.method.value,
+        "reference_code": data.reference_code
+    })
+    
     return {
-        "message": "Deposit request submitted. Awaiting confirmation.",
+        "message": "Demande de dépôt soumise. En attente de confirmation.",
         "transaction_id": transaction_id,
         "amount": data.amount,
         "method": data.method.value,
