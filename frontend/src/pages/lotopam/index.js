@@ -1,0 +1,10 @@
+export { default as LotoPamHomePage } from './LotoPamHomePage';
+export { default as LotoPamLoginPage } from './LotoPamLoginPage';
+export { default as LotoPamRegisterPage } from './LotoPamRegisterPage';
+export { default as LotoPamWalletPage } from './LotoPamWalletPage';
+export { default as LotoPamPlayPage } from './LotoPamPlayPage';
+export { default as LotoPamLotteryPlayPage } from './LotoPamLotteryPlayPage';
+export { default as LotoPamMyTicketsPage } from './LotoPamMyTicketsPage';
+export { default as LotoPamResultsPage } from './LotoPamResultsPage';
+export { default as LotoPamKYCPage } from './LotoPamKYCPage';
+export { default as LotoPamProfilePage } from './LotoPamProfilePage';
