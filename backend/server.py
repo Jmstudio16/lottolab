@@ -301,13 +301,28 @@ async def get_company_dashboard_stats(current_user: dict = Depends(get_current_u
 
 @api_router.get("/company/lotteries")
 async def get_company_lotteries(current_user: dict = Depends(get_current_user)):
+    """
+    Get ALL global lotteries with company-specific enabled status.
+    Company Admin can see ALL lotteries from global_lotteries and toggle them.
+    """
     company_id = current_user.get("company_id")
     if not company_id:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    all_lotteries = await db.lotteries.find({}, {"_id": 0}).to_list(1000)
-    company_lotteries = await db.company_lotteries.find({"company_id": company_id}, {"_id": 0}).to_list(1000)
+    # Get ALL global lotteries (the master catalog)
+    all_lotteries = await db.global_lotteries.find({"is_active": True}, {"_id": 0}).to_list(500)
     
+    # Also check legacy lotteries collection for backwards compatibility
+    legacy_lotteries = await db.lotteries.find({}, {"_id": 0}).to_list(500)
+    
+    # Merge if needed (avoid duplicates by lottery_id)
+    lottery_ids = {l["lottery_id"] for l in all_lotteries}
+    for ll in legacy_lotteries:
+        if ll["lottery_id"] not in lottery_ids:
+            all_lotteries.append(ll)
+    
+    # Get company's enabled lotteries
+    company_lotteries = await db.company_lotteries.find({"company_id": company_id}, {"_id": 0}).to_list(500)
     enabled_map = {cl["lottery_id"]: cl for cl in company_lotteries}
     
     result = []
@@ -315,6 +330,9 @@ async def get_company_lotteries(current_user: dict = Depends(get_current_user)):
         lottery_id = lottery["lottery_id"]
         lottery["enabled"] = lottery_id in enabled_map and enabled_map[lottery_id].get("enabled", False)
         result.append(lottery)
+    
+    # Sort by state_code then lottery_name
+    result.sort(key=lambda x: (x.get("state_code", ""), x.get("lottery_name", "")))
     
     return result
 
