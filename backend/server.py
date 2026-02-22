@@ -27,6 +27,7 @@ from universal_pos_routes import universal_pos_router, set_universal_pos_db
 from sync_routes import sync_router, set_sync_db
 from settings_routes import settings_router, set_settings_db
 from financial_routes import financial_router, set_financial_db, process_all_tickets_for_result
+from online_routes import online_router, online_admin_router, set_online_db
 from error_handlers import validation_exception_handler, generic_exception_handler
 
 ROOT_DIR = Path(__file__).parent
