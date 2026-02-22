@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLotoPamAuth } from '../../context/LotoPamAuthContext';
@@ -8,8 +8,43 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { 
   Gamepad2, Clock, Plus, Trash2, ArrowRight, 
-  Loader2, AlertTriangle, Wallet, Check, ChevronDown, ChevronUp
+  Loader2, AlertTriangle, Wallet, Check, ChevronDown, ChevronUp, Timer
 } from 'lucide-react';
+
+// Countdown Timer Component
+const CountdownTimer = ({ initialSeconds, onExpire }) => {
+  const [seconds, setSeconds] = useState(initialSeconds);
+  
+  useEffect(() => {
+    if (seconds <= 0) {
+      onExpire?.();
+      return;
+    }
+    
+    const timer = setInterval(() => {
+      setSeconds(s => s - 1);
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [seconds, onExpire]);
+  
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  
+  const isUrgent = seconds < 300; // Less than 5 minutes
+  
+  return (
+    <div className={`flex items-center gap-2 ${isUrgent ? 'text-red-400 animate-pulse' : 'text-yellow-400'}`}>
+      <Timer className="w-4 h-4" />
+      <span className="font-mono font-bold">
+        {hours > 0 && `${hours}:`}
+        {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
+      </span>
+      {isUrgent && <span className="text-xs">Ferme bientôt!</span>}
+    </div>
+  );
+};
 
 const LotoPamLotteryPlayPage = () => {
   const { t } = useTranslation();
@@ -23,6 +58,7 @@ const LotoPamLotteryPlayPage = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showLotteryList, setShowLotteryList] = useState(!lotteryId);
+  const [drawClosed, setDrawClosed] = useState(false);
   
   // Betting state
   const [plays, setPlays] = useState([
@@ -38,6 +74,10 @@ const LotoPamLotteryPlayPage = () => {
   useEffect(() => {
     if (isAuthenticated) {
       loadLotteries();
+      
+      // Refresh lottery data every minute for countdown updates
+      const interval = setInterval(loadLotteries, 60000);
+      return () => clearInterval(interval);
     } else {
       setLoading(false);
     }
@@ -54,7 +94,9 @@ const LotoPamLotteryPlayPage = () => {
         if (lottery) {
           setSelectedLottery(lottery);
           if (lottery.schedules?.length > 0) {
-            setSelectedSchedule(lottery.schedules[0]);
+            // Select first open schedule
+            const openSchedule = lottery.schedules.find(s => s.is_open) || lottery.schedules[0];
+            setSelectedSchedule(openSchedule);
           }
         }
       }
