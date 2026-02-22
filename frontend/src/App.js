@@ -25,23 +25,19 @@ import { AgentResultsViewPage } from '@/pages/agent/AgentResultsViewPage';
 
 // Company Admin Pages
 import { CompanyDashboardPage } from '@/pages/CompanyDashboardPage';
-import { CompanyAgentsPage } from '@/pages/CompanyAgentsPage';
-import { CompanyCreateAgentPage } from '@/pages/CompanyCreateAgentPage';
+import { CompanySuccursalesPage } from '@/pages/CompanySuccursalesPage';
 import { CompanyLotteriesPage } from '@/pages/CompanyLotteriesPage';
 import { CompanyResultsPage } from '@/pages/CompanyResultsPage';
-import { POSDevicesPage } from '@/pages/POSDevicesPage';
 import { SchedulesPage } from '@/pages/SchedulesPage';
 import { TicketsPage } from '@/pages/TicketsPage';
 import { ReportsPage } from '@/pages/ReportsPage';
 import { CompanyUsersPage } from '@/pages/CompanyUsersPage';
 import { CompanyActivityLogsPage } from '@/pages/CompanyActivityLogsPage';
 import { CompanySettingsPage } from '@/pages/CompanySettingsPage';
-import { CompanyBranchesPage } from '@/pages/CompanyBranchesPage';
 import { CompanyConfigurationPage } from '@/pages/CompanyConfigurationPage';
 import { CompanyStatisticsPage } from '@/pages/CompanyStatisticsPage';
 import { CompanyDailyReportsPage } from '@/pages/CompanyDailyReportsPage';
 import CompanyProfileSettingsPage from '@/pages/company/CompanySettingsPage';
-import { CompanyAgentBalancesPage } from '@/pages/CompanyAgentBalancesPage';
 import { CompanyWinningTicketsPage } from '@/pages/CompanyWinningTicketsPage';
 
 // Agent Universal Terminal Pages
