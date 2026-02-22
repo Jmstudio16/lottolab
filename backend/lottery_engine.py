@@ -273,8 +273,13 @@ async def credit_player_wallet(player_id: str, amount: float, reference: str):
     transaction_id = generate_id("txn_")
     
     # Update wallet balance
-    if result.modified_count == 0:
-        raise HTTPException(status_code=400, detail="Solde insuffisant ou changé")
+    await db.online_wallets.update_one(
+        {"player_id": player_id},
+        {
+            "$inc": {"balance": amount},
+            "$set": {"updated_at": now}
+        }
+    )
     
     # Create transaction record
     await db.online_wallet_transactions.insert_one({
