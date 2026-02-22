@@ -837,6 +837,8 @@ async def get_pending_deposits(admin: dict = Depends(get_super_admin)):
 @online_admin_router.post("/deposits/approve")
 async def approve_deposit(data: TransactionApproval, admin: dict = Depends(get_super_admin)):
     """Approve or reject a deposit"""
+    from websocket_manager import notify_player, NotificationType
+    
     transaction = await db.online_wallet_transactions.find_one(
         {"transaction_id": data.transaction_id, "type": "deposit_request", "status": "pending"}
     )
@@ -845,22 +847,36 @@ async def approve_deposit(data: TransactionApproval, admin: dict = Depends(get_s
         raise HTTPException(status_code=404, detail="Transaction not found or already processed")
     
     now = get_current_timestamp()
+    player_id = transaction["player_id"]
+    amount = transaction["amount"]
     
     if data.approved:
         # Credit wallet
         await db.online_wallets.update_one(
-            {"player_id": transaction["player_id"]},
+            {"player_id": player_id},
             {
-                "$inc": {"balance": transaction["amount"]},
+                "$inc": {"balance": amount},
                 "$set": {"updated_at": now}
             }
         )
         
         new_type = WalletTransactionType.DEPOSIT_APPROVED.value
         new_status = WalletTransactionStatus.APPROVED.value
+        
+        # Notify player about approved deposit
+        await notify_player(player_id, NotificationType.DEPOSIT_APPROVED, {
+            "amount": amount,
+            "transaction_id": data.transaction_id
+        })
     else:
         new_type = WalletTransactionType.DEPOSIT_REJECTED.value
         new_status = WalletTransactionStatus.REJECTED.value
+        
+        # Notify player about rejected deposit
+        await notify_player(player_id, NotificationType.DEPOSIT_REJECTED, {
+            "amount": amount,
+            "reason": data.notes or "Code de référence invalide"
+        })
     
     await db.online_wallet_transactions.update_one(
         {"transaction_id": data.transaction_id},
@@ -879,10 +895,10 @@ async def approve_deposit(data: TransactionApproval, admin: dict = Depends(get_s
         performed_by=admin["user_id"],
         entity_type="wallet_transaction",
         entity_id=data.transaction_id,
-        metadata={"approved": data.approved, "amount": transaction["amount"]}
+        metadata={"approved": data.approved, "amount": amount}
     )
     
-    return {"message": f"Deposit {'approved' if data.approved else 'rejected'}"}
+    return {"message": f"Dépôt {'approuvé' if data.approved else 'rejeté'}"}
 
 
 @online_admin_router.get("/withdrawals/pending")
