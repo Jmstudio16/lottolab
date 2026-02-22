@@ -540,6 +540,7 @@ set_universal_pos_db(db)
 set_sync_db(db)
 set_settings_db(db)
 set_financial_db(db)
+set_online_db(db)
 
 # Connect ticket processor for automatic winning detection
 set_ticket_processor(process_all_tickets_for_result)
@@ -555,6 +556,8 @@ app.include_router(universal_pos_router)
 app.include_router(sync_router)
 app.include_router(settings_router)
 app.include_router(financial_router)
+app.include_router(online_router)
+app.include_router(online_admin_router)
 app.include_router(api_router)
 
 app.add_middleware(
