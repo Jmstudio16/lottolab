@@ -396,6 +396,10 @@ async def create_global_result(
     if process_tickets_for_result:
         background_tasks.add_task(process_tickets_for_result, result.model_dump())
     
+    # PROCESS ONLINE TICKETS: Auto-detect winners for LOTO PAM
+    from lottery_engine import process_result_for_online_tickets
+    background_tasks.add_task(process_result_for_online_tickets, result.model_dump())
+    
     return result
 
 @super_admin_global_router.put("/global-results/{result_id}", response_model=GlobalResultEnhanced)
