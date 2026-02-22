@@ -328,7 +328,7 @@ def get_next_draw_time(schedule: dict) -> Optional[datetime]:
             draw_dt += timedelta(days=1)
         
         return draw_dt
-    except:
+    except Exception:
         return None
 
 
@@ -357,7 +357,7 @@ def is_draw_open(schedule: dict) -> Tuple[bool, Optional[datetime], int]:
         
         seconds_remaining = int((close_dt - now).total_seconds())
         return True, close_dt, seconds_remaining
-    except:
+    except Exception:
         return True, None, -1
 
 
