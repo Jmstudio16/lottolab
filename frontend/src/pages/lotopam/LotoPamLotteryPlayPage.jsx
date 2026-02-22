@@ -326,19 +326,46 @@ const LotoPamLotteryPlayPage = () => {
                   {selectedLottery.schedules.map((schedule) => (
                     <button
                       key={schedule.schedule_id}
-                      onClick={() => setSelectedSchedule(schedule)}
+                      onClick={() => {
+                        if (schedule.is_open) {
+                          setSelectedSchedule(schedule);
+                          setDrawClosed(false);
+                        } else {
+                          toast.error('Ce tirage est fermé');
+                        }
+                      }}
+                      disabled={!schedule.is_open}
                       className={`p-4 rounded-xl text-left transition-all ${
-                        selectedSchedule?.schedule_id === schedule.schedule_id
-                          ? 'bg-yellow-500/20 border-2 border-yellow-500'
-                          : 'bg-slate-900/50 border border-slate-700 hover:border-yellow-500/50'
+                        !schedule.is_open
+                          ? 'bg-slate-900/30 border border-slate-800 opacity-50 cursor-not-allowed'
+                          : selectedSchedule?.schedule_id === schedule.schedule_id
+                            ? 'bg-yellow-500/20 border-2 border-yellow-500'
+                            : 'bg-slate-900/50 border border-slate-700 hover:border-yellow-500/50'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <Clock className="w-5 h-5 text-yellow-400" />
-                        <div>
-                          <p className="font-medium text-white">{schedule.draw_type}</p>
-                          <p className="text-sm text-slate-400">{schedule.draw_time}</p>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <Clock className={`w-5 h-5 ${schedule.is_open ? 'text-yellow-400' : 'text-slate-500'}`} />
+                          <div>
+                            <p className={`font-medium ${schedule.is_open ? 'text-white' : 'text-slate-500'}`}>
+                              {schedule.draw_type || schedule.draw_name}
+                            </p>
+                            <p className="text-sm text-slate-400">{schedule.draw_time}</p>
+                          </div>
                         </div>
+                        {schedule.is_open && schedule.seconds_until_close > 0 ? (
+                          <CountdownTimer 
+                            initialSeconds={schedule.seconds_until_close} 
+                            onExpire={() => {
+                              if (selectedSchedule?.schedule_id === schedule.schedule_id) {
+                                setDrawClosed(true);
+                                toast.warning('Ce tirage est maintenant fermé');
+                              }
+                            }}
+                          />
+                        ) : (
+                          <span className="text-xs text-red-400 font-medium">FERMÉ</span>
+                        )}
                       </div>
                     </button>
                   ))}
@@ -347,7 +374,7 @@ const LotoPamLotteryPlayPage = () => {
             )}
 
             {/* Plays Section */}
-            {selectedLottery && selectedSchedule && (
+            {selectedLottery && selectedSchedule && !drawClosed && (
               <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-white">Vos Paris</h3>
