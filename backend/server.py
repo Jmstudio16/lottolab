@@ -4,8 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 import os
 import logging
@@ -17,6 +16,7 @@ from models import *
 from auth import verify_password, get_password_hash, create_access_token, decode_token
 from utils import generate_id, generate_ticket_code, generate_verification_code, generate_qr_code, get_current_timestamp
 from activity_logger import log_activity
+from rate_limiter import limiter, RATE_LIMITS
 from super_admin_routes import super_admin_router, set_db
 from super_admin_global_routes import super_admin_global_router, set_super_admin_global_db, set_ticket_processor
 from company_routes import company_router, set_company_db
@@ -35,9 +35,6 @@ load_dotenv(ROOT_DIR / '.env')
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
-
-# Rate Limiter for production security
-limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(title="LOTTOLAB API", version="1.0.0", description="Enterprise Lottery SaaS Platform")
 app.state.limiter = limiter
