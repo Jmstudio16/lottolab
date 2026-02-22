@@ -38,9 +38,9 @@ export const AgentNewTicketPage = () => {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const numberInputRef = useRef(null);
 
-  const lotteries = syncData?.lotteries || [];
+  const lotteries = syncData?.enabled_lotteries || syncData?.lotteries || [];
   const schedules = syncData?.schedules || [];
-  const config = syncData?.configuration || {};
+  const config = syncData?.configuration || syncData?.company_config || {};
   const primeConfigs = syncData?.prime_configs || [];
 
   // Get available schedules for selected lottery
