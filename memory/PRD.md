@@ -2,144 +2,212 @@
 ## Product Requirements Document (PRD)
 
 ### Overview
-LOTTOLAB is a production-ready, enterprise-grade multi-tenant Lottery SaaS platform with hierarchical RBAC model (SUPER_ADMIN, COMPANY_ADMIN, AGENT_POS). The system now includes **LOTO PAM**, a public-facing online gaming platform that operates within the same codebase.
+LOTTOLAB is a production-ready, enterprise-grade multi-tenant Lottery SaaS platform with hierarchical RBAC model (SUPER_ADMIN, COMPANY_ADMIN, AGENT_POS). The system includes **LOTO PAM**, a public-facing online gaming platform.
 
 **Status**: ✅ **PRODUCTION READY** 
 **Last Update**: 2026-02-22
-**New Feature**: LOTO PAM Online Platform (Phase 1 Complete)
+**Current Phase**: Phase 2 Complete
 
 ---
 
-## Platform Architecture
+## Implementation Status
 
-### Dual-Platform Structure
-```
-LOTTOLAB (B2B SaaS)           LOTO PAM (B2C Public Platform)
-├── Super Admin Portal        ├── Public Homepage
-├── Company Admin Portal      ├── Player Registration/Login
-├── Agent POS Terminal        ├── Wallet System
-└── API Infrastructure        ├── Game Selection (Lottery)
-                              ├── Results Viewing
-                              └── KYC Submission
-```
+### ✅ Phase 1 - COMPLETE (Infrastructure Core)
+- [x] User Registration & Login with JWT
+- [x] Wallet System (MonCash/NatCash)
+- [x] Super Admin LOTO PAM Control Panel
+- [x] KYC Submission Flow
+- [x] Domain-based Rendering
 
-### Domain-Based Rendering
-```javascript
-if (hostname.includes('lotopam')) {
-  // Render LOTO PAM public portal
-  return <LotoPamApp />;
-} else {
-  // Render LOTTOLAB SaaS portal
-  return <SaaSApp />;
-}
-```
+### ✅ Phase 2 - COMPLETE (Lottery Engine)
+- [x] Real countdown timers per lottery draw
+- [x] Automatic closing when time reached
+- [x] Backend validation (reject after closing)
+- [x] Ticket creation with instant balance deduction
+- [x] Tickets stored with draw_id
+- [x] Numbers locked after submission
+- [x] Auto-detect winners on result publication
+- [x] Automatic winnings calculation
+- [x] Wallet auto-credit for winners
+- [x] Ticket status update (won/lost)
+- [x] Transaction log entries
+- [x] WebSocket real-time notifications
+- [x] Max bet limit (10,000 HTG per play)
+- [x] Daily bet limit (100,000 HTG per user)
+- [x] Account lockout (5 failed logins = 30 min lock)
+- [x] KYC mandatory for withdrawals
+
+### 🔄 Phase 3 - NEXT (Keno & Raffle)
+- [ ] Keno game engine with auto draw scheduler
+- [ ] Raffle/Tombola campaign management
+- [ ] Configurable payout tables
 
 ---
 
-## LOTO PAM Online Platform (NEW)
+## Lottery Engine Features
 
-### Phase 1 - COMPLETED ✅
+### Payout Multipliers
+| Bet Type | Pick 2 | Pick 3 | Pick 4 | Pick 5 |
+|----------|--------|--------|--------|--------|
+| Straight | 50x | 500x | 5,000x | 50,000x |
+| Box | 25x | 80x | 400x | 2,000x |
+| Combo | 25x | 167x | 833x | 4,166x |
 
-#### Public Portal Features
-| Feature | Status | Route |
-|---------|--------|-------|
-| Homepage | ✅ | `/lotopam` |
-| Registration | ✅ | `/lotopam/register` |
-| Login | ✅ | `/lotopam/login` |
-| Wallet | ✅ | `/lotopam/wallet` |
-| Play Selection | ✅ | `/lotopam/play` |
-| Lottery Play | ✅ | `/lotopam/play/lottery` |
-| My Tickets | ✅ | `/lotopam/my-tickets` |
-| Results | ✅ | `/lotopam/results` |
-| KYC Submission | ✅ | `/lotopam/kyc` |
-| Profile | ✅ | `/lotopam/profile` |
+### Winner Detection Flow
+```
+Result Published (Super Admin)
+    ↓
+process_result_for_online_tickets()
+    ↓
+For each pending ticket:
+    ├── Parse winning numbers
+    ├── Check each play (straight/box/combo)
+    ├── Calculate winnings
+    └── Update ticket status
+    ↓
+If winner:
+    ├── credit_player_wallet()
+    ├── Create transaction log
+    └── notify_player(TICKET_WON)
+    ↓
+Broadcast result to all players
+```
 
-#### Super Admin LOTO PAM Module
-| Feature | Status | Route |
-|---------|--------|-------|
-| Dashboard | ✅ | `/super/online/dashboard` |
-| Players Management | ✅ | `/super/online/players` |
-| Deposits Approval | ✅ | `/super/online/deposits` |
-| Withdrawals Processing | ✅ | `/super/online/withdrawals` |
-| Tickets Monitoring | ✅ | `/super/online/tickets` |
-| KYC Verification | ✅ | `/super/online/kyc` |
-| Platform Settings | ✅ | `/super/online/settings` |
+### Security Features
+| Feature | Value | Description |
+|---------|-------|-------------|
+| Max Bet Per Play | 10,000 HTG | Returns error if exceeded |
+| Max Daily Bet | 100,000 HTG | Per user per day |
+| Login Lockout | 5 attempts | 30 minute lockout |
+| KYC Required | Withdrawals | Must be verified status |
+| Fraud Detection | Automatic | Rapid betting, same number alerts |
 
-#### Backend API Endpoints
+---
+
+## WebSocket Notifications
+
+### Player Events
+| Event | Description |
+|-------|-------------|
+| `result_published` | New lottery result available |
+| `ticket_won` | Player won on a ticket |
+| `ticket_lost` | Player lost on a ticket |
+| `wallet_credited` | Money added to wallet |
+| `deposit_approved` | Deposit request approved |
+| `deposit_rejected` | Deposit request rejected |
+| `withdrawal_processed` | Withdrawal paid |
+| `withdrawal_rejected` | Withdrawal rejected |
+| `kyc_approved` | KYC verification passed |
+| `kyc_rejected` | KYC verification failed |
+
+### Admin Events
+| Event | Description |
+|-------|-------------|
+| `new_deposit` | New deposit request |
+| `new_withdrawal` | New withdrawal request |
+| `fraud_alert` | Suspicious activity detected |
+| `high_win` | Large win detected (>50,000 HTG) |
+
+---
+
+## API Endpoints
+
+### Public LOTO PAM Routes (`/api/online/`)
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/online/register` | POST | Player registration |
-| `/api/online/login` | POST | Player login |
-| `/api/online/me` | GET | Get player profile |
-| `/api/online/wallet` | GET | Get wallet balance |
-| `/api/online/wallet/deposit` | POST | Request deposit |
-| `/api/online/wallet/withdraw` | POST | Request withdrawal |
-| `/api/online/results` | GET | Public results |
-| `/api/online/lotteries` | GET | Available lotteries |
-| `/api/online/tickets` | GET | Player tickets |
-| `/api/online/tickets/create` | POST | Create ticket |
-| `/api/online/kyc/submit` | POST | Submit KYC |
-| `/api/online-admin/overview` | GET | Admin stats |
-| `/api/online-admin/players` | GET | List players |
-| `/api/online-admin/deposits/pending` | GET | Pending deposits |
-| `/api/online-admin/deposits/approve` | POST | Approve deposit |
-| `/api/online-admin/withdrawals/process` | POST | Process withdrawal |
-| `/api/online-admin/kyc/review` | POST | Review KYC |
+| `/register` | POST | Player registration |
+| `/login` | POST | Player login (rate limited: 10/min) |
+| `/me` | GET | Get player profile |
+| `/wallet` | GET | Get wallet balance |
+| `/wallet/deposit` | POST | Request deposit |
+| `/wallet/withdraw` | POST | Request withdrawal (KYC required) |
+| `/lotteries` | GET | Available lotteries with countdowns |
+| `/lotteries/countdowns` | GET | Active draw countdowns (public) |
+| `/tickets` | GET | Player tickets |
+| `/tickets/create` | POST | Create ticket (validates limits) |
+| `/results` | GET | Public results |
+| `/kyc/submit` | POST | Submit KYC documents |
+| `/kyc/status` | GET | Check KYC status |
 
-#### Database Collections (NEW)
-- `online_players` - Player accounts
-- `online_wallets` - Player balances
-- `online_wallet_transactions` - Deposit/withdrawal history
-- `online_tickets` - Betting tickets
-- `kyc_submissions` - KYC documents
-- `online_settings` - Platform configuration
+### Super Admin LOTO PAM Routes (`/api/online-admin/`)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/overview` | GET | Dashboard statistics |
+| `/players` | GET | List all players |
+| `/players/{id}` | GET | Player details |
+| `/players/{id}/status` | PUT | Update player status |
+| `/deposits/pending` | GET | Pending deposits |
+| `/deposits/approve` | POST | Approve/reject deposit |
+| `/withdrawals/pending` | GET | Pending withdrawals |
+| `/withdrawals/process` | POST | Mark as paid |
+| `/withdrawals/reject` | POST | Reject and refund |
+| `/tickets` | GET | All online tickets |
+| `/kyc/pending` | GET | Pending KYC submissions |
+| `/kyc/review` | POST | Approve/reject KYC |
+| `/settings` | GET/PUT | Platform settings |
 
-### Phase 2 - UPCOMING
-- [ ] Lottery gameplay with real-time countdown
-- [ ] Ticket number selection interface
-- [ ] Win calculation and notification
-
-### Phase 3 - BACKLOG
-- [ ] Keno game implementation
-- [ ] Raffle/Tombola system
-- [ ] SMS/Email notifications
-
----
-
-## Multi-Language Support (i18n)
-
-### Supported Languages
-| Code | Language | Status |
-|------|----------|--------|
-| `en` | English | ✅ |
-| `fr` | French | ✅ |
-| `es` | Spanish | ✅ |
-| `ht` | Haitian Creole | ✅ |
-
-### Implementation
-- `i18next` library configured
-- Translation files in `/frontend/src/i18n/locales/`
-- `LanguageSwitcher` component in header
-- Language preference saved in localStorage
+### WebSocket Endpoints
+| Endpoint | Description |
+|----------|-------------|
+| `/ws/player/{player_id}` | Player notifications |
+| `/ws/admin/{user_id}` | Admin notifications |
 
 ---
 
-## Security & Production Features
+## Test Reports
 
-### Rate Limiting
-- Login: 10/minute per IP
-- Ticket Sales: 120/minute per IP
-- Registration: 5/minute per IP
+### Latest Test: iteration_9.json
+- **Backend**: 95% (18/19 tests passed)
+- **Frontend**: 100% (All features working)
+- **Player Balance**: 4,900 HTG (after 100 HTG in bets)
+- **Tickets Created**: 2 tickets today
 
-### Anti-Fraud Detection
-- High sales volume alerts
-- Rapid consecutive sales detection
-- Suspicious win rate alerts
+### Verified Features
+- ✅ Countdown timers (h:mm:ss format)
+- ✅ Ticket creation with balance deduction
+- ✅ Max bet validation (French error messages)
+- ✅ Account lockout (30 min after 5 failures)
+- ✅ WebSocket endpoints configured
+- ✅ KYC enforcement for withdrawals
+- ✅ Admin dashboard statistics
+- ✅ Deposit approval flow
 
-### Authentication
-- JWT tokens for both SaaS and Online players
-- Bcrypt password hashing
-- Role-based route protection
+---
+
+## Database Collections
+
+### Online Platform Collections
+| Collection | Description |
+|------------|-------------|
+| `online_players` | Player accounts |
+| `online_wallets` | Player balances |
+| `online_wallet_transactions` | Transaction history |
+| `online_tickets` | Betting tickets |
+| `kyc_submissions` | KYC documents |
+| `online_settings` | Platform config |
+
+### Ticket Schema
+```json
+{
+  "ticket_id": "otkt_xxx",
+  "player_id": "player_xxx",
+  "game_id": "lottery_id",
+  "schedule_id": "schedule_id",
+  "draw_type": "Morning",
+  "draw_time": "10:00",
+  "draw_date": "2026-02-22",
+  "plays": [
+    {"number": "123", "bet_type": "straight", "amount": 50}
+  ],
+  "total_amount": 50,
+  "potential_win": 25000,
+  "actual_win": 0,
+  "status": "pending|won|lost|paid",
+  "result_id": null,
+  "winning_plays": null,
+  "created_at": "timestamp"
+}
+```
 
 ---
 
@@ -150,76 +218,54 @@ if (hostname.includes('lotopam')) {
 |-------|------|
 | jefferson@jmstudio.com | SUPER_ADMIN |
 | admin@lotopam.com | COMPANY_ADMIN |
-| agent001@lottolab.com | AGENT_POS |
 
-### LOTO PAM (Test)
-| Email | Status |
-|-------|--------|
-| testplayer@example.com | pending_kyc |
+### LOTO PAM Players
+| Email | Balance | Status |
+|-------|---------|--------|
+| testplayer@example.com | 4,900 HTG | pending_kyc |
 
 ---
 
-## File Structure (Key Files)
+## File Structure
 
 ```
 /app
 ├── backend/
-│   ├── server.py                   # Main FastAPI app
-│   ├── online_routes.py            # LOTO PAM public APIs
+│   ├── server.py                   # Main FastAPI + WebSocket
+│   ├── lottery_engine.py           # Winner detection & payouts (NEW)
+│   ├── websocket_manager.py        # Real-time notifications (NEW)
+│   ├── online_routes.py            # LOTO PAM APIs
 │   ├── online_models.py            # Pydantic models
 │   ├── rate_limiter.py             # Rate limiting
 │   └── fraud_detector.py           # Fraud detection
 ├── frontend/
 │   ├── src/
 │   │   ├── App.js                  # Domain-based routing
-│   │   ├── i18n/                   # i18next config
-│   │   │   └── locales/            # Translation files
-│   │   ├── pages/
-│   │   │   ├── lotopam/            # LOTO PAM public pages
-│   │   │   └── super/              # Super Admin LOTO PAM module
-│   │   ├── layouts/
-│   │   │   └── LotoPamLayout.jsx   # Public portal layout
-│   │   └── context/
-│   │       └── LotoPamAuthContext.jsx # Player auth context
-│   └── .env                        # Frontend config
-├── nginx.conf                      # Production web server
-└── pm2.config.js                   # Process manager
+│   │   ├── context/
+│   │   │   ├── LotoPamAuthContext.jsx  # Auth + WebSocket (UPDATED)
+│   │   │   └── WebSocketContext.jsx    # WS Provider (NEW)
+│   │   ├── pages/lotopam/
+│   │   │   ├── LotoPamLotteryPlayPage.jsx  # Countdown timers (UPDATED)
+│   │   │   └── ...
+│   │   └── pages/super/
+│   │       └── SuperOnlineDashboardPage.jsx
+│   └── .env
+└── test_reports/
+    └── iteration_9.json            # Phase 2 test results
 ```
-
----
-
-## Deployment Configuration
-
-### Domains
-- `lottolab.tech` → SaaS Portal
-- `lotopam.com` → Public Gaming Platform
-
-### Environment Variables
-```bash
-# Backend
-MONGO_URL=mongodb://localhost:27017
-DB_NAME=lottolab
-JWT_SECRET_KEY=<secure-key>
-CORS_ORIGINS=https://lottolab.tech,https://lotopam.com
-
-# Frontend
-REACT_APP_BACKEND_URL=https://api.lottolab.tech
-```
-
----
-
-## Testing
-
-### Test Report: `/app/test_reports/iteration_8.json`
-- Backend: 100% (16/16 tests passed)
-- Frontend: 100% (All pages loading)
-- Bugs Fixed: 4 (log_activity params, MongoDB ObjectId)
 
 ---
 
 ## Next Steps
 
-1. **Phase 2**: Complete lottery gameplay with ticket creation
-2. **Phase 3**: Implement Keno and Raffle games
-3. **Enhancement**: Add real-time WebSocket notifications
-4. **Production**: Configure SSL and deploy to Hostinger
+### Phase 3: Keno & Raffle
+1. Implement Keno game engine with 5-minute auto draws
+2. Create Raffle campaign management system
+3. Build configurable payout tables admin interface
+4. Add prize pool visualization
+
+### Enhancements
+- SMS/Email notifications for winners
+- Real-time result streaming
+- Mobile-optimized responsive design
+- Multi-currency support
