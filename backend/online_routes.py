@@ -281,17 +281,19 @@ async def request_deposit(request: Request, data: DepositRequest, player: dict =
 @limiter.limit("5/minute")
 async def request_withdrawal(request: Request, data: WithdrawRequest, player: dict = Depends(get_online_player)):
     """Request a withdrawal (requires KYC)"""
+    from websocket_manager import notify_admins, NotificationType
+    
     # Check KYC status
     if player.get("status") != PlayerStatus.VERIFIED.value:
-        raise HTTPException(status_code=403, detail="KYC verification required for withdrawals")
+        raise HTTPException(status_code=403, detail="Vérification KYC requise pour les retraits")
     
     # Check balance
     wallet = await db.online_wallets.find_one({"player_id": player["player_id"]})
     if not wallet or wallet["balance"] < data.amount:
-        raise HTTPException(status_code=400, detail="Insufficient balance")
+        raise HTTPException(status_code=400, detail="Solde insuffisant")
     
     if data.amount < 500:
-        raise HTTPException(status_code=400, detail="Minimum withdrawal is 500 HTG")
+        raise HTTPException(status_code=400, detail="Le retrait minimum est de 500 HTG")
     
     now = get_current_timestamp()
     transaction_id = generate_id("txn_")
@@ -320,8 +322,18 @@ async def request_withdrawal(request: Request, data: WithdrawRequest, player: di
     }
     await db.online_wallet_transactions.insert_one(transaction_doc)
     
+    # Notify admins about new withdrawal
+    await notify_admins(NotificationType.NEW_WITHDRAWAL, {
+        "transaction_id": transaction_id,
+        "player_id": player["player_id"],
+        "player_name": player.get("full_name"),
+        "amount": data.amount,
+        "method": data.method.value,
+        "payout_phone": data.payout_phone
+    })
+    
     return {
-        "message": "Withdrawal request submitted. You will be notified when processed.",
+        "message": "Demande de retrait soumise. Vous serez notifié lors du traitement.",
         "transaction_id": transaction_id,
         "amount": data.amount,
         "method": data.method.value,
