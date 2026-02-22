@@ -543,6 +543,7 @@ set_sync_db(db)
 set_settings_db(db)
 set_financial_db(db)
 set_online_db(db)
+set_lottery_engine_db(db)
 
 # Connect ticket processor for automatic winning detection
 set_ticket_processor(process_all_tickets_for_result)
@@ -564,6 +565,42 @@ api_router.include_router(online_router)
 api_router.include_router(online_admin_router)
 
 app.include_router(api_router)
+
+
+# ============ WEBSOCKET ENDPOINTS ============
+@app.websocket("/ws/player/{player_id}")
+async def websocket_player_endpoint(websocket: WebSocket, player_id: str):
+    """WebSocket endpoint for player real-time notifications"""
+    await ws_manager.connect_player(websocket, player_id)
+    try:
+        while True:
+            # Keep connection alive, handle incoming messages if needed
+            data = await websocket.receive_text()
+            # Can handle ping/pong or other client messages here
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        ws_manager.disconnect_player(websocket, player_id)
+    except Exception as e:
+        logger.error(f"WebSocket error for player {player_id}: {e}")
+        ws_manager.disconnect_player(websocket, player_id)
+
+
+@app.websocket("/ws/admin/{user_id}")
+async def websocket_admin_endpoint(websocket: WebSocket, user_id: str):
+    """WebSocket endpoint for admin real-time notifications"""
+    await ws_manager.connect_admin(websocket, user_id)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        ws_manager.disconnect_admin(websocket, user_id)
+    except Exception as e:
+        logger.error(f"WebSocket error for admin {user_id}: {e}")
+        ws_manager.disconnect_admin(websocket, user_id)
+
 
 app.add_middleware(
     CORSMiddleware,
