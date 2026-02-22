@@ -105,6 +105,8 @@ async def login(request: Request, credentials: LoginRequest):
         UserRole.SUPER_ADMIN: "/super/dashboard",
         UserRole.COMPANY_ADMIN: "/company/dashboard",
         UserRole.COMPANY_MANAGER: "/company/dashboard",
+        UserRole.BRANCH_SUPERVISOR: "/branch/dashboard",
+        UserRole.BRANCH_USER: "/branch/dashboard",
         UserRole.AGENT_POS: "/pos",
         UserRole.AUDITOR_READONLY: "/company/dashboard"
     }
