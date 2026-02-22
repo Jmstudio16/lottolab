@@ -237,33 +237,45 @@ const LotoPamHomePage = () => {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {results.slice(0, 6).map((result, index) => (
-              <div
-                key={result.result_id || index}
-                className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 hover:border-yellow-500/50 transition-colors"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-white">{result.lottery_name}</h3>
-                  <span className="px-2 py-1 bg-slate-700 rounded text-xs text-slate-300">
-                    {result.draw_type}
-                  </span>
+            {results.slice(0, 6).map((result, index) => {
+              // Parse winning_numbers - could be string, array, or object
+              let numbers = [];
+              if (Array.isArray(result.winning_numbers)) {
+                numbers = result.winning_numbers;
+              } else if (typeof result.winning_numbers === 'string') {
+                numbers = result.winning_numbers.split(/[-,\s]+/).filter(n => n.trim());
+              } else if (result.winning_numbers_parsed) {
+                numbers = Object.values(result.winning_numbers_parsed);
+              }
+              
+              return (
+                <div
+                  key={result.result_id || index}
+                  className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 hover:border-yellow-500/50 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-white">{result.lottery_name}</h3>
+                    <span className="px-2 py-1 bg-slate-700 rounded text-xs text-slate-300">
+                      {result.draw_type}
+                    </span>
+                  </div>
+                  <div className="flex gap-2 mb-4">
+                    {numbers.slice(0, 6).map((num, i) => (
+                      <div
+                        key={i}
+                        className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-slate-900 font-bold shadow-lg"
+                      >
+                        {num}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-slate-400">
+                    <Clock className="w-4 h-4" />
+                    {new Date(result.draw_date || result.created_at).toLocaleDateString()}
+                  </div>
                 </div>
-                <div className="flex gap-2 mb-4">
-                  {(result.winning_numbers || []).map((num, i) => (
-                    <div
-                      key={i}
-                      className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-slate-900 font-bold shadow-lg"
-                    >
-                      {num}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2 text-sm text-slate-400">
-                  <Clock className="w-4 h-4" />
-                  {new Date(result.draw_date || result.created_at).toLocaleDateString()}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {results.length === 0 && (
