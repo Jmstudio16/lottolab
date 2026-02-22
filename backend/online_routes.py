@@ -922,7 +922,9 @@ async def get_pending_withdrawals(admin: dict = Depends(get_super_admin)):
 
 @online_admin_router.post("/withdrawals/process")
 async def process_withdrawal(data: TransactionMarkPaid, admin: dict = Depends(get_super_admin)):
-    """Mark withdrawal as paid or rejected"""
+    """Mark withdrawal as paid"""
+    from websocket_manager import notify_player, NotificationType
+    
     transaction = await db.online_wallet_transactions.find_one(
         {"transaction_id": data.transaction_id, "type": "withdraw_request", "status": "pending"}
     )
@@ -931,6 +933,8 @@ async def process_withdrawal(data: TransactionMarkPaid, admin: dict = Depends(ge
         raise HTTPException(status_code=404, detail="Transaction not found or already processed")
     
     now = get_current_timestamp()
+    player_id = transaction["player_id"]
+    amount = transaction["amount"]
     
     # Mark as paid
     await db.online_wallet_transactions.update_one(
@@ -944,16 +948,23 @@ async def process_withdrawal(data: TransactionMarkPaid, admin: dict = Depends(ge
         }}
     )
     
+    # Notify player about processed withdrawal
+    await notify_player(player_id, NotificationType.WITHDRAWAL_PROCESSED, {
+        "amount": amount,
+        "method": transaction.get("method"),
+        "payout_phone": transaction.get("payout_phone")
+    })
+    
     await log_activity(
         db=db,
         action_type="WITHDRAWAL_PAID",
         performed_by=admin["user_id"],
         entity_type="wallet_transaction",
         entity_id=data.transaction_id,
-        metadata={"amount": transaction["amount"], "payout_phone": transaction.get("payout_phone")}
+        metadata={"amount": amount, "payout_phone": transaction.get("payout_phone")}
     )
     
-    return {"message": "Withdrawal marked as paid"}
+    return {"message": "Retrait marqué comme payé"}
 
 
 @online_admin_router.post("/withdrawals/reject")
