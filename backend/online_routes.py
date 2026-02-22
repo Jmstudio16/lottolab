@@ -700,7 +700,7 @@ async def update_player_status(player_id: str, status: str, admin: dict = Depend
         performed_by=admin["user_id"],
         entity_type="online_player",
         entity_id=player_id,
-        details={"new_status": status}
+        metadata={"new_status": status}
     )
     
     return {"message": f"Player status updated to {status}"}
@@ -770,7 +770,7 @@ async def approve_deposit(data: TransactionApproval, admin: dict = Depends(get_s
         performed_by=admin["user_id"],
         entity_type="wallet_transaction",
         entity_id=data.transaction_id,
-        details={"approved": data.approved, "amount": transaction["amount"]}
+        metadata={"approved": data.approved, "amount": transaction["amount"]}
     )
     
     return {"message": f"Deposit {'approved' if data.approved else 'rejected'}"}
@@ -825,7 +825,7 @@ async def process_withdrawal(data: TransactionMarkPaid, admin: dict = Depends(ge
         performed_by=admin["user_id"],
         entity_type="wallet_transaction",
         entity_id=data.transaction_id,
-        details={"amount": transaction["amount"], "payout_phone": transaction.get("payout_phone")}
+        metadata={"amount": transaction["amount"], "payout_phone": transaction.get("payout_phone")}
     )
     
     return {"message": "Withdrawal marked as paid"}
@@ -992,7 +992,8 @@ async def update_online_settings(data: OnlineSettingsUpdate, admin: dict = Depen
         action_type="ONLINE_SETTINGS_UPDATE",
         performed_by=admin["user_id"],
         entity_type="online_settings",
-        details=update_data
+        entity_id="online_settings",
+        metadata=update_data
     )
     
     return {"message": "Settings updated"}
