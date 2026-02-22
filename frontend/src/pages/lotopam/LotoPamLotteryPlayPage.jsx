@@ -163,6 +163,12 @@ const LotoPamLotteryPlayPage = () => {
       toast.error('Sélectionnez une loterie et un tirage');
       return;
     }
+    
+    // Check if draw is still open
+    if (!selectedSchedule.is_open || drawClosed) {
+      toast.error('Ce tirage est fermé. Sélectionnez un autre tirage.');
+      return;
+    }
 
     const validationError = validatePlays();
     if (validationError) {
