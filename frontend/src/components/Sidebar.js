@@ -39,6 +39,14 @@ const SuperAdminMenu = [
   { path: '/super/plans', label: 'Plans & Licenses', icon: Package },
   { path: '/super/activity-logs', label: 'Activity Logs', icon: Activity },
   { path: '/super/settings', label: 'Settings', icon: Settings },
+  { divider: true, label: 'LOTO PAM Online' },
+  { path: '/super/online/dashboard', label: 'LOTO PAM Dashboard', icon: Store },
+  { path: '/super/online/players', label: 'Joueurs Online', icon: Users },
+  { path: '/super/online/deposits', label: 'Dépôts', icon: Wallet },
+  { path: '/super/online/withdrawals', label: 'Retraits', icon: Banknote },
+  { path: '/super/online/tickets', label: 'Tickets Online', icon: Ticket },
+  { path: '/super/online/kyc', label: 'Vérification KYC', icon: Award },
+  { path: '/super/online/settings', label: 'Config LOTO PAM', icon: Sliders },
 ];
 
 const CompanyAdminMenu = [
