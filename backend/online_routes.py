@@ -357,7 +357,9 @@ async def get_available_games(player: dict = Depends(get_online_player)):
 
 @online_router.get("/lotteries")
 async def get_online_lotteries(player: dict = Depends(get_online_player)):
-    """Get lotteries available for online play"""
+    """Get lotteries available for online play with countdown info"""
+    from lottery_engine import is_draw_open
+    
     settings = await db.online_settings.find_one({}, {"_id": 0})
     enabled_ids = settings.get("enabled_lottery_ids", []) if settings else []
     
@@ -369,18 +371,60 @@ async def get_online_lotteries(player: dict = Depends(get_online_player)):
     
     lotteries = await db.global_lotteries.find(query, {"_id": 0}).to_list(200)
     
-    # Get schedules for today
-    now = datetime.now(timezone.utc)
-    today = now.strftime("%Y-%m-%d")
-    
+    # Get schedules with countdown info
     for lottery in lotteries:
         schedules = await db.global_schedules.find(
             {"lottery_id": lottery["lottery_id"], "is_active": True},
             {"_id": 0}
         ).to_list(10)
+        
+        # Add countdown info to each schedule
+        for schedule in schedules:
+            is_open, close_time, seconds_remaining = is_draw_open(schedule)
+            schedule["is_open"] = is_open
+            schedule["seconds_until_close"] = seconds_remaining
+            schedule["close_time_display"] = close_time.isoformat() if close_time else None
+        
         lottery["schedules"] = schedules
     
     return {"lotteries": lotteries, "count": len(lotteries)}
+
+
+@online_router.get("/lotteries/countdowns")
+async def get_lottery_countdowns():
+    """Get countdown timers for all active lottery draws (public)"""
+    from lottery_engine import is_draw_open
+    
+    schedules = await db.global_schedules.find(
+        {"is_active": True},
+        {"_id": 0}
+    ).to_list(500)
+    
+    countdowns = []
+    for schedule in schedules:
+        lottery = await db.global_lotteries.find_one(
+            {"lottery_id": schedule.get("lottery_id")},
+            {"_id": 0, "lottery_name": 1, "state_code": 1}
+        )
+        
+        is_open, close_time, seconds_remaining = is_draw_open(schedule)
+        
+        if is_open and seconds_remaining > 0:
+            countdowns.append({
+                "schedule_id": schedule.get("schedule_id"),
+                "lottery_id": schedule.get("lottery_id"),
+                "lottery_name": lottery.get("lottery_name") if lottery else "Unknown",
+                "state_code": lottery.get("state_code") if lottery else "",
+                "draw_type": schedule.get("draw_type") or schedule.get("draw_name"),
+                "draw_time": schedule.get("draw_time"),
+                "seconds_until_close": seconds_remaining,
+                "is_open": True
+            })
+    
+    # Sort by time remaining
+    countdowns.sort(key=lambda x: x["seconds_until_close"])
+    
+    return {"countdowns": countdowns}
 
 
 @online_router.post("/tickets/create")
