@@ -184,10 +184,11 @@ const LotoPamResultsPage = () => {
                                 minute: '2-digit'
                               })}
                             </span>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}
