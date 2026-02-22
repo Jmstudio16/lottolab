@@ -88,7 +88,17 @@ export const Sidebar = ({ role }) => {
       
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3">
-        {menu.map((item) => {
+        {menu.map((item, index) => {
+          // Handle divider
+          if (item.divider) {
+            return (
+              <div key={`divider-${index}`} className="mt-4 mb-2 px-4">
+                <p className="text-xs font-bold text-yellow-500 uppercase tracking-wider">{item.label}</p>
+                <div className="mt-2 border-t border-slate-700"></div>
+              </div>
+            );
+          }
+          
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
           
