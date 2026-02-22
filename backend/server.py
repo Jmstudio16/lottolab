@@ -338,25 +338,46 @@ async def get_company_lotteries(current_user: dict = Depends(get_current_user)):
 
 @api_router.put("/company/lotteries/{lottery_id}/toggle")
 async def toggle_lottery(lottery_id: str, enabled: bool, current_user: dict = Depends(get_current_user)):
+    """
+    Toggle a lottery on/off for the company.
+    This will trigger config version increment for real-time sync to agents.
+    """
     company_id = current_user.get("company_id")
     if not company_id:
         raise HTTPException(status_code=403, detail="Access denied")
     
     existing = await db.company_lotteries.find_one({"company_id": company_id, "lottery_id": lottery_id})
+    now = get_current_timestamp()
     
     if existing:
         await db.company_lotteries.update_one(
             {"company_id": company_id, "lottery_id": lottery_id},
-            {"$set": {"enabled": enabled}}
+            {"$set": {"enabled": enabled, "updated_at": now}}
         )
     else:
         await db.company_lotteries.insert_one({
             "company_id": company_id,
             "lottery_id": lottery_id,
-            "enabled": enabled
+            "enabled": enabled,
+            "created_at": now,
+            "updated_at": now
         })
     
-    return {"message": "Lottery toggled successfully"}
+    # Increment config version for real-time sync to all agents
+    await db.company_config_versions.update_one(
+        {"company_id": company_id},
+        {
+            "$inc": {"version": 1},
+            "$set": {
+                "last_updated_at": now,
+                "last_updated_by": current_user.get("user_id"),
+                "change_type": "LOTTERY_TOGGLE"
+            }
+        },
+        upsert=True
+    )
+    
+    return {"message": f"Loterie {'activée' if enabled else 'désactivée'} avec succès", "enabled": enabled}
 
 
 # ============ POS ROUTES ============
