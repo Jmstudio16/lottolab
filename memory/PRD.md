@@ -2,11 +2,11 @@
 ## Product Requirements Document (PRD)
 
 ### Overview
-LOTTOLAB is a production-ready, enterprise-grade multi-tenant Lottery SaaS platform with hierarchical RBAC model (SUPER_ADMIN, COMPANY_ADMIN, AGENT_POS). The system includes **LOTO PAM**, a public-facing online gaming platform.
+LOTTOLAB is a production-ready, enterprise-grade multi-tenant Lottery SaaS platform with hierarchical RBAC model (SUPER_ADMIN, COMPANY_ADMIN, BRANCH_SUPERVISOR, AGENT_POS). The system includes **LOTO PAM**, a public-facing online gaming platform.
 
 **Status**: ✅ **PRODUCTION READY** 
-**Last Update**: 2026-02-22
-**Current Phase**: Phase 2 Complete
+**Last Update**: 2026-02-27
+**Current Phase**: Company Admin Restructure Complete
 
 ---
 
@@ -37,7 +37,21 @@ LOTTOLAB is a production-ready, enterprise-grade multi-tenant Lottery SaaS platf
 - [x] Account lockout (5 failed logins = 30 min lock)
 - [x] KYC mandatory for withdrawals
 
-### 🔄 Phase 3 - NEXT (Keno & Raffle)
+### ✅ COMPANY ADMIN RESTRUCTURE - COMPLETE (2026-02-27)
+- [x] **REMOVED** POS Devices menu from Company Admin
+- [x] **REMOVED** Agents menu from Company Admin (standalone)
+- [x] **NEW** Succursales (Branches) management
+- [x] **NEW** Hierarchy: Company Admin → Succursales → Agents
+- [x] Agents MUST belong to ONE succursale
+- [x] Succursale creation form with supervisor user
+- [x] BRANCH_SUPERVISOR and BRANCH_USER roles
+- [x] Agent creation ONLY inside succursale detail page
+- [x] Delete agent functionality
+- [x] Delete succursale (with validation - no active agents)
+- [x] Succursale reports endpoint
+- [x] Logo Bank upload for succursale
+
+### 🔄 Phase 3 - PAUSED (Keno & Raffle)
 - [ ] Keno game engine with auto draw scheduler
 - [ ] Raffle/Tombola campaign management
 - [ ] Configurable payout tables
