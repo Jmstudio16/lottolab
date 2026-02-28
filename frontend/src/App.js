@@ -496,11 +496,7 @@ const SaaSApp = () => {
                 {/* Legacy POS route redirect */}
                 <Route
                   path="/pos"
-                  element={<Navigate to="/agent/dashboard" replace />}
-                />
-                <Route
-                  path="/agent/pos"
-                  element={<Navigate to="/agent/dashboard" replace />}
+                  element={<Navigate to="/agent/pos" replace />}
                 />
 
                 {/* Catch all - redirect to role-based home */}
