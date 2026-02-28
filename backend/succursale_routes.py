@@ -1,12 +1,15 @@
 """
-Succursale (Branch) Management Routes
-New hierarchy: Super Admin → Company Admin → Succursales → Agents
-Agents MUST belong to ONE succursale - no standalone agents allowed.
+Succursale (Branch) Management Routes - RESTRUCTURED
+- Email-based login ONLY (no pseudo/identifiant)
+- Supervisor with full details
+- Agent under succursale only
+- Auto-sync to Super Admin
+- Multi-tenant isolation
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Request, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Depends, Request, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from datetime import datetime, timezone
 from pydantic import BaseModel, EmailStr
 import os
@@ -30,7 +33,7 @@ def set_succursale_db(database):
 
 
 async def get_company_admin(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Auth dependency for company admin routes"""
+    """Auth dependency for company admin routes with suspension check"""
     token = credentials.credentials
     payload = decode_token(token)
     if not payload:
@@ -40,6 +43,16 @@ async def get_company_admin(credentials: HTTPAuthorizationCredentials = Depends(
     user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
     if not user:
         raise HTTPException(status_code=401, detail="Utilisateur non trouvé")
+    
+    # Check if user is suspended
+    if user.get("status") in ["SUSPENDED", "DELETED"]:
+        raise HTTPException(status_code=403, detail="Compte suspendu. Contactez l'administrateur.")
+    
+    # Check if company is suspended
+    if user.get("company_id"):
+        company = await db.companies.find_one({"company_id": user["company_id"]}, {"_id": 0})
+        if company and company.get("status") in ["SUSPENDED", "EXPIRED"]:
+            raise HTTPException(status_code=403, detail="Entreprise suspendue ou expirée. Contactez l'administrateur.")
     
     allowed_roles = [UserRole.COMPANY_ADMIN, UserRole.COMPANY_MANAGER]
     if user.get("role") not in allowed_roles:
@@ -59,32 +72,26 @@ def require_admin(user: dict):
 
 
 # ============================================================================
-# PYDANTIC MODELS FOR SUCCURSALE
+# PYDANTIC MODELS - EMAIL BASED (NO PSEUDO/IDENTIFIANT)
 # ============================================================================
 
 class SuccursaleCreate(BaseModel):
-    # Succursale info
-    nom_succursale: str
-    nom_bank: str
-    message: Optional[str] = None
-    
-    # Supervisor options
-    allow_sub_supervisor: bool = False  # Possibilité d'ajouter sous-superviseur
-    mariage_gratuit: bool = False  # Mariage Gratuit
-    
-    # Superviseur principal
+    """New Succursale form with EMAIL-based supervisor"""
+    # SECTION 1 - SUPERVISEUR
     supervisor_nom: str
     supervisor_prenom: str
-    supervisor_pseudo: str
+    supervisor_email: EmailStr  # REQUIRED - replaces pseudo
+    supervisor_telephone: str  # REQUIRED
     supervisor_password: str
     supervisor_password_confirm: str
     
-    # Utilisateur (optional additional user)
-    user_nom: Optional[str] = None
-    user_prenom: Optional[str] = None
-    user_pseudo: Optional[str] = None
-    user_password: Optional[str] = None
-    user_password_confirm: Optional[str] = None
+    # SECTION 2 - PARAMÈTRES
+    allow_sub_supervisor: bool = False
+    superviseur_principal: bool = True
+    mariage_gratuit: bool = False
+    nom_succursale: str
+    nom_bank: str
+    message: Optional[str] = None
 
 
 class SuccursaleUpdate(BaseModel):
@@ -96,33 +103,58 @@ class SuccursaleUpdate(BaseModel):
     status: Optional[str] = None
 
 
-class AgentInSuccursaleCreate(BaseModel):
+class AgentCreate(BaseModel):
+    """New Agent form - EMAIL based, under succursale"""
     # Agent info
-    device_id: str
-    zone_adresse: Optional[str] = None
     nom_agent: str
     prenom_agent: str
+    email: EmailStr  # REQUIRED - replaces identifiant
     telephone: Optional[str] = None
-    identifiant: str  # login username
-    mot_de_passe: str
+    password: str
+    password_confirm: str
     
     # Commission & Limits
-    percent_agent: float = 0.0
-    percent_superviseur: float = 0.0
+    commission_percent: float = 0.0
     limite_credit: float = 50000.0
-    limite_balance_gain: float = 100000.0
+    limite_gain: float = 100000.0
+    status: str = "ACTIVE"
 
 
 class AgentUpdate(BaseModel):
-    zone_adresse: Optional[str] = None
     nom_agent: Optional[str] = None
     prenom_agent: Optional[str] = None
     telephone: Optional[str] = None
-    percent_agent: Optional[float] = None
-    percent_superviseur: Optional[float] = None
+    commission_percent: Optional[float] = None
     limite_credit: Optional[float] = None
-    limite_balance_gain: Optional[float] = None
+    limite_gain: Optional[float] = None
     status: Optional[str] = None
+
+
+# ============================================================================
+# HELPER: UPDATE COMPANY AGENT COUNT
+# ============================================================================
+
+async def update_company_agent_count(company_id: str):
+    """Update agent count in company document"""
+    count = await db.users.count_documents({
+        "company_id": company_id,
+        "role": UserRole.AGENT_POS,
+        "status": {"$ne": "DELETED"}
+    })
+    
+    succursale_count = await db.succursales.count_documents({
+        "company_id": company_id,
+        "status": {"$ne": "DELETED"}
+    })
+    
+    await db.companies.update_one(
+        {"company_id": company_id},
+        {"$set": {
+            "agents_count": count,
+            "succursales_count": succursale_count,
+            "updated_at": get_current_timestamp()
+        }}
+    )
 
 
 # ============================================================================
@@ -135,13 +167,12 @@ async def get_all_succursales(current_user: dict = Depends(get_company_admin)):
     company_id = current_user["company_id"]
     
     succursales = await db.succursales.find(
-        {"company_id": company_id},
+        {"company_id": company_id, "status": {"$ne": "DELETED"}},
         {"_id": 0}
     ).to_list(500)
     
     # Enrich with agent count and supervisor info
     for succ in succursales:
-        # Count agents in this succursale
         agent_count = await db.users.count_documents({
             "succursale_id": succ["succursale_id"],
             "role": UserRole.AGENT_POS,
@@ -149,13 +180,13 @@ async def get_all_succursales(current_user: dict = Depends(get_company_admin)):
         })
         succ["agent_count"] = agent_count
         
-        # Get supervisor name
         if succ.get("supervisor_id"):
             supervisor = await db.users.find_one(
                 {"user_id": succ["supervisor_id"]},
                 {"_id": 0, "name": 1, "email": 1}
             )
             succ["supervisor_name"] = supervisor.get("name") if supervisor else None
+            succ["supervisor_email"] = supervisor.get("email") if supervisor else None
     
     return succursales
 
@@ -194,28 +225,11 @@ async def get_succursale_detail(
             {"_id": 0}
         )
         
-        # Get today's stats
-        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-        pipeline = [
-            {"$match": {"agent_id": agent["user_id"], "created_at": {"$gte": today_start}}},
-            {"$group": {
-                "_id": None,
-                "total_tickets": {"$sum": 1},
-                "total_sales": {"$sum": "$total_amount"}
-            }}
-        ]
-        stats = await db.lottery_transactions.aggregate(pipeline).to_list(1)
-        
         enriched_agents.append({
             **agent,
-            "device_id": policy.get("device_id") if policy else None,
-            "zone_adresse": policy.get("zone") if policy else None,
-            "percent_agent": policy.get("commission_percent", 0) if policy else 0,
-            "percent_superviseur": policy.get("supervisor_percent", 0) if policy else 0,
+            "commission_percent": policy.get("commission_percent", 0) if policy else 0,
             "limite_credit": policy.get("max_credit_limit", 50000) if policy else 50000,
-            "limite_balance_gain": policy.get("max_win_limit", 100000) if policy else 100000,
-            "total_sales_today": stats[0]["total_sales"] if stats else 0,
-            "total_tickets_today": stats[0]["total_tickets"] if stats else 0
+            "limite_gain": policy.get("max_win_limit", 100000) if policy else 100000
         })
     
     succursale["agents"] = enriched_agents
@@ -237,34 +251,35 @@ async def create_succursale(
     request: Request,
     current_user: dict = Depends(get_company_admin)
 ):
-    """Create a new succursale with supervisor"""
+    """Create a new succursale with EMAIL-based supervisor"""
     company_id = require_admin(current_user)
     
     # Validate passwords match
     if data.supervisor_password != data.supervisor_password_confirm:
-        raise HTTPException(status_code=400, detail="Les mots de passe du superviseur ne correspondent pas")
+        raise HTTPException(status_code=400, detail="Les mots de passe ne correspondent pas")
     
-    if data.user_password and data.user_password != data.user_password_confirm:
-        raise HTTPException(status_code=400, detail="Les mots de passe de l'utilisateur ne correspondent pas")
-    
-    # Check supervisor pseudo uniqueness
-    existing_supervisor = await db.users.find_one({"email": f"{data.supervisor_pseudo}@branch.local"})
-    if existing_supervisor:
-        raise HTTPException(status_code=400, detail="Ce pseudo superviseur existe déjà")
+    # Check supervisor email uniqueness GLOBALLY
+    existing_email = await db.users.find_one({"email": data.supervisor_email.lower()})
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
     
     now = get_current_timestamp()
     succursale_id = generate_id("succ_")
     supervisor_id = generate_id("user_")
     
-    # 1. Create supervisor user
-    supervisor_email = f"{data.supervisor_pseudo}@branch.local"
+    # Get company name for notification
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0, "name": 1})
+    company_name = company.get("name", "Unknown") if company else "Unknown"
+    
+    # 1. Create supervisor user with EMAIL login
     supervisor_name = f"{data.supervisor_prenom} {data.supervisor_nom}"
     
     supervisor_doc = {
         "user_id": supervisor_id,
-        "email": supervisor_email,
+        "email": data.supervisor_email.lower(),  # Normalized email
         "password_hash": get_password_hash(data.supervisor_password),
         "name": supervisor_name,
+        "telephone": data.supervisor_telephone,
         "role": "BRANCH_SUPERVISOR",
         "company_id": company_id,
         "succursale_id": succursale_id,
@@ -274,48 +289,33 @@ async def create_succursale(
     }
     await db.users.insert_one(supervisor_doc)
     
-    # 2. Create optional additional user if provided
-    additional_user_id = None
-    if data.user_nom and data.user_prenom and data.user_pseudo and data.user_password:
-        additional_user_id = generate_id("user_")
-        user_email = f"{data.user_pseudo}@branch.local"
-        user_name = f"{data.user_prenom} {data.user_nom}"
-        
-        user_doc = {
-            "user_id": additional_user_id,
-            "email": user_email,
-            "password_hash": get_password_hash(data.user_password),
-            "name": user_name,
-            "role": "BRANCH_USER",
-            "company_id": company_id,
-            "succursale_id": succursale_id,
-            "status": "ACTIVE",
-            "created_at": now,
-            "updated_at": now
-        }
-        await db.users.insert_one(user_doc)
-    
-    # 3. Create succursale record
+    # 2. Create succursale record
     succursale_doc = {
         "succursale_id": succursale_id,
         "company_id": company_id,
+        "company_name": company_name,
         "nom_succursale": data.nom_succursale,
         "nom_bank": data.nom_bank,
-        "logo_bank_url": None,  # Will be set via separate upload
+        "logo_bank_url": None,
         "message": data.message,
         "allow_sub_supervisor": data.allow_sub_supervisor,
+        "superviseur_principal": data.superviseur_principal,
         "mariage_gratuit": data.mariage_gratuit,
         "supervisor_id": supervisor_id,
         "supervisor_nom": data.supervisor_nom,
         "supervisor_prenom": data.supervisor_prenom,
-        "supervisor_pseudo": data.supervisor_pseudo,
-        "additional_user_id": additional_user_id,
+        "supervisor_email": data.supervisor_email.lower(),
+        "supervisor_telephone": data.supervisor_telephone,
         "status": "ACTIVE",
         "created_at": now,
         "updated_at": now
     }
     await db.succursales.insert_one(succursale_doc)
     
+    # 3. Update company counters
+    await update_company_agent_count(company_id)
+    
+    # 4. Log activity
     await log_activity(
         db=db,
         action_type="SUCCURSALE_CREATED",
@@ -325,16 +325,35 @@ async def create_succursale(
         company_id=company_id,
         metadata={
             "nom_succursale": data.nom_succursale,
-            "supervisor_name": supervisor_name
+            "supervisor_name": supervisor_name,
+            "supervisor_email": data.supervisor_email,
+            "company_name": company_name
         },
         ip_address=request.client.host if request.client else None
     )
+    
+    # 5. Create notification for Super Admin
+    notification_doc = {
+        "notification_id": generate_id("notif_"),
+        "type": "SUCCURSALE_CREATED",
+        "target_role": "SUPER_ADMIN",
+        "company_id": company_id,
+        "company_name": company_name,
+        "message": f"Nouvelle succursale '{data.nom_succursale}' créée par {company_name}",
+        "metadata": {
+            "succursale_id": succursale_id,
+            "supervisor_email": data.supervisor_email
+        },
+        "read": False,
+        "created_at": now
+    }
+    await db.admin_notifications.insert_one(notification_doc)
     
     return {
         "message": "Succursale créée avec succès",
         "succursale_id": succursale_id,
         "supervisor_id": supervisor_id,
-        "supervisor_pseudo": data.supervisor_pseudo
+        "supervisor_email": data.supervisor_email.lower()
     }
 
 
@@ -344,34 +363,28 @@ async def upload_bank_logo(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_company_admin)
 ):
-    """Upload bank logo (320x232) for succursale"""
+    """Upload bank logo for succursale"""
     company_id = require_admin(current_user)
     
-    # Verify succursale exists
     succursale = await db.succursales.find_one(
         {"succursale_id": succursale_id, "company_id": company_id}
     )
     if not succursale:
         raise HTTPException(status_code=404, detail="Succursale non trouvée")
     
-    # Validate file type
     allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
     if file.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Type de fichier non supporté. Utilisez PNG, JPEG ou WebP")
+        raise HTTPException(status_code=400, detail="Type de fichier non supporté")
     
-    # Create upload directory
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     
-    # Generate unique filename
     ext = file.filename.split(".")[-1] if "." in file.filename else "png"
     filename = f"{succursale_id}_{uuid.uuid4().hex[:8]}.{ext}"
     filepath = os.path.join(UPLOAD_DIR, filename)
     
-    # Save file
     with open(filepath, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
-    # Update succursale with logo URL
     logo_url = f"/uploads/bank-logos/{filename}"
     await db.succursales.update_one(
         {"succursale_id": succursale_id},
@@ -428,7 +441,6 @@ async def delete_succursale(
     """Delete succursale - only if no active agents"""
     company_id = require_admin(current_user)
     
-    # Check if succursale exists
     succursale = await db.succursales.find_one(
         {"succursale_id": succursale_id, "company_id": company_id},
         {"_id": 0}
@@ -436,7 +448,6 @@ async def delete_succursale(
     if not succursale:
         raise HTTPException(status_code=404, detail="Succursale non trouvée")
     
-    # Check for active agents
     active_agents = await db.users.count_documents({
         "succursale_id": succursale_id,
         "role": UserRole.AGENT_POS,
@@ -446,7 +457,7 @@ async def delete_succursale(
     if active_agents > 0:
         raise HTTPException(
             status_code=400,
-            detail=f"Impossible de supprimer: {active_agents} agent(s) actif(s) dans cette succursale. Supprimez ou transférez les agents d'abord."
+            detail=f"Impossible de supprimer: {active_agents} agent(s) actif(s). Supprimez les agents d'abord."
         )
     
     # Soft delete succursale
@@ -461,6 +472,9 @@ async def delete_succursale(
             {"user_id": succursale["supervisor_id"]},
             {"$set": {"status": "SUSPENDED", "updated_at": get_current_timestamp()}}
         )
+    
+    # Update company counters
+    await update_company_agent_count(company_id)
     
     await log_activity(
         db=db,
@@ -477,7 +491,7 @@ async def delete_succursale(
 
 
 # ============================================================================
-# AGENT MANAGEMENT WITHIN SUCCURSALE
+# AGENT MANAGEMENT WITHIN SUCCURSALE - EMAIL BASED
 # ============================================================================
 
 @succursale_router.get("/{succursale_id}/agents")
@@ -488,7 +502,6 @@ async def get_succursale_agents(
     """Get all agents in a succursale"""
     company_id = current_user["company_id"]
     
-    # Verify succursale exists
     succursale = await db.succursales.find_one(
         {"succursale_id": succursale_id, "company_id": company_id}
     )
@@ -504,7 +517,6 @@ async def get_succursale_agents(
         {"_id": 0, "password_hash": 0}
     ).to_list(500)
     
-    # Enrich with policy and stats
     enriched = []
     for agent in agents:
         policy = await db.agent_policies.find_one(
@@ -512,28 +524,12 @@ async def get_succursale_agents(
             {"_id": 0}
         )
         
-        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-        pipeline = [
-            {"$match": {"agent_id": agent["user_id"], "created_at": {"$gte": today_start}}},
-            {"$group": {
-                "_id": None,
-                "total_tickets": {"$sum": 1},
-                "total_sales": {"$sum": "$total_amount"}
-            }}
-        ]
-        stats = await db.lottery_transactions.aggregate(pipeline).to_list(1)
-        
         enriched.append({
             **agent,
             "succursale_name": succursale.get("nom_succursale"),
-            "device_id": policy.get("device_id") if policy else None,
-            "zone_adresse": policy.get("zone") if policy else None,
-            "percent_agent": policy.get("commission_percent", 0) if policy else 0,
-            "percent_superviseur": policy.get("supervisor_percent", 0) if policy else 0,
+            "commission_percent": policy.get("commission_percent", 0) if policy else 0,
             "limite_credit": policy.get("max_credit_limit", 50000) if policy else 50000,
-            "limite_balance_gain": policy.get("max_win_limit", 100000) if policy else 100000,
-            "total_sales_today": stats[0]["total_sales"] if stats else 0,
-            "total_tickets_today": stats[0]["total_tickets"] if stats else 0
+            "limite_gain": policy.get("max_win_limit", 100000) if policy else 100000
         })
     
     return enriched
@@ -542,77 +538,74 @@ async def get_succursale_agents(
 @succursale_router.post("/{succursale_id}/agents")
 async def create_agent_in_succursale(
     succursale_id: str,
-    agent_data: AgentInSuccursaleCreate,
+    agent_data: AgentCreate,
     request: Request,
     current_user: dict = Depends(get_company_admin)
 ):
-    """Create a new agent WITHIN a succursale"""
+    """Create a new agent with EMAIL-based login"""
     company_id = require_admin(current_user)
     
-    # Verify succursale exists and belongs to company
+    # Validate passwords
+    if agent_data.password != agent_data.password_confirm:
+        raise HTTPException(status_code=400, detail="Les mots de passe ne correspondent pas")
+    
+    # Verify succursale exists
     succursale = await db.succursales.find_one(
         {"succursale_id": succursale_id, "company_id": company_id}
     )
     if not succursale:
         raise HTTPException(status_code=404, detail="Succursale non trouvée")
     
-    # Check identifier uniqueness
-    existing = await db.users.find_one({"email": f"{agent_data.identifiant}@agent.local"})
+    # Check email uniqueness GLOBALLY
+    existing = await db.users.find_one({"email": agent_data.email.lower()})
     if existing:
-        raise HTTPException(status_code=400, detail="Cet identifiant existe déjà")
-    
-    # Check device_id uniqueness
-    existing_device = await db.agent_policies.find_one({"device_id": agent_data.device_id})
-    if existing_device:
-        raise HTTPException(status_code=400, detail="Ce DEVICE ID est déjà utilisé")
+        raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
     
     now = get_current_timestamp()
     agent_id = generate_id("user_")
-    agent_email = f"{agent_data.identifiant}@agent.local"
     agent_name = f"{agent_data.prenom_agent} {agent_data.nom_agent}"
     
-    # 1. Create user record for agent
+    # Get company name for notification
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0, "name": 1})
+    company_name = company.get("name", "Unknown") if company else "Unknown"
+    
+    # 1. Create user record with EMAIL login
     user_doc = {
         "user_id": agent_id,
-        "email": agent_email,
-        "password_hash": get_password_hash(agent_data.mot_de_passe),
+        "email": agent_data.email.lower(),  # EMAIL as login
+        "password_hash": get_password_hash(agent_data.password),
         "name": agent_name,
+        "telephone": agent_data.telephone,
         "role": UserRole.AGENT_POS,
         "company_id": company_id,
-        "succursale_id": succursale_id,  # CRITICAL: Agent belongs to succursale
-        "status": "ACTIVE",
+        "succursale_id": succursale_id,
+        "status": agent_data.status,
         "created_at": now,
         "updated_at": now
     }
     await db.users.insert_one(user_doc)
     
-    # 2. Create agent policy with all settings
+    # 2. Create agent policy
     policy_id = generate_id("policy_")
     policy_doc = {
         "id": policy_id,
         "company_id": company_id,
         "agent_id": agent_id,
         "succursale_id": succursale_id,
-        "device_id": agent_data.device_id,
         "first_name": agent_data.prenom_agent,
         "last_name": agent_data.nom_agent,
+        "email": agent_data.email.lower(),
         "phone": agent_data.telephone,
-        "zone": agent_data.zone_adresse,
-        "identifiant": agent_data.identifiant,
-        "commission_percent": agent_data.percent_agent,
-        "supervisor_percent": agent_data.percent_superviseur,
+        "commission_percent": agent_data.commission_percent,
         "max_credit_limit": agent_data.limite_credit,
-        "max_win_limit": agent_data.limite_balance_gain,
-        "allowed_device_types": ["POS", "COMPUTER", "PHONE", "TABLET"],
-        "can_void_ticket": True,
-        "can_reprint_ticket": True,
-        "status": "active",
+        "max_win_limit": agent_data.limite_gain,
+        "status": "active" if agent_data.status == "ACTIVE" else "suspended",
         "created_at": now,
         "updated_at": now
     }
     await db.agent_policies.insert_one(policy_doc)
     
-    # 3. Create agent balance record
+    # 3. Create agent balance
     balance_id = generate_id("bal_")
     balance_doc = {
         "balance_id": balance_id,
@@ -624,32 +617,54 @@ async def create_agent_in_succursale(
         "available_balance": agent_data.limite_credit,
         "total_sales": 0.0,
         "total_payouts": 0.0,
-        "total_winnings": 0.0,
         "created_at": now,
         "updated_at": now
     }
     await db.agent_balances.insert_one(balance_doc)
     
+    # 4. Update company counters
+    await update_company_agent_count(company_id)
+    
+    # 5. Log activity
     await log_activity(
         db=db,
-        action_type="AGENT_CREATED_IN_SUCCURSALE",
+        action_type="AGENT_CREATED",
         entity_type="agent",
         entity_id=agent_id,
         performed_by=current_user["user_id"],
         company_id=company_id,
         metadata={
             "agent_name": agent_name,
+            "agent_email": agent_data.email,
             "succursale_id": succursale_id,
             "succursale_name": succursale.get("nom_succursale"),
-            "device_id": agent_data.device_id
+            "company_name": company_name
         },
         ip_address=request.client.host if request.client else None
     )
     
+    # 6. Notification for Super Admin
+    notification_doc = {
+        "notification_id": generate_id("notif_"),
+        "type": "AGENT_CREATED",
+        "target_role": "SUPER_ADMIN",
+        "company_id": company_id,
+        "company_name": company_name,
+        "message": f"Nouvel agent '{agent_name}' créé dans {succursale.get('nom_succursale')}",
+        "metadata": {
+            "agent_id": agent_id,
+            "agent_email": agent_data.email,
+            "succursale_id": succursale_id
+        },
+        "read": False,
+        "created_at": now
+    }
+    await db.admin_notifications.insert_one(notification_doc)
+    
     return {
-        "message": "Agent créé avec succès dans la succursale",
+        "message": "Agent créé avec succès",
         "agent_id": agent_id,
-        "identifiant": agent_data.identifiant,
+        "email": agent_data.email.lower(),
         "succursale_id": succursale_id
     }
 
@@ -665,7 +680,6 @@ async def update_agent_in_succursale(
     """Update an agent within a succursale"""
     company_id = require_admin(current_user)
     
-    # Verify agent exists in this succursale
     agent = await db.users.find_one({
         "user_id": agent_id,
         "succursale_id": succursale_id,
@@ -673,7 +687,7 @@ async def update_agent_in_succursale(
         "role": UserRole.AGENT_POS
     })
     if not agent:
-        raise HTTPException(status_code=404, detail="Agent non trouvé dans cette succursale")
+        raise HTTPException(status_code=404, detail="Agent non trouvé")
     
     update_data = {k: v for k, v in updates.model_dump().items() if v is not None}
     if not update_data:
@@ -681,7 +695,7 @@ async def update_agent_in_succursale(
     
     now = get_current_timestamp()
     
-    # Update user record if name changed
+    # Update user record
     user_updates = {"updated_at": now}
     if "nom_agent" in update_data or "prenom_agent" in update_data:
         policy = await db.agent_policies.find_one({"agent_id": agent_id}, {"_id": 0})
@@ -692,6 +706,9 @@ async def update_agent_in_succursale(
     if "status" in update_data:
         user_updates["status"] = update_data["status"]
     
+    if "telephone" in update_data:
+        user_updates["telephone"] = update_data["telephone"]
+    
     await db.users.update_one({"user_id": agent_id}, {"$set": user_updates})
     
     # Update policy
@@ -700,11 +717,9 @@ async def update_agent_in_succursale(
         "nom_agent": "last_name",
         "prenom_agent": "first_name",
         "telephone": "phone",
-        "zone_adresse": "zone",
-        "percent_agent": "commission_percent",
-        "percent_superviseur": "supervisor_percent",
+        "commission_percent": "commission_percent",
         "limite_credit": "max_credit_limit",
-        "limite_balance_gain": "max_win_limit"
+        "limite_gain": "max_win_limit"
     }
     
     for src, dest in field_map.items():
@@ -714,17 +729,17 @@ async def update_agent_in_succursale(
     if "status" in update_data:
         policy_updates["status"] = "active" if update_data["status"] == "ACTIVE" else "suspended"
     
-    await db.agent_policies.update_one(
-        {"agent_id": agent_id},
-        {"$set": policy_updates}
-    )
+    await db.agent_policies.update_one({"agent_id": agent_id}, {"$set": policy_updates})
     
-    # Update balance limit if changed
+    # Update balance limit
     if "limite_credit" in update_data:
         await db.agent_balances.update_one(
             {"agent_id": agent_id},
             {"$set": {"credit_limit": update_data["limite_credit"], "updated_at": now}}
         )
+    
+    # Update company counters
+    await update_company_agent_count(company_id)
     
     await log_activity(
         db=db,
@@ -740,17 +755,16 @@ async def update_agent_in_succursale(
     return {"message": "Agent mis à jour"}
 
 
-@succursale_router.delete("/{succursale_id}/agents/{agent_id}")
-async def delete_agent_from_succursale(
+@succursale_router.put("/{succursale_id}/agents/{agent_id}/suspend")
+async def suspend_agent(
     succursale_id: str,
     agent_id: str,
     request: Request,
     current_user: dict = Depends(get_company_admin)
 ):
-    """Delete (soft) an agent from succursale"""
+    """Suspend an agent"""
     company_id = require_admin(current_user)
     
-    # Verify agent exists in this succursale
     agent = await db.users.find_one({
         "user_id": agent_id,
         "succursale_id": succursale_id,
@@ -758,11 +772,57 @@ async def delete_agent_from_succursale(
         "role": UserRole.AGENT_POS
     })
     if not agent:
-        raise HTTPException(status_code=404, detail="Agent non trouvé dans cette succursale")
+        raise HTTPException(status_code=404, detail="Agent non trouvé")
     
     now = get_current_timestamp()
     
-    # Soft delete - set status to DELETED
+    await db.users.update_one(
+        {"user_id": agent_id},
+        {"$set": {"status": "SUSPENDED", "updated_at": now}}
+    )
+    
+    await db.agent_policies.update_one(
+        {"agent_id": agent_id},
+        {"$set": {"status": "suspended", "updated_at": now}}
+    )
+    
+    await update_company_agent_count(company_id)
+    
+    await log_activity(
+        db=db,
+        action_type="AGENT_SUSPENDED",
+        entity_type="agent",
+        entity_id=agent_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={"agent_name": agent.get("name"), "succursale_id": succursale_id},
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {"message": "Agent suspendu"}
+
+
+@succursale_router.delete("/{succursale_id}/agents/{agent_id}")
+async def delete_agent_from_succursale(
+    succursale_id: str,
+    agent_id: str,
+    request: Request,
+    current_user: dict = Depends(get_company_admin)
+):
+    """Delete (soft) an agent"""
+    company_id = require_admin(current_user)
+    
+    agent = await db.users.find_one({
+        "user_id": agent_id,
+        "succursale_id": succursale_id,
+        "company_id": company_id,
+        "role": UserRole.AGENT_POS
+    })
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent non trouvé")
+    
+    now = get_current_timestamp()
+    
     await db.users.update_one(
         {"user_id": agent_id},
         {"$set": {"status": "DELETED", "updated_at": now}}
@@ -773,6 +833,8 @@ async def delete_agent_from_succursale(
         {"$set": {"status": "deleted", "updated_at": now}}
     )
     
+    await update_company_agent_count(company_id)
+    
     await log_activity(
         db=db,
         action_type="AGENT_DELETED",
@@ -780,91 +842,8 @@ async def delete_agent_from_succursale(
         entity_id=agent_id,
         performed_by=current_user["user_id"],
         company_id=company_id,
-        metadata={
-            "agent_name": agent.get("name"),
-            "succursale_id": succursale_id
-        },
+        metadata={"agent_name": agent.get("name"), "succursale_id": succursale_id},
         ip_address=request.client.host if request.client else None
     )
     
     return {"message": "Agent supprimé"}
-
-
-# ============================================================================
-# REPORTS - SUCCURSALE LEVEL
-# ============================================================================
-
-@succursale_router.get("/{succursale_id}/reports")
-async def get_succursale_reports(
-    succursale_id: str,
-    current_user: dict = Depends(get_company_admin),
-    date_from: Optional[str] = None,
-    date_to: Optional[str] = None
-):
-    """Get sales report for a succursale"""
-    company_id = current_user["company_id"]
-    
-    # Verify succursale exists
-    succursale = await db.succursales.find_one(
-        {"succursale_id": succursale_id, "company_id": company_id}
-    )
-    if not succursale:
-        raise HTTPException(status_code=404, detail="Succursale non trouvée")
-    
-    # Get all agents in this succursale
-    agents = await db.users.find(
-        {"succursale_id": succursale_id, "role": UserRole.AGENT_POS},
-        {"_id": 0, "user_id": 1}
-    ).to_list(500)
-    
-    agent_ids = [a["user_id"] for a in agents]
-    
-    if not agent_ids:
-        return {
-            "succursale_id": succursale_id,
-            "nom_succursale": succursale.get("nom_succursale"),
-            "total_sales": 0,
-            "total_tickets": 0,
-            "total_winnings": 0,
-            "by_agent": []
-        }
-    
-    # Build date query
-    now = datetime.now(timezone.utc)
-    if not date_from:
-        date_from = now.replace(hour=0, minute=0, second=0).isoformat()
-    if not date_to:
-        date_to = now.isoformat()
-    
-    # Aggregate sales by agent
-    pipeline = [
-        {"$match": {
-            "agent_id": {"$in": agent_ids},
-            "created_at": {"$gte": date_from, "$lte": date_to}
-        }},
-        {"$group": {
-            "_id": "$agent_id",
-            "agent_name": {"$first": "$agent_name"},
-            "tickets": {"$sum": 1},
-            "sales": {"$sum": "$total_amount"},
-            "wins": {"$sum": {"$cond": [{"$eq": ["$status", "WINNER"]}, "$actual_win", 0]}}
-        }},
-        {"$sort": {"sales": -1}}
-    ]
-    
-    by_agent = await db.lottery_transactions.aggregate(pipeline).to_list(500)
-    
-    total_sales = sum(a.get("sales", 0) for a in by_agent)
-    total_tickets = sum(a.get("tickets", 0) for a in by_agent)
-    total_wins = sum(a.get("wins", 0) for a in by_agent)
-    
-    return {
-        "succursale_id": succursale_id,
-        "nom_succursale": succursale.get("nom_succursale"),
-        "period": {"from": date_from, "to": date_to},
-        "total_sales": total_sales,
-        "total_tickets": total_tickets,
-        "total_winnings": total_wins,
-        "net_revenue": total_sales - total_wins,
-        "by_agent": by_agent
-    }
