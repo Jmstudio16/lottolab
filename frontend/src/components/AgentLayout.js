@@ -6,7 +6,10 @@ import {
   Ticket, 
   BarChart3, 
   LogOut,
-  User
+  User,
+  Search,
+  Clock,
+  FileText
 } from 'lucide-react';
 
 const LOGO_URL = "https://customer-assets.emergentagent.com/job_36e4b3a7-6dc6-43e8-b4c7-e0a52462b3df/artifacts/ztvthede_ChatGPT%20Image%2019%20f%C3%A9vr.%202026%2C%2020_13_22.png";
@@ -37,9 +40,12 @@ export const AgentLayout = ({ children, title, subtitle }) => {
   };
 
   const menuItems = [
-    { to: '/agent/pos', icon: Monitor, label: 'POS Terminal' },
-    { to: '/agent/my-tickets', icon: Ticket, label: 'My Tickets' },
-    { to: '/agent/my-sales', icon: BarChart3, label: 'My Sales' },
+    { to: '/agent/pos', icon: Monitor, label: 'Nouvelle Vente' },
+    { to: '/agent/my-tickets', icon: Ticket, label: 'Mes Tickets' },
+    { to: '/agent/search-tickets', icon: Search, label: 'Rechercher Fiches' },
+    { to: '/agent/available-draws', icon: Clock, label: 'Tirages Disponibles' },
+    { to: '/agent/results', icon: FileText, label: 'Résultats' },
+    { to: '/agent/my-sales', icon: BarChart3, label: 'Mes Ventes' },
   ];
 
   return (
