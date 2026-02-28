@@ -470,10 +470,15 @@ const SaaSApp = () => {
                   }
                 >
                   <Route path="dashboard" element={<AgentDashboardPage />} />
+                  <Route path="pos" element={<AgentNewTicketPage />} />
                   <Route path="lottery-selection" element={<AgentLotterySelectionPage />} />
                   <Route path="new-ticket" element={<AgentNewTicketPage />} />
                   <Route path="tickets" element={<AgentTicketsPage />} />
+                  <Route path="my-tickets" element={<AgentTicketsPage />} />
+                  <Route path="search-tickets" element={<AgentSearchTicketsPage />} />
+                  <Route path="available-draws" element={<AgentAvailableDrawsPage />} />
                   <Route path="results" element={<AgentResultsPage />} />
+                  <Route path="my-sales" element={<AgentReportsPage />} />
                   <Route path="reports" element={<AgentReportsPage />} />
                   <Route index element={<Navigate to="/agent/dashboard" replace />} />
                 </Route>
