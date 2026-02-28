@@ -11,7 +11,7 @@ from pydantic import BaseModel, EmailStr
 import asyncio
 
 from models import UserRole
-from auth import decode_token, get_password_hash, create_token
+from auth import decode_token, get_password_hash
 from utils import generate_id, get_current_timestamp
 from activity_logger import log_activity
 
