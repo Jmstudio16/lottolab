@@ -1110,12 +1110,12 @@ async def get_activity_logs(
 
 @company_admin_router.get("/lottery-catalog")
 async def get_lottery_catalog(current_user: dict = Depends(get_company_admin)):
-    """Get all lotteries with company availability"""
+    """Get all lotteries with company availability - synchronized with master_lotteries"""
     company_id = current_user["company_id"]
     
-    # Get global lotteries
-    global_lotteries = await db.global_lotteries.find(
-        {"is_active": True}, {"_id": 0}
+    # Get master lotteries (only globally active ones for company admin)
+    master_lotteries = await db.master_lotteries.find(
+        {"is_active_global": True}, {"_id": 0}
     ).to_list(500)
     
     # Get company lottery settings
@@ -1126,13 +1126,18 @@ async def get_lottery_catalog(current_user: dict = Depends(get_company_admin)):
     enabled_map = {cl["lottery_id"]: cl for cl in company_lotteries}
     
     result = []
-    for lottery in global_lotteries:
+    for lottery in master_lotteries:
         lottery_id = lottery["lottery_id"]
         cl = enabled_map.get(lottery_id, {})
         
+        # Check if disabled by super admin
+        disabled_by_super_admin = cl.get("disabled_by_super_admin", False)
+        
         result.append({
             **lottery,
-            "enabled": cl.get("enabled", False),
+            "enabled": cl.get("is_enabled", False) and not disabled_by_super_admin,
+            "disabled_by_super_admin": disabled_by_super_admin,
+            "can_toggle": not disabled_by_super_admin,  # Company can only toggle if not disabled by super admin
             "max_bet_per_ticket": cl.get("max_bet_per_ticket", 10000.0),
             "max_bet_per_number": cl.get("max_bet_per_number", 5000.0)
         })
