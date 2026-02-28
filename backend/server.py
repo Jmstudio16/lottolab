@@ -566,6 +566,7 @@ app.include_router(sync_router)
 app.include_router(settings_router)
 app.include_router(financial_router)
 app.include_router(succursale_router)
+app.include_router(saas_core_router)
 
 # Include online routers under /api prefix
 api_router.include_router(online_router)
