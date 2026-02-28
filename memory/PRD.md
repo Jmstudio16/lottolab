@@ -47,6 +47,50 @@ LOTTOLAB is a multi-tenant lottery management SaaS platform designed for the Hai
 - **Automatic User Sync**: Status changes cascade to all company users
 - **Activity Logging**: All modifications are logged with before/after values
 
+### 6. Agent Page - Complete System (✅ Complete)
+#### 6.1 Professional 80mm POS Ticket Printing
+- **Thermal Printer Format**: 80mm width, optimized for POS thermal printers
+- **12-Digit Verification Code**: Unique, indexed in database
+- **QR Code**: Contains public URL `https://lotopam.com/verify-ticket/{code}`
+- **Complete Ticket Structure**: Header (Company, Succursale, Agent), Ticket Details, Plays Table, Total, QR, Footer
+
+#### 6.2 Public Ticket Verification Page
+- **URL**: `/api/verify-ticket/{verification_code}`
+- **No Login Required**: Accessible publicly for customers
+- **Mobile Friendly**: Responsive design for phone scanning
+- **Status Display**: En attente, Gagnant, Perdant, Annulé
+
+#### 6.3 Agent Menu (Updated)
+- **7 Menu Items**:
+  1. Tableau de bord
+  2. Nouvelle Vente (POS Terminal)
+  3. Mes Tickets
+  4. Rechercher Fiches (New)
+  5. Tirages Disponibles (New)
+  6. Résultats
+  7. Mes Ventes
+
+#### 6.4 Search Tickets (Rechercher Fiches)
+- **Search by**: ticket_code, verification_code, lottery, numbers
+- **Filters**: Lottery, Date
+- **Duplicate Feature**: Button to copy ticket data to new sale form
+
+#### 6.5 Available Draws (Tirages Disponibles)
+- **Real-time Clock**: Shows current time
+- **Status Legend**: Actif (green), Fermé (red), Pas encore ouvert (blue)
+- **Countdown Timer**: Time remaining before sales close
+- **5-minute Rule**: Sales stop 5 minutes before draw
+
+#### 6.6 Quick Amounts Removed
+- **Free Amount Entry Only**: No quick buttons, agent enters any amount
+- **Validation**: Respects company min/max limits
+
+#### 6.7 Ticket Cancellation (5-Minute Rule)
+- **Time Window**: 5 minutes after creation
+- **Mandatory Reason**: Modal requires cancellation reason
+- **Logging**: void_reason, voided_by, voided_at stored
+- **Backend Validation**: API rejects cancellations after 5 minutes
+
 ## Database Collections
 
 ### Core Collections
@@ -58,7 +102,7 @@ LOTTOLAB is a multi-tenant lottery management SaaS platform designed for the Hai
 | `master_lotteries` | 220 global lottery definitions |
 | `company_lotteries` | Company-specific lottery enablement |
 | `global_schedules` | Lottery draw schedules |
-| `tickets` | Sales transactions |
+| `tickets` | Sales transactions with verification_code |
 
 ### System Collections
 | Collection | Purpose |
@@ -92,17 +136,22 @@ LOTTOLAB is a multi-tenant lottery management SaaS platform designed for the Hai
 - `GET /permissions` - Current user permissions
 - `GET /roles` - Available staff roles
 
+### Ticket Printing & Verification
+- `GET /api/verify-ticket/{code}` - PUBLIC ticket verification page
+- `GET /api/ticket/print/{ticket_id}` - 80mm POS ticket print page
+
 ## User Credentials (Test)
 | Role | Email | Password |
 |------|-------|----------|
 | Super Admin | jefferson@jmstudio.com | JMStudio@2026! |
 | Company Admin | admin@lotopam.com | Admin123! |
-| Staff Manager | manager@lotopam.com | Manager123! |
+| Agent | agent.marie@lotopam.com | Agent123! |
+| Supervisor | supervisor@lotopam.com | Supervisor123! |
 
-## Test Results (Iteration 12)
-- **Backend**: 96% (24/25 tests passed)
+## Test Results (Iteration 13)
+- **Backend**: 100% (18/18 tests passed)
 - **Frontend**: 100% (16/16 tests passed)
-- **Regression**: 100% (3/3 specs passed)
+- **Regression**: 100% (1/1 specs passed)
 
 ## Upcoming Tasks (Prioritized)
 
@@ -113,6 +162,12 @@ LOTTOLAB is a multi-tenant lottery management SaaS platform designed for the Hai
 - [x] Edit company with subscription dates
 - [x] Subscription counter on dashboard
 - [x] Staff permissions RBAC
+- [x] Agent 80mm POS Ticket Printing
+- [x] Public ticket verification page
+- [x] Agent menu correction
+- [x] Search tickets with duplicate
+- [x] Available draws with countdown
+- [x] 5-minute cancellation rule
 
 ### P1 - High Priority
 - [ ] Winner Detection & Automatic Payout System
@@ -129,7 +184,8 @@ LOTTOLAB is a multi-tenant lottery management SaaS platform designed for the Hai
 - **Frontend**: React, Tailwind CSS, Shadcn UI
 - **Database**: MongoDB
 - **Auth**: JWT with bcrypt password hashing
+- **Printing**: HTML optimized for thermal 80mm POS printers
 
 ---
 Last Updated: 2026-02-28
-Version: 2.0.0 (SaaS Enterprise Refactor Complete)
+Version: 2.1.0 (Agent Page Complete)
