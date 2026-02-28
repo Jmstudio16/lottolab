@@ -1,152 +1,135 @@
-# LOTTOLAB - Enterprise Lottery SaaS Platform
-## Product Requirements Document (PRD)
+# LOTTOLAB SaaS Enterprise - Product Requirements Document
 
-### Overview
-LOTTOLAB is a production-ready, enterprise-grade multi-tenant Lottery SaaS platform with hierarchical RBAC model (SUPER_ADMIN, COMPANY_ADMIN, BRANCH_SUPERVISOR, AGENT_POS). The system includes **LOTO PAM**, a public-facing online gaming platform.
+## Overview
+LOTTOLAB is a multi-tenant lottery management SaaS platform designed for the Haitian market. The platform enables companies to manage lottery operations with strict data isolation, subscription-based access, and hierarchical user management.
 
-**Status**: ✅ **PRODUCTION READY - ENTERPRISE SAAS**
-**Last Update**: 2026-02-28
-**Current Phase**: SaaS Enterprise Core Complete
+## Core Architecture
 
----
+### Multi-Tenant Design
+- **Strict Data Isolation**: All business data filtered by `company_id`
+- **Centralized Master Data**: `master_lotteries` and `global_schedules` managed by Super Admin
+- **Hierarchical Roles**: Super Admin > Company Admin > Manager > Supervisor > Agent
 
-## Architecture Overview
+### Authentication & Authorization
+- **Email-based Login**: All users authenticate via unique email + password
+- **JWT Token Authentication**: Secure token-based API access
+- **Company Status Middleware**: Blocks access for suspended/expired/deleted companies
 
-### Multi-Tenant Hierarchy
-```
-SUPER ADMIN (Platform Owner)
-    ├── Controls 220 Master Lotteries (Global Source)
-    ├── Controls Global Schedules
-    ├── Manages Companies (License, Suspend, Activate)
-    └── Views All Data Across Platform
+## Key Features Implemented
 
-COMPANY ADMIN (SaaS Client)
-    ├── Sees only globally active lotteries
-    ├── Cannot modify schedules (read-only)
-    ├── Manages Succursales (Branches)
-    └── Views only own company data
+### 1. SaaS Company Lifecycle (✅ Complete)
+- **Create Company**: Full-featured form with admin setup and lottery sync
+- **Suspend Company**: Blocks all users immediately (403 on login/API)
+- **Activate Company**: Reactivates company admin (others stay suspended for security)
+- **Soft Delete Company**: status=DELETED, preserves all data, visible in archives
+- **Restore Company**: Recovers deleted company with new subscription
 
-BRANCH SUPERVISOR
-    ├── Manages agents in succursale
-    └── Views branch reports
+### 2. Automatic Subscription Management (✅ Complete)
+- **Daily Cron Job**: Runs at 00:00 UTC via APScheduler
+- **Automatic Expiration**: Companies with expired subscriptions → status=EXPIRED
+- **User Blocking**: All users of expired company are suspended
+- **Notifications**: Super Admin receives notifications for expired subscriptions
+- **Expiring Soon Alerts**: Companies expiring within 7 days are flagged
 
-AGENT POS
-    ├── Sells tickets
-    └── Views own sales/results
-```
+### 3. Subscription Counter (✅ Complete)
+- **Company Admin Dashboard**: Shows remaining days with visual progress bar
+- **Color Coding**: Green (>15 days), Yellow (5-15 days), Red (<5 days)
+- **Expiration Alerts**: Critical warning banner when near expiration
 
----
+### 4. Staff Permissions & RBAC (✅ Complete)
+- **Role-Based Access Control**: Permissions defined per role
+- **Staff Management CRUD**: Create, suspend, activate, delete staff members
+- **Login Blocking**: Suspended staff cannot log in
+- **Permission Levels**: COMPANY_ADMIN(100) > COMPANY_MANAGER(80) > AUDITOR(40) > BRANCH_USER(20)
 
-## Implementation Status
+### 5. Edit Company Modal (✅ Complete)
+- **Modifiable Fields**: Name, Email, Plan, Commission, Subscription End Date, Status
+- **Automatic User Sync**: Status changes cascade to all company users
+- **Activity Logging**: All modifications are logged with before/after values
 
-### ✅ SaaS Enterprise Core - COMPLETE (2026-02-28)
+## Database Collections
 
-#### 1. Centralized Lottery Catalog (220 Lotteries)
-- [x] `master_lotteries` collection - single source of truth
-- [x] `company_lotteries` pivot table for company access
-- [x] Super Admin `is_active_global` control
-- [x] Auto-disable for ALL companies when globally disabled
-- [x] Company cannot enable if disabled by Super Admin
+### Core Collections
+| Collection | Purpose |
+|-----------|---------|
+| `companies` | SaaS tenant companies with subscription data |
+| `users` | All users (admins, managers, agents, staff) |
+| `succursales` | Branch/location management |
+| `master_lotteries` | 220 global lottery definitions |
+| `company_lotteries` | Company-specific lottery enablement |
+| `global_schedules` | Lottery draw schedules |
+| `tickets` | Sales transactions |
 
-#### 2. Global Schedules (Super Admin Only)
-- [x] `global_schedules` collection
-- [x] Super Admin: full CRUD
-- [x] Company Admin: READ ONLY
-- [x] Agents: READ ONLY
-- [x] Creation blocked for non-super-admin (403)
+### System Collections
+| Collection | Purpose |
+|-----------|---------|
+| `activity_logs` | Audit trail for all actions |
+| `cron_logs` | Scheduled job execution history |
+| `admin_notifications` | Super Admin alerts |
 
-#### 3. Company Creation (Full Auto-Setup)
-- [x] Full form: name, slogan, email, password, plan, timezone, currency, commission
-- [x] Auto-create Company Admin user
-- [x] Auto-create default configuration
-- [x] Auto-link ALL 220 active lotteries
-- [x] Activity logging
+## API Endpoints
 
-#### 4. License Management
-- [x] Plans: Starter, Basic, Professional, Enterprise
-- [x] `license_end` expiration date
-- [x] Auto-expire check on login
-- [x] Super Admin suspend/activate
-- [x] Super Admin extend license
+### SaaS Management (`/api/saas/`)
+- `GET /companies` - List all companies with stats
+- `GET /companies/{id}` - Company details with agents/succursales
+- `POST /companies/full-create` - Create company + admin + sync lotteries
+- `PUT /companies/{id}` - Update company (name, email, plan, status, etc.)
+- `PUT /companies/{id}/suspend` - Suspend company
+- `PUT /companies/{id}/activate` - Activate company
+- `DELETE /companies/{id}` - Soft delete company
+- `GET /archived-companies` - List deleted companies
+- `PUT /companies/{id}/restore` - Restore deleted company
+- `PUT /companies/{id}/extend-license` - Extend subscription
+- `GET /my-subscription` - Company admin subscription status
+- `GET /cron-logs` - Cron job execution history
 
-#### 5. Heartbeat Online System
-- [x] `/heartbeat/company` - 30s ping
-- [x] `/heartbeat/agent` - 30s ping
-- [x] Auto-offline after 2 minutes
-- [x] Super Admin online status dashboard
+### Staff Management (`/api/company/staff/`)
+- `GET /` - List company staff
+- `POST /` - Create staff member
+- `PUT /{id}/suspend` - Suspend staff
+- `PUT /{id}/activate` - Activate staff
+- `DELETE /{id}` - Delete staff
+- `GET /permissions` - Current user permissions
+- `GET /roles` - Available staff roles
 
-#### 6. Multi-Tenant Isolation
-- [x] `company_id` on all business entities
-- [x] Middleware guards for company access
-- [x] Super Admin bypass (sees all)
-- [x] Cross-company access blocked
+## User Credentials (Test)
+| Role | Email | Password |
+|------|-------|----------|
+| Super Admin | jefferson@jmstudio.com | JMStudio@2026! |
+| Company Admin | admin@lotopam.com | Admin123! |
+| Staff Manager | manager@lotopam.com | Manager123! |
 
-### ✅ Company Admin Restructure - COMPLETE (2026-02-27)
-- [x] **REMOVED** POS Devices menu
-- [x] **REMOVED** Agents menu (standalone)
-- [x] **NEW** Succursales management
-- [x] Agents created ONLY within succursales
-- [x] BRANCH_SUPERVISOR and BRANCH_USER roles
-- [x] Delete agent/succursale with validation
+## Test Results (Iteration 12)
+- **Backend**: 96% (24/25 tests passed)
+- **Frontend**: 100% (16/16 tests passed)
+- **Regression**: 100% (3/3 specs passed)
 
-### ✅ LOTO PAM Phase 1 & 2 - COMPLETE
-- [x] Public user registration/login
-- [x] Wallet system (MonCash/NatCash)
-- [x] KYC verification flow
-- [x] Lottery engine with winner detection
-- [x] WebSocket notifications
-- [x] Security (bet limits, account lockout)
+## Upcoming Tasks (Prioritized)
 
----
+### P0 - Critical
+- [x] Cron job automatic subscription expiration
+- [x] Soft delete company
+- [x] Real suspension blocking all users
+- [x] Edit company with subscription dates
+- [x] Subscription counter on dashboard
+- [x] Staff permissions RBAC
 
-## Key Technical Specs
+### P1 - High Priority
+- [ ] Winner Detection & Automatic Payout System
+- [ ] Centralized Activity Logs Dashboard
+- [ ] SMS/Email Notifications for subscriptions
 
-### Database Collections
-- `master_lotteries` - 220 global lotteries (source of truth)
-- `company_lotteries` - Company access pivot (company_id + lottery_id)
-- `global_schedules` - Draw schedules (Super Admin managed)
-- `companies` - SaaS clients with license info
-- `users` - All users with role and company_id
-- `succursales` - Branches with supervisor
-- `agent_policies` - Agent settings and limits
-
-### Key API Routes
-- `/api/saas/master-lotteries` - Central lottery management
-- `/api/saas/global-schedules` - Schedule management
-- `/api/saas/companies/full-create` - Company creation
-- `/api/saas/online-status` - Online tracking
-- `/api/company/succursales` - Branch management
-
----
-
-## Seed Data
-- 220 Master Lotteries (34 US states + Haiti + Dominican Republic)
-- 10 Haiti PREMIUM lotteries with schedules
-- 4 Plans (Starter, Basic, Professional, Enterprise)
-- Demo Company: LotoPam Demo (admin@lotopam.com)
-
----
-
-## Test Credentials
-- **Super Admin**: jefferson@jmstudio.com / JMStudio@2026!
-- **Company Admin**: admin@lotopam.com / Admin123!
-
----
-
-## Remaining Tasks (Backlog)
-
-### P0 - High Priority
-- [ ] Company Users permissions fix (suspend/delete working)
-- [ ] Tickets synchronization real-time validation
-- [ ] Results & Winners automatic detection verification
-
-### P1 - Medium Priority
-- [ ] Phase 3: Keno engine with auto-draw
-- [ ] Phase 3: Raffle/Tombola system
+### P2 - Medium Priority
+- [ ] Resume LOTO PAM public platform (Keno, Raffle)
 - [ ] Complete i18n translations
+- [ ] Professional animations and theming
 
-### P2 - Low Priority
-- [ ] SMS/Email notifications
-- [ ] QR code ticket verification
-- [ ] PDF/CSV export reports
-- [ ] Festive animations for lotopam.com
+## Technology Stack
+- **Backend**: FastAPI, Motor (MongoDB async), APScheduler
+- **Frontend**: React, Tailwind CSS, Shadcn UI
+- **Database**: MongoDB
+- **Auth**: JWT with bcrypt password hashing
+
+---
+Last Updated: 2026-02-28
+Version: 2.0.0 (SaaS Enterprise Refactor Complete)
