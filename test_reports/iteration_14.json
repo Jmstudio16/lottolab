@@ -1,0 +1,102 @@
+{
+  "summary": "LOTTOLAB Production Ready Testing - Iteration 14 Complete. All critical features verified: 220 lotteries visible to agent, ResizeObserver error suppressed (dropdowns work without errors), 5-minute void window configured, PWA manifest loads correctly, company suspension check on login. 22 backend tests passed + 2 skipped, 13 new frontend tests passed, 16 legacy frontend tests passed.",
+  "mode": "generate",
+  "baseline_commit": "d33394744ff1f4e6fadbe24153401f51d6e760da",
+  "head_commit": "1ef7c28175390bd82d67a75a88e11ce5c8052c89",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "regression_results": {
+    "total_specs": 2,
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  "specs_created": [
+    "/app/tests/e2e/production-ready.spec.ts"
+  ],
+  "specs_updated": [
+    "/app/tests/e2e/agent-features.spec.ts"
+  ],
+  "quarantined_tests": [],
+  "test_report_links": [
+    "/app/backend/tests/test_production_ready.py",
+    "/app/test_reports/pytest/iteration14_results.xml"
+  ],
+  "action_items": [],
+  "updated_files": [
+    "/app/backend/tests/test_production_ready.py",
+    "/app/tests/e2e/production-ready.spec.ts",
+    "/app/tests/e2e/agent-features.spec.ts"
+  ],
+  "success_rate": {
+    "backend": "100% (22/22 passed, 2 skipped)",
+    "frontend": "100% (29/29 tests passed across 2 spec files)"
+  },
+  "seed_data_creation": "No seed data created - used existing credentials",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All production-ready features verified. ResizeObserver error fix confirmed working in index.js. PWA manifest at /manifest.json loads correctly. 3 production companies exist: LotoPam Center, BJ LOTO, LOTO PAM. Agent sees all 220 lotteries from device/config endpoint. 5-minute void window properly configured.",
+  "features_tested": {
+    "resize_observer_error_fix": {
+      "dropdown_no_errors": "PASS - Lottery and status dropdowns open without ResizeObserver errors",
+      "error_suppression": "PASS - Error handler in index.js successfully suppresses ResizeObserver loop errors"
+    },
+    "lottery_sync_220_lotteries": {
+      "device_config_count": "PASS - Returns exactly 220 enabled_lotteries",
+      "lottery_fields": "PASS - Each lottery has lottery_id, lottery_name, state_code/game_type",
+      "company_filtering": "PASS - Lotteries are filtered by company"
+    },
+    "ticket_creation_printing": {
+      "new_ticket_page": "PASS - Page loads with lottery selection, bet type, amount input",
+      "print_endpoint_auth": "PASS - /api/ticket/print requires authentication",
+      "print_format": "PASS - 80mm thermal format available"
+    },
+    "5_minute_cancellation_rule": {
+      "void_window_config": "PASS - void_window_minutes = 5 in configuration",
+      "allow_ticket_void": "PASS - allow_ticket_void = true",
+      "ui_display": "PASS - '5 minutes avant' shown on Available Draws page"
+    },
+    "company_suspension": {
+      "login_check": "PASS - Login endpoint checks company status",
+      "suspended_blocked": "PASS - Suspended/expired companies return 403",
+      "super_admin_visibility": "PASS - Super admin can see all company statuses"
+    },
+    "multi_tenant_isolation": {
+      "agent_lottery_filter": "PASS - Agent only sees own company lotteries",
+      "ticket_access": "PASS - Agent cannot access other company tickets"
+    },
+    "pwa_manifest": {
+      "accessible": "PASS - /manifest.json returns 200",
+      "required_fields": "PASS - name, short_name, display, icons present",
+      "theme_colors": "PASS - theme_color=#f59e0b, background_color=#0f172a"
+    }
+  },
+  "backend_endpoints_tested": [
+    "POST /api/auth/agent/login",
+    "POST /api/auth/login",
+    "GET /api/device/config",
+    "GET /api/device/sync",
+    "POST /api/lottery/cancel",
+    "GET /api/verify-ticket/{code} (PUBLIC)",
+    "GET /api/super/companies",
+    "GET /api/ticket/print/{ticket_id}",
+    "GET /manifest.json"
+  ],
+  "frontend_pages_tested": [
+    "Login Page",
+    "Agent Dashboard",
+    "Nouvelle Vente (New Ticket)",
+    "Mes Tickets",
+    "Rechercher Fiches",
+    "Tirages Disponibles",
+    "Résultats",
+    "Mes Ventes"
+  ]
+}
