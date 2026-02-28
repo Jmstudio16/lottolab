@@ -974,15 +974,57 @@ async def suspend_company(
     request: Request,
     current_user: dict = Depends(require_super_admin)
 ):
-    """Suspend a company (Super Admin only)"""
-    result = await db.companies.update_one(
-        {"company_id": company_id},
-        {"$set": {"status": "SUSPENDED", "updated_at": get_current_timestamp()}}
-    )
+    """
+    REAL SUSPENSION of a company (Super Admin only).
     
-    if result.matched_count == 0:
+    When suspended:
+    - company.status = SUSPENDED
+    - Middleware blocks ALL routes for this company
+    - API returns 403 "Account Suspended - Contact Super Admin"
+    - Blocks: company admin, all succursales, all agents
+    - Blocks ticket sales
+    - Real-time sync
+    """
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
+    if not company:
         raise HTTPException(status_code=404, detail="Entreprise non trouvée")
     
+    now = get_current_timestamp()
+    company_name = company.get("name", "Unknown")
+    
+    # 1. Suspend company
+    await db.companies.update_one(
+        {"company_id": company_id},
+        {"$set": {
+            "status": "SUSPENDED",
+            "suspended_at": now,
+            "suspended_by": current_user["user_id"],
+            "updated_at": now
+        }}
+    )
+    
+    # 2. Suspend ALL users of this company (immediate login block)
+    users_result = await db.users.update_many(
+        {"company_id": company_id, "status": "ACTIVE"},
+        {"$set": {
+            "status": "SUSPENDED",
+            "suspended_reason": "COMPANY_SUSPENDED",
+            "suspended_at": now,
+            "updated_at": now
+        }}
+    )
+    
+    # 3. Suspend all succursales
+    succursales_result = await db.succursales.update_many(
+        {"company_id": company_id, "status": {"$ne": "DELETED"}},
+        {"$set": {
+            "status": "SUSPENDED",
+            "suspended_reason": "COMPANY_SUSPENDED",
+            "updated_at": now
+        }}
+    )
+    
+    # 4. Log activity
     await log_activity(
         db=db,
         action_type="COMPANY_SUSPENDED",
@@ -990,10 +1032,33 @@ async def suspend_company(
         entity_id=company_id,
         performed_by=current_user["user_id"],
         company_id=company_id,
+        metadata={
+            "company_name": company_name,
+            "users_suspended": users_result.modified_count,
+            "succursales_suspended": succursales_result.modified_count
+        },
         ip_address=request.client.host if request.client else None
     )
     
-    return {"message": "Entreprise suspendue"}
+    # 5. Create notification
+    await db.admin_notifications.insert_one({
+        "notification_id": f"notif_suspended_{company_id}_{now}",
+        "type": "COMPANY_SUSPENDED",
+        "target_role": "SUPER_ADMIN",
+        "title": f"Entreprise suspendue: {company_name}",
+        "message": f"L'entreprise {company_name} a été suspendue.",
+        "company_id": company_id,
+        "read": False,
+        "created_at": now
+    })
+    
+    return {
+        "message": f"Entreprise '{company_name}' suspendue",
+        "company_id": company_id,
+        "users_suspended": users_result.modified_count,
+        "succursales_suspended": succursales_result.modified_count,
+        "suspended_at": now
+    }
 
 
 @saas_core_router.put("/companies/{company_id}/activate")
@@ -1002,15 +1067,65 @@ async def activate_company(
     request: Request,
     current_user: dict = Depends(require_super_admin)
 ):
-    """Activate a company (Super Admin only)"""
-    result = await db.companies.update_one(
-        {"company_id": company_id},
-        {"$set": {"status": "ACTIVE", "updated_at": get_current_timestamp()}}
-    )
+    """
+    Activate a suspended/expired company (Super Admin only).
     
-    if result.matched_count == 0:
+    When activated:
+    - company.status = ACTIVE
+    - Company Admin is reactivated
+    - Other users remain suspended (for security - admin can reactivate them)
+    """
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
+    if not company:
         raise HTTPException(status_code=404, detail="Entreprise non trouvée")
     
+    if company.get("status") == "DELETED":
+        raise HTTPException(status_code=400, detail="Utilisez /restore pour restaurer une entreprise supprimée")
+    
+    now = get_current_timestamp()
+    company_name = company.get("name", "Unknown")
+    
+    # Check if license is valid
+    license_end = company.get("license_end") or company.get("subscription_end_date")
+    if license_end:
+        try:
+            end_date = datetime.fromisoformat(license_end.replace("Z", "+00:00"))
+            if end_date < datetime.now(timezone.utc):
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Impossible d'activer: l'abonnement est expiré. Étendez d'abord la license."
+                )
+        except ValueError:
+            pass
+    
+    # 1. Activate company
+    await db.companies.update_one(
+        {"company_id": company_id},
+        {"$set": {
+            "status": "ACTIVE",
+            "activated_at": now,
+            "activated_by": current_user["user_id"],
+            "updated_at": now
+        },
+        "$unset": {"suspended_at": "", "suspended_by": ""}}
+    )
+    
+    # 2. Reactivate Company Admin only
+    admin_result = await db.users.update_many(
+        {
+            "company_id": company_id, 
+            "role": {"$in": [UserRole.COMPANY_ADMIN, "COMPANY_ADMIN"]},
+            "status": "SUSPENDED",
+            "suspended_reason": {"$in": ["COMPANY_SUSPENDED", "COMPANY_EXPIRED", "SUBSCRIPTION_EXPIRED"]}
+        },
+        {"$set": {
+            "status": "ACTIVE",
+            "updated_at": now
+        },
+        "$unset": {"suspended_reason": "", "suspended_at": ""}}
+    )
+    
+    # 3. Log activity
     await log_activity(
         db=db,
         action_type="COMPANY_ACTIVATED",
@@ -1018,10 +1133,20 @@ async def activate_company(
         entity_id=company_id,
         performed_by=current_user["user_id"],
         company_id=company_id,
+        metadata={
+            "company_name": company_name,
+            "admins_reactivated": admin_result.modified_count,
+            "note": "Other users remain suspended - admin can reactivate them"
+        },
         ip_address=request.client.host if request.client else None
     )
     
-    return {"message": "Entreprise activée"}
+    return {
+        "message": f"Entreprise '{company_name}' activée",
+        "company_id": company_id,
+        "admins_reactivated": admin_result.modified_count,
+        "activated_at": now
+    }
 
 
 @saas_core_router.put("/companies/{company_id}/extend-license")
