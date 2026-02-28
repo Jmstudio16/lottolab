@@ -351,28 +351,6 @@ export const AgentNewTicketPage = () => {
               )}
             </div>
           ))}
-
-          {/* Quick amount buttons */}
-          <div className="pt-4 border-t border-slate-600">
-            <Label className="text-slate-300 text-xs mb-2 block">Montants rapides</Label>
-            <div className="flex flex-wrap gap-2">
-              {[25, 50, 100, 250, 500, 1000].map(amount => (
-                <Button
-                  key={amount}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
-                  onClick={() => {
-                    const lastIndex = plays.length - 1;
-                    updatePlay(lastIndex, 'amount', amount.toString());
-                  }}
-                >
-                  {amount}
-                </Button>
-              ))}
-            </div>
-          </div>
         </CardContent>
       </Card>
 
