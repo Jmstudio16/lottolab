@@ -129,12 +129,18 @@ export const SuperCompaniesPage = () => {
   const handleEdit = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`${API_URL}/api/saas/companies/${selectedCompany.company_id}`, editData, { headers });
-      toast.success('Entreprise mise à jour');
+      // Convert date to ISO format if provided
+      const payload = {...editData};
+      if (payload.subscription_end_date) {
+        payload.subscription_end_date = new Date(payload.subscription_end_date).toISOString();
+      }
+      
+      await axios.put(`${API_URL}/api/saas/companies/${selectedCompany.company_id}`, payload, { headers });
+      toast.success('Entreprise mise à jour avec succès');
       setShowEditModal(false);
       fetchCompanies();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Erreur');
+      toast.error(error.response?.data?.detail || 'Erreur lors de la mise à jour');
     }
   };
 
