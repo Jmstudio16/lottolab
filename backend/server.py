@@ -32,6 +32,7 @@ from error_handlers import validation_exception_handler, generic_exception_handl
 from websocket_manager import ws_manager, notify_player, notify_admins, NotificationType
 from lottery_engine import set_lottery_engine_db, process_result_for_online_tickets
 from succursale_routes import succursale_router, set_succursale_db
+from saas_core import saas_core_router, set_saas_core_db
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
