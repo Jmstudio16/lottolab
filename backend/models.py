@@ -183,20 +183,30 @@ class Ticket(BaseModel):
     model_config = ConfigDict(extra="ignore")
     ticket_id: str
     ticket_code: str
-    verification_code: str
+    verification_code: str  # 12-digit unique code
     qr_payload: Optional[str] = None
     agent_id: str
     agent_name: Optional[str] = None
     company_id: str
+    succursale_id: Optional[str] = None  # Branch reference
+    succursale_name: Optional[str] = None
     pos_device_id: Optional[str] = None
     lottery_id: str
     lottery_name: str
+    draw_name: Optional[str] = None
     draw_datetime: str
     plays: List[TicketLine]
     total_amount: float
+    potential_win: Optional[float] = None
     currency: str = "HTG"
     status: TicketStatus = TicketStatus.ACTIVE
+    # Void/Cancellation fields
+    void_reason: Optional[str] = None
+    voided_by: Optional[str] = None
+    voided_at: Optional[str] = None
+    # Timestamps
     created_at: str
+    updated_at: Optional[str] = None
 
 class TicketCreate(BaseModel):
     lottery_id: str
