@@ -65,7 +65,7 @@ export const LoginPage = () => {
               }}
             />
             <h1 className="text-2xl font-barlow font-bold uppercase tracking-tight text-white">
-              Welcome Back
+              WELCOME
             </h1>
             <p className="text-sm text-slate-400 mt-2">Sign in to your account</p>
           </div>
