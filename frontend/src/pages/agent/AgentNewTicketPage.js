@@ -208,48 +208,47 @@ export const AgentNewTicketPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label className="text-slate-300">Loterie</Label>
-              <Select 
+              <select 
                 value={selectedLottery?.lottery_id || ''} 
-                onValueChange={(v) => {
-                  const lottery = lotteries.find(l => l.lottery_id === v);
+                onChange={(e) => {
+                  const lottery = lotteries.find(l => l.lottery_id === e.target.value);
                   setSelectedLottery(lottery);
                   setSelectedSchedule(null);
                 }}
+                className="w-full h-10 px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                data-testid="lottery-select"
               >
-                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                  <SelectValue placeholder="Choisir une loterie" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-700 border-slate-600">
-                  {lotteries.map(l => (
-                    <SelectItem key={l.lottery_id} value={l.lottery_id} className="text-white">
-                      {l.lottery_name} ({l.state_code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="">Choisir une loterie</option>
+                {lotteries.map(l => (
+                  <option key={l.lottery_id} value={l.lottery_id}>
+                    {l.lottery_name} ({l.state_code})
+                  </option>
+                ))}
+              </select>
+              {lotteries.length === 0 && (
+                <p className="text-xs text-amber-400 mt-1">Aucune loterie disponible. Synchronisation en cours...</p>
+              )}
             </div>
 
             <div>
               <Label className="text-slate-300">Tirage</Label>
-              <Select 
+              <select 
                 value={selectedSchedule?.schedule_id || ''} 
-                onValueChange={(v) => {
-                  const schedule = availableSchedules.find(s => s.schedule_id === v);
+                onChange={(e) => {
+                  const schedule = availableSchedules.find(s => s.schedule_id === e.target.value);
                   setSelectedSchedule(schedule);
                 }}
                 disabled={!selectedLottery}
+                className="w-full h-10 px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 disabled:opacity-50"
+                data-testid="schedule-select"
               >
-                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                  <SelectValue placeholder="Choisir un tirage" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-700 border-slate-600">
-                  {availableSchedules.map(s => (
-                    <SelectItem key={s.schedule_id} value={s.schedule_id} className="text-white">
-                      {s.draw_name} - {s.draw_time}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="">Choisir un tirage</option>
+                {availableSchedules.map(s => (
+                  <option key={s.schedule_id} value={s.schedule_id}>
+                    {s.draw_name} - {s.draw_time}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </CardContent>
