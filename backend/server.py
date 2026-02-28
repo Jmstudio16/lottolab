@@ -589,6 +589,7 @@ set_lottery_engine_db(db)
 set_succursale_db(db)
 set_saas_core_db(db)
 set_staff_db(db)
+set_ticket_print_db(db)
 
 # Initialize staff endpoints with dependency
 create_staff_endpoints(get_current_user)
@@ -609,6 +610,9 @@ app.include_router(settings_router)
 app.include_router(financial_router)
 app.include_router(succursale_router)
 app.include_router(saas_core_router)
+
+# Include ticket print router (PUBLIC routes for verification)
+app.include_router(ticket_print_router)
 
 # Include staff router under /api prefix
 api_router.include_router(staff_router)
