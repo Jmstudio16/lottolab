@@ -1,159 +1,213 @@
 <analysis>**original_problem_statement:**
-The user has provided a series of large, detailed MEGA PROMPTS to build the LOTTOLAB SaaS application to be 100% production-ready. The final implemented features include:
+The user has issued a series of critical MEGA PROMPTS to completely restructure and solidify the LOTTOLAB SaaS application, pausing all other development (like the LOTO PAM Keno/Raffle games). The goal is to transform the system into a robust, secure, and fully synchronized multi-tenant enterprise platform.
 
-1.  **Critical Security Update:** Remove all visible and database-level demo accounts to secure the application for production use.
-2.  **Complete Financial Cycle:** Implement the entire financial logic, including an  system, , a  endpoint for verifying winning tickets, a  endpoint for processing payments, and an automated background service for detecting winning tickets when results are published. The existing ticket sale endpoint () must be integrated with the agent balance system.
-3.  **Super Admin Result Management:** Create a comprehensive, Super-Admin-only system for publishing, editing, and deleting lottery results. This system must sync results in real-time to all Company Admin and Agent POS dashboards. Company Admins and Agents should have read-only access.
-4.  **Full Company & Agent Creation Flow:**
-    *   Build a Super Admin page to create new companies, including their initial admin user, subscription plan, and operational limits.
-    *   Implement a Login as Company Admin feature for Super Admins.
-    *   Build a Company Admin page to create new agents, including device assignment, credit limits, and permissions.
-    *   Give Super Admins full control over the global lottery catalog (create, edit, activate/deactivate), with changes syncing automatically to all devices.
-5.  **Agent POS Lottery Interface (Current task):** Create the main lottery selection page for POS agents (). This interface must display available lotteries as cards, each with a **real-time countdown timer** showing the time remaining until sales close. The system must automatically open and close lotteries based on their schedules, and the backend must enforce these closing times to prevent sales after the cutoff.
+**PRODUCT REQUIREMENTS:**
+
+1.  **Strict Multi-Tenant Architecture:**
+    *   Implement strict data isolation using  on all business-related collections.
+    *   A backend middleware must prevent any cross-company data access.
+    *   Super Admin has global visibility.
+
+2.  **Centralized Lottery & Schedule Management:**
+    *   Create a single source of truth, , for all 190+ lotteries, controlled exclusively by the Super Admin.
+    *   Company lottery availability must be automatically synchronized based on the Super Admin's global settings.
+    *   Lottery schedules () are to be created and managed only by the Super Admin. Company Admins have read-only access.
+
+3.  **Revised Company/Branch/Agent Hierarchy:**
+    *   The ability for Company Admins to create free-standing Agents and POS Devices has been removed.
+    *   A new hierarchy is enforced: .
+    *   Agents can *only* be created within a Succursale.
+    *   **Login system completely overhauled**: All / fields are replaced with . Login for supervisors and agents is now based on a globally unique email and password.
+
+4.  **Functional SaaS Lifecycle Management (Super Admin):**
+    *   Implement a complete Company creation form that automatically sets up the company, its admin, and links all active lotteries.
+    *   The , , and  buttons for companies in the Super Admin panel must be fully functional.
+    *   **Suspension must be real:** A suspended company, its supervisors, and agents must be completely blocked from logging in and using the API.
+
+5.  **Automated Subscription Management:**
+    *   Companies must have a  and .
+    *   A daily cron job must automatically check for expired subscriptions and suspend the company.
+    *   The Company Admin dashboard must display a live countdown of days remaining on their subscription.
+
+6.  **Real-Time Data Synchronization:**
+    *   All entity creations (Succursales, Agents) and sales activities (Tickets) must be visible in real-time on Company Admin and Super Admin dashboards.
+    *   Dashboard counters (total agents, sales, etc.) must update automatically.
+
+7.  **Automated Winner & Payout System:**
+    *   When the Super Admin enters lottery results, the system must automatically detect winners, update ticket statuses, and create pending payment records.
+
+8.  **Fix Company User Permissions:**
+    *   Ensure the  and  actions for company staff (Managers, Auditors, etc.) work correctly and enforce role-based access control.
 
 **User's preferred language**: French
 
 **what currently exists?**
-The application is a nearly complete multi-tenant lottery SaaS platform.
--   **Backend**: A robust FastAPI backend with multi-tenant logic, RBAC, and JWT security. It includes full CRUD and management endpoints for Super Admins, Company Admins, and Agents. The complete financial lifecycle (balances, ticket checking, payouts, auto-win detection) is implemented and was tested. A comprehensive result management system is also in place.
--   **Frontend**: A React-based frontend with distinct layouts and dashboards for Super Admins, Company Admins, and Agents. Key features like company creation, agent creation, and results management are fully built. The demo accounts have been removed from the login page UI.
--   **Database**: MongoDB is used to store all application data, including users, companies, agents, tickets, results, balances, and logs.
+The agent has successfully executed several major refactoring sprints to align the application with the new SaaS Enterprise requirements.
+- **Centralization:** A  collection (seeded with 220 lotteries) is now the single source of truth, with synchronization logic that propagates Super Admin changes to all companies.  are also centralized.
+- **Hierarchy:** The Company Admin UI has been rebuilt to enforce the  hierarchy. The old Agents and POS Devices menus are gone.
+- **Authentication:** Agent and Supervisor creation forms have been rebuilt to use  and , replacing the old .
+- **SaaS Lifecycle:** The Super Admin can now create companies via a comprehensive new form. The **Suspend** functionality is fully implemented and tested; it successfully blocks logins and API access for the entire suspended company. Endpoints for modifying and extending subscriptions are in place.
+- **Multi-tenancy:** Backend logic has been improved to filter data by .
 
 **Last working item**:
-The agent was implementing the Agent POS lottery selection page, which is meant to display available lotteries with real-time countdown timers.
-    - Last item agent was working: Debugging why lotteries were not appearing on the  page. The agent correctly identified that the frontend was looking for a  key in the API response, while the backend was sending the data under the  key.
-    - Status: IN PROGRESS
-    - Agent Testing Done: N
+    - Last item agent was working: The agent just completed a critical set of fixes based on the user's latest prompt. This included:
+        1.  Replacing all / fields with  for agent/supervisor login.
+        2.  Implementing a fully functional  feature that blocks all users of a company from logging in.
+        3.  Adding the backend logic and API endpoints for SaaS subscription dates (, ).
+        4.  Updating the Super Admin dashboard to show agent/succursale counts and subscription status.
+    - Status: USER VERIFICATION PENDING
+    - Agent Testing Done: Y
     - Which testing method agent to use? both
     - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-  - Issue 1: Fix Lottery Display on Agent POS Page (Priority: P0)
-
-  **Issues Detail:**
+  - Issue 1: Automated Subscription Suspension is not implemented (Priority: P0)
+  - Issue 2: Company User (Staff) Permissions are not fully verified (Priority: P1)
+  
+  Issues Detail:
   - Issue 1: 
-     - **Description**: The  component is fetching lottery data but fails to render it because it references an incorrect key () in the API response object. The correct key is .
-     - **Attempted fixes**: The agent diagnosed the issue by inspecting the backend API response () and comparing it with the frontend code. The fix has not been applied yet.
+     - **Attempted fixes**: The backend fields (, ) and API endpoints to manage them are created. The  can be set to . However, the automation is missing.
      - **Next debug checklist**:
-       1.  Edit .
-       2.  Locate the  hook that fetches data from .
-       3.  Change the state update logic to use  instead of .
-       4.  Verify that the lottery cards now render correctly on the page.
-     - **Why fix this issue and what will be achieved with the fix?**: This is a critical blocker for the entire Agent POS ticket-selling workflow. Fixing it will unblock the implementation of the countdown timer and the rest of the POS interface.
-     - **Status**:  IN PROGRESS
+         1.  Create a new background task/cron job (e.g., using  or a simple scheduled script).
+         2.  The job should run once daily.
+         3.  It must query all companies where  is in the past and  is not already 'expired'.
+         4.  For each expired company, update its  to 'expired'. The existing suspension middleware should then automatically block access.
+     - **Why fix this issue and what will be achieved with the fix?**: This is a core requirement for a functional SaaS business model. It automates the process of handling non-paying customers, reducing manual admin work and enforcing payment terms.
+     - **Status**:  NOT STARTED
      - **Is recurring issue?**: N
-     - **Should Test frontend/backend/both after fix?**: Both
+     - **Should Test frontend/backend/both after fix?**: backend
+     - **Blocked on other issue**: None
+
+  - Issue 2:
+     - **Attempted fixes**: The agent's focus has been on company-level and agent-level architecture. The specific permissions for sub-roles within a company (Manager, Auditor, Viewer) have not been explicitly tested or fixed since the user's prompt mentioned they were broken.
+     - **Next debug checklist**:
+         1.  Review the middleware in  and any other authentication/authorization logic.
+         2.  Create test users for each role (Manager, Auditor, Viewer).
+         3.  Attempt to access pages and perform actions that should be forbidden for each role.
+         4.  Verify that  and  actions on these users correctly revoke access.
+     - **Why fix this issue and what will be achieved with the fix?**: This is critical for the SaaS offering, as it allows company owners to delegate tasks without granting full control, a standard feature in enterprise software.
+     - **Status**:  NOT STARTED
+     - **Is recurring issue?**: Y
+     - **Should Test frontend/backend/both after fix?**: both
      - **Blocked on other issue**: None
 
 **In progress Task List**:
-  - Task 1: Complete Agent POS Lottery Selection Page (Priority: P0)
-
- Task Detail:
-  - Task 1: 
-     - **Where to resume**: After applying the fix for the lottery display, continue with the implementation in .
-       1. Implement the real-time countdown timer for each lottery card using its  and the current time. The timer should update every second.
-       2. Implement the auto-close logic: when a timer reaches , the card's status badge should change to CLOSED and the card should become un-clickable.
-       3. Implement the closing soon visual state (e.g., orange badge) when the timer is below a certain threshold (e.g., 15 minutes).
-       4. Ensure the backend () correctly rejects ticket sale attempts for lotteries that are closed.
-     - **What will be achieved with this?**: A production-ready, dynamic POS interface that allows agents to see available lotteries and their real-time closing status, preventing sales for closed draws.
-     - **Status**: IN PROGRESS
-     - **Should Test frontend/backend/both after fix?**: Both
-     - **Blocked on something**: Issue 1: Fix Lottery Display on Agent POS Page.
+There are no tasks currently in progress. The agent completed the last set of user requests.
 
 **Upcoming and Future Tasks**
 **Upcoming Tasks:**
-*   **P0**: Implement the ticket creation UI. After an agent selects an open lottery on the  page, they need to be navigated to a new screen to input the customer's numbers and complete the sale.
-*   **P1**: Enhance Admin dashboards with more detailed financial reports (e.g., agent profit/loss, commission reports, sales trends).
-*   **P2**: Clean up old, commented-out routes in  and  to finalize the codebase.
+*   **P0**: Implement the **daily cron job** for automatic subscription expiration and suspension.
+*   **P0**: Implement the **Delete Company** functionality for Super Admins. This requires clarifying with the user whether a soft or hard delete is preferred and implementing it with proper data integrity checks.
+*   **P1**: Implement a complete, centralized **Activity Logs** system as requested, capturing all major events (creation, updates, suspension, sales, etc.).
+*   **P2**: Fully implement the automated **Winner Detection & Payout Creation** system (Phase 7 of the user's prompt).
 
 **Future Tasks:**
-*   Implement WebSocket-based real-time push notifications to replace API polling.
-*   Implement SMS/Email notifications for winners.
-*   Add QR code scanning for ticket verification.
-*   Add PDF/CSV export functionality for all reports.
+*   Resume the development of the LOTO PAM public gaming platform:
+    *   Implement Keno Engine.
+    *   Implement Raffle System.
+    *   Add professional animations and theming.
+*   Continue and complete the full i18n translation for all components.
+*   Implement SMS/Email notifications.
 
 **Completed work in this session**
-- **Financial Lifecycle System (DONE & Tested):** Implemented and tested the complete backend logic for agent balances, ticket checking, ticket payouts, and automatic winning-ticket detection.
-- **Security Hardening (DONE):** Removed all hardcoded demo accounts from the login page UI and backend.
-- **Super Admin Result Management (DONE & Tested):** Created a full-stack feature for Super Admins to manage lottery results, with real-time sync and read-only views for other user roles.
-- **Company & Agent Management (DONE & Tested):** Built the complete frontend and backend for Super Admins to create companies and for Company Admins to create agents with detailed permissions.
-- **Agent POS Interface (IN PROGRESS):** Created the initial page () and diagnosed a key bug preventing the display of lotteries.
+- **SaaS Enterprise Refactor (Phase 1):**
+    - Centralized lottery management with  (220 lotteries).
+    - Implemented real-time synchronization between Super Admin global settings and company-specific catalogs.
+    - Centralized schedule management under Super Admin control (read-only for companies).
+    - Created a new, comprehensive Super Admin page for managing SaaS companies.
+- **SaaS Enterprise Refactor (Phase 2):**
+    - Completely replaced / with  for Supervisor and Agent login.
+    - Rebuilt the Succursale and Agent creation forms to enforce email-based authentication.
+    - Implemented a fully functional **company suspension system** that blocks all associated user logins.
+    - Added backend subscription date fields (, ) to the  model and API.
+    - Ensured dashboard counters for agents/succursales update in real-time.
 
 **Earlier issues found/mentioned but not fixed**
-- None. All identified issues were resolved.
+   - **Issue 1**: **Company Staff Permissions**: The user explicitly stated that suspending/deleting company users (Manager, Auditor, etc.) does not work and that role permissions are not enforced. This was part of the MEGA PROMPT but was not addressed as the agent focused on the larger architectural changes.
+     - **Debug checklist**:
+         1.  Check the middleware responsible for role-based authorization.
+         2.  Write tests to confirm that a suspended staff member cannot log in.
+         3.  Write tests to confirm that a Viewer cannot access an Admin or Manager API endpoint.
+     - **Why to solve this issue and what will be achieved with this?**: Fulfills a core SaaS requirement of having granular user roles and permissions within a customer's organization.
+     - **Should Test frontend/backend/both after fix?**: both
+     - **Is recurring issue?**: Y
 
 **Known issue recurrence from previous fork**
-  - None.
+  - None
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Backend**: FastAPI, MongoDB (), Pydantic, JWT for auth.
-- **Frontend**: React, , , Tailwind CSS,  for time manipulation.
-- **Real-Time UI**: Using JavaScript  for client-side countdown timers on the POS interface.
-- **Architecture**: Multi-tenant SaaS with Role-Based Access Control (RBAC).
+- **Backend**: FastAPI, MongoDB (), Pydantic, JWT.
+- **Frontend**: React, , , Tailwind CSS, Shadcn UI.
+- **Architecture**: **SaaS Multi-tenancy**, **Centralized Data Models** (for lotteries/schedules), **Real-time Synchronization**, Domain-based Rendering, **Middleware-based security**.
 
 **key DB schema**
-- ****: {agent_id, company_id, credit_limit, current_balance, available_balance, total_sales, total_payouts, ...}
-- ****: {ticket_id, agent_id, payout_amount, payout_status, paid_by, paid_at, ...}
-- ****: {lottery_game_id, draw_date, winning_numbers, ...}
-
-**changes in tech stack**
-  - None.
+- ****: { , ,  }
+- ****: { , ,  }
+- ****: { , , ,  }
+- ****: { , ,  ('active', 'suspended', 'expired'), ,  }
+- ****: { , ,  }
+- ** (for agents/supervisors)**: { , , , , ,  }
+- : (DEPRECATED)
 
 **All files of reference**
-- **New Backend:** , 
-- **New Frontend:** , , , , , .
-- **Modified:** , , , , , , , .
-
-**Areas that need refactoring**:
-- Some older route files (, ) contain commented-out code that should be removed to avoid confusion.
-
-**key api endpoints**
-- : Checks if a ticket is a winner.
-- : Processes payout for a winning ticket.
-- : Gets financial overview for admins.
-- : Creates a company and its admin user.
-- : Login as Company Admin.
-- : Creates an agent, their device, and balance record.
-- : Updates a lottery result.
-- : (Modified) Provides device configuration, including available lotteries and their schedules.
-- : (Modified) Validates agent balance and lottery closing time before selling a ticket.
+- : Contains the core logic for company management, lottery centralization, and subscription status.
+- : Manages the creation and management of branches (succursales) and agents, now using email.
+- : Includes the critical middleware for checking company suspension status during authentication.
+- : Script to populate the  collection.
+- : The UI for the Super Admin to manage all SaaS companies, including suspend/edit buttons and subscription info.
+- : The UI for Company Admins to create branches and agents using the new email-based forms.
 
 **Critical Info for New Agent**
-- **Primary Goal:** Your immediate task is to fix the bug in  and then complete the implementation of the real-time countdown timer feature as per the user's detailed prompt.
-- **User Language:** The user communicates exclusively in **French**. All  interactions and  summaries MUST be in French.
-- **User Prompts:** The user provides extremely detailed, sequential MEGA PROMPTS. Follow them precisely. The next logical prompt will likely be the ticket creation screen that follows lottery selection.
+- **Priority Shift**: Development of the public LOTO PAM platform is **paused**. The absolute priority is to complete and stabilize the core LOTTOLAB ENTERPRISE SaaS features as per the user's latest prompts.
+- **Authentication is Email-based**: Do not use or re-introduce  or  for logins. All new user-like entities must use a unique  and password.
+- **Suspension is Critical**: The  logic is a cornerstone of the new architecture. It must be respected in all new features. Any user associated with a suspended company must be blocked.
+- **Start with Automation**: Your first task should be to implement the daily cron job for checking expired subscriptions. This is the most significant missing piece from the last user request.
 
 **documents and test reports created in this job**
--  (19/19 tests passed for the financial cycle)
--  (Continuously updated with all new features)
+- 
+- 
+-  (Updated to reflect SaaS restructuring)
 
 **Last 10 User Messages and any pending HUMAN messages** 
-- The last four user messages were large, sequential MEGA PROMPTS detailing major features to be built:
-  1.   **Agent POS Lottery Interface with Countdown:** The current in-progress task.
-  2.   **Company/Agent Creation & Lottery Control:** A full management system for Super Admins. (Completed)
-  3.   **Super Admin Result Management:** A complete system for managing lottery results. (Completed)
-  4.   **Financial Cycle & Security:** The core financial logic and removal of demo accounts. (Completed)
+1.  **Msg 205**: User provided a final, detailed prompt to fix the SaaS system. Key requests: use Email for logins, new forms for Succursales/Agents, functional Suspend/Modify/Delete buttons for companies, and a working monthly subscription system with a countdown. (STATUS: Mostly implemented, cron job pending).
+2.  **Msg 200**: User celebrated the successful test run that validated the lottery centralization and company creation logic. (STATUS: Completed).
+3.  **Msg 197**: User confirmed the Company Admin UI now correctly shows the synchronized lottery catalog and the updated sidebar menu. (STATUS: Completed).
+4.  **Msg 195**: User confirmed the new company creation form in the Super Admin UI is correct. (STATUS: Completed).
+5.  **Msg 193**: User confirmed the main SaaS Companies dashboard in the Super Admin UI is correct. (STATUS: Completed).
+6.  **Msg 191**: User confirmed the lottery detail toggles in the Super Admin UI work as expected. (STATUS: Completed).
+7.  **Msg 100**: User provided the MEGA PROMPT to initiate the entire SaaS Enterprise correction, laying out a 12-phase plan. (STATUS: Partially implemented, ongoing).
+8.  **Msg 95**: User initiated the pivot from LOTO PAM features to correcting the core SaaS logic. (STATUS: Acknowledged, work started).
+9.  **Msg 89**: User celebrated the successful test run for the previous major refactor (Succursale hierarchy). (STATUS: Completed).
+10. **Msg 56**: User instructed the agent to continuer during a previous debugging session. (STATUS: Completed).
 
 **Project Health Check:**
-- **Broken**: The main Agent POS feature for selling tickets is broken due to the bug on the lottery selection page. This is the highest priority to fix.
+- **Broken**:
+    - The SaaS subscription system is not automated; the required cron job to suspend expired companies is missing.
+    - The Delete Company feature is not implemented.
+    - Permissions for sub-company roles (Manager, Auditor) are likely still broken as per the user's report.
 - **Mocked**: None.
 
 **3rd Party Integrations**
-- None.
+- **i18next**: Frontend internationalization.
+- **fastapi-limiter**: API rate limiting.
+- **python-socketio**: Backend WebSocket handling.
 
 **Testing status**
-  - Testing agent used after significant changes: YES. The agent ran a full suite of tests after implementing the financial cycle, with 19/19 passing.
+  - Testing agent used after significant changes: YES. The agent ran the testing agent successfully after the lottery centralization phase.
   - Troubleshoot agent used after agent stuck in loop: NO
   - Test files created: []
   - Known regressions: None.
 
 **Credentials to test flow:**
 - **Super Admin**:  / 
-- **Company Admin**:  / 
+- **Company Admin**:  /  (Note: This company may be suspended/activated during tests).
 - **Agent**:  / 
+- **LOTO PAM Player**:  / 
 
 **What agent forgot to execute**
-- The agent correctly identified the root cause of the bug on the  but did not get to apply the one-line fix before the end of the session. The next action is to apply that fix.</analysis>
+- The daily cron job to automatically suspend expired subscriptions was requested by the user but not implemented.
+- The user's request to fix the permissions for company staff (Manager, Auditor, Viewer) was not addressed.
+- The Delete Company functionality was requested but not implemented.</analysis>
