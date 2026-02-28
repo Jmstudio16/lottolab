@@ -549,6 +549,7 @@ set_financial_db(db)
 set_online_db(db)
 set_lottery_engine_db(db)
 set_succursale_db(db)
+set_saas_core_db(db)
 
 # Connect ticket processor for automatic winning detection
 set_ticket_processor(process_all_tickets_for_result)
