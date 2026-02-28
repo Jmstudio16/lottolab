@@ -6,11 +6,14 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 import os
 import logging
 from pathlib import Path
 from typing import List
 from datetime import datetime, timezone, timedelta
+import asyncio
 
 from models import *
 from auth import verify_password, get_password_hash, create_access_token, decode_token
@@ -33,6 +36,7 @@ from websocket_manager import ws_manager, notify_player, notify_admins, Notifica
 from lottery_engine import set_lottery_engine_db, process_result_for_online_tickets
 from succursale_routes import succursale_router, set_succursale_db
 from saas_core import saas_core_router, set_saas_core_db
+from scheduler_tasks import set_scheduler_db, check_expired_subscriptions, check_expiring_soon
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
