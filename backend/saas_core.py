@@ -1077,7 +1077,7 @@ async def extend_company_license(
 # ============================================================================
 
 class CompanyUpdate(BaseModel):
-    """Update company details"""
+    """Update company details - For Super Admin modify button"""
     company_name: Optional[str] = None
     slogan: Optional[str] = None
     contact_email: Optional[EmailStr] = None
@@ -1087,6 +1087,24 @@ class CompanyUpdate(BaseModel):
     currency: Optional[str] = None
     max_agents: Optional[int] = None
     max_daily_sales: Optional[float] = None
+    status: Optional[str] = None  # ACTIVE, SUSPENDED, EXPIRED
+    subscription_end_date: Optional[str] = None  # ISO date string
+
+
+class CompanyFullUpdate(BaseModel):
+    """Full company update model for Super Admin"""
+    name: Optional[str] = None
+    slogan: Optional[str] = None
+    contact_email: Optional[EmailStr] = None
+    plan: Optional[str] = None
+    default_commission_rate: Optional[float] = None
+    timezone: Optional[str] = None
+    currency: Optional[str] = None
+    max_agents: Optional[int] = None
+    max_daily_sales: Optional[float] = None
+    status: Optional[str] = None
+    license_end: Optional[str] = None
+    subscription_end_date: Optional[str] = None
 
 
 @saas_core_router.get("/companies")
