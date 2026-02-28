@@ -146,17 +146,14 @@ export const SuperCompaniesPage = () => {
     }
   };
 
-  const handleDelete = async (companyId, hardDelete = false) => {
-    const msg = hardDelete 
-      ? 'SUPPRIMER DÉFINITIVEMENT cette entreprise et toutes ses données?' 
-      : 'Désactiver cette entreprise?';
-    if (!window.confirm(msg)) return;
+  const handleDelete = async (companyId) => {
+    if (!window.confirm('Supprimer (archiver) cette entreprise? Elle sera masquée et tous ses utilisateurs bloqués.')) return;
     try {
-      await axios.delete(`${API_URL}/api/saas/companies/${companyId}?hard_delete=${hardDelete}`, { headers });
-      toast.success(hardDelete ? 'Entreprise supprimée définitivement' : 'Entreprise désactivée');
+      await axios.delete(`${API_URL}/api/saas/companies/${companyId}`, { headers });
+      toast.success('Entreprise archivée - Visible dans les archives');
       fetchCompanies();
     } catch (error) {
-      toast.error('Erreur');
+      toast.error(error.response?.data?.detail || 'Erreur');
     }
   };
 
