@@ -62,7 +62,8 @@ export const AgentTicketsPage = () => {
   }, [token, statusFilter]);
 
   const handlePrint = (ticketId) => {
-    window.open(`${API_URL}/api/ticket/print/${ticketId}`, '_blank');
+    // Open print page in new window with auto-print enabled
+    window.open(`${API_URL}/api/ticket/print/${ticketId}?auto=true`, '_blank', 'width=350,height=600');
   };
 
   const handleCancelClick = (ticket) => {
