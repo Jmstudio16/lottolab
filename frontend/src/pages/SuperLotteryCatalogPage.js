@@ -5,8 +5,10 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   Globe, Search, Plus, Edit2, Trash2, ChevronDown, ChevronRight,
-  MapPin, Filter, RefreshCw, Check, X, Database
+  MapPin, Filter, RefreshCw, Check, X, Database, ToggleLeft, ToggleRight,
+  Building2, Power
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -20,13 +22,15 @@ export const SuperLotteryCatalogPage = () => {
   const [expandedStates, setExpandedStates] = useState({});
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingLottery, setEditingLottery] = useState(null);
+  const [togglingLotteries, setTogglingLotteries] = useState({});
 
   const headers = { Authorization: `Bearer ${token}` };
 
   const fetchLotteries = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_URL}/api/super/lottery-catalog`, { headers });
+      // Use new SaaS core endpoint for master lotteries
+      const res = await axios.get(`${API_URL}/api/saas/master-lotteries`, { headers });
       setLotteries(res.data);
     } catch (error) {
       toast.error('Erreur lors du chargement du catalogue');
@@ -39,13 +43,21 @@ export const SuperLotteryCatalogPage = () => {
     fetchLotteries();
   }, []);
 
-  const seedCatalog = async () => {
+  const toggleGlobalStatus = async (lotteryId, currentStatus) => {
     try {
-      const res = await axios.post(`${API_URL}/api/super/seed-lottery-catalog`, {}, { headers });
-      toast.success(res.data.message);
+      setTogglingLotteries(prev => ({ ...prev, [lotteryId]: true }));
+      const newStatus = !currentStatus;
+      await axios.put(
+        `${API_URL}/api/saas/master-lotteries/${lotteryId}/toggle-global?is_active=${newStatus}`,
+        {},
+        { headers }
+      );
+      toast.success(newStatus ? 'Loterie activée globalement' : 'Loterie désactivée pour toutes les companies');
       fetchLotteries();
     } catch (error) {
-      toast.error('Erreur lors du seed');
+      toast.error('Erreur lors du changement de statut');
+    } finally {
+      setTogglingLotteries(prev => ({ ...prev, [lotteryId]: false }));
     }
   };
 
@@ -60,7 +72,7 @@ export const SuperLotteryCatalogPage = () => {
   const groupedLotteries = lotteries.reduce((acc, lot) => {
     const state = lot.state_code;
     if (!acc[state]) {
-      acc[state] = { name: lot.state_name, lotteries: [] };
+      acc[state] = { name: lot.state_name, country: lot.country, lotteries: [] };
     }
     acc[state].lotteries.push(lot);
     return acc;
@@ -76,8 +88,12 @@ export const SuperLotteryCatalogPage = () => {
     return true;
   });
 
-  const gameTypes = [...new Set(lotteries.map(l => l.game_type))];
+  const gameTypes = [...new Set(lotteries.map(l => l.game_type))].sort();
   const states = [...new Set(lotteries.map(l => l.state_code))].sort();
+  
+  // Stats
+  const totalActive = lotteries.filter(l => l.is_active_global).length;
+  const totalInactive = lotteries.length - totalActive;
 
   return (
     <AdminLayout role="SUPER_ADMIN">
@@ -90,26 +106,37 @@ export const SuperLotteryCatalogPage = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">Catalogue Global des Loteries</h1>
-              <p className="text-slate-400">{lotteries.length} loteries au total</p>
+              <p className="text-slate-400">{lotteries.length} loteries • Source Centralisée</p>
             </div>
           </div>
           <div className="flex gap-3">
             <button
-              onClick={seedCatalog}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
-              data-testid="seed-catalog-btn"
+              onClick={fetchLotteries}
+              className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors"
+              data-testid="refresh-btn"
             >
-              <Database className="w-4 h-4" />
-              Seed Catalog
+              <RefreshCw className="w-5 h-5" />
             </button>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
-              data-testid="add-lottery-btn"
-            >
-              <Plus className="w-4 h-4" />
-              Ajouter
-            </button>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+            <p className="text-slate-400 text-sm">Total Loteries</p>
+            <p className="text-2xl font-bold text-white">{lotteries.length}</p>
+          </div>
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+            <p className="text-slate-400 text-sm">Actives Globalement</p>
+            <p className="text-2xl font-bold text-emerald-400">{totalActive}</p>
+          </div>
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+            <p className="text-slate-400 text-sm">Désactivées</p>
+            <p className="text-2xl font-bold text-red-400">{totalInactive}</p>
+          </div>
+          <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+            <p className="text-slate-400 text-sm">États/Régions</p>
+            <p className="text-2xl font-bold text-blue-400">{states.length}</p>
           </div>
         </div>
 
@@ -149,12 +176,20 @@ export const SuperLotteryCatalogPage = () => {
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>
-            <button
-              onClick={fetchLotteries}
-              className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors"
-            >
-              <RefreshCw className="w-5 h-5" />
-            </button>
+          </div>
+        </div>
+
+        {/* Info Banner */}
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <Power className="w-5 h-5 text-blue-400 mt-0.5" />
+            <div>
+              <p className="text-blue-400 font-medium">Contrôle Global Super Admin</p>
+              <p className="text-slate-400 text-sm">
+                Désactiver une loterie ici la désactive automatiquement pour TOUTES les companies. 
+                Les Company Admins ne peuvent pas réactiver une loterie désactivée globalement.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -176,8 +211,16 @@ export const SuperLotteryCatalogPage = () => {
                     <MapPin className="w-5 h-5 text-emerald-400" />
                     <span className="text-lg font-semibold text-white">{data.name}</span>
                     <span className="text-sm text-slate-400">({stateCode})</span>
+                    {data.country && data.country !== 'USA' && (
+                      <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded-full">
+                        {data.country}
+                      </span>
+                    )}
                     <span className="px-2 py-0.5 bg-slate-700 text-slate-300 text-xs rounded-full">
                       {data.lotteries.length} jeux
+                    </span>
+                    <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full">
+                      {data.lotteries.filter(l => l.is_active_global).length} actifs
                     </span>
                   </div>
                   {expandedStates[stateCode] ? (
@@ -194,8 +237,9 @@ export const SuperLotteryCatalogPage = () => {
                         <tr className="text-left text-slate-400 text-sm border-b border-slate-800">
                           <th className="px-4 py-3">Nom</th>
                           <th className="px-4 py-3">Type</th>
-                          <th className="px-4 py-3">Statut</th>
-                          <th className="px-4 py-3 text-right">Actions</th>
+                          <th className="px-4 py-3">Catégorie</th>
+                          <th className="px-4 py-3 text-center">Statut Global</th>
+                          <th className="px-4 py-3 text-center">Toggle</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -203,31 +247,39 @@ export const SuperLotteryCatalogPage = () => {
                           .filter(l => !filterGameType || l.game_type === filterGameType)
                           .map(lottery => (
                           <tr key={lottery.lottery_id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                            <td className="px-4 py-3 text-white">{lottery.lottery_name}</td>
+                            <td className="px-4 py-3 text-white font-medium">{lottery.lottery_name}</td>
                             <td className="px-4 py-3">
                               <span className="px-2 py-1 bg-cyan-500/20 text-cyan-400 text-xs rounded-full">
                                 {lottery.game_type}
                               </span>
                             </td>
                             <td className="px-4 py-3">
-                              {lottery.is_active ? (
-                                <span className="flex items-center gap-1 text-emerald-400">
-                                  <Check className="w-4 h-4" /> Actif
+                              <span className={`px-2 py-1 text-xs rounded-full ${
+                                lottery.category === 'PREMIUM' 
+                                  ? 'bg-yellow-500/20 text-yellow-400' 
+                                  : 'bg-slate-700 text-slate-300'
+                              }`}>
+                                {lottery.category || 'STANDARD'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              {lottery.is_active_global ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded-full">
+                                  <Check className="w-3 h-3" /> Actif
                                 </span>
                               ) : (
-                                <span className="flex items-center gap-1 text-red-400">
-                                  <X className="w-4 h-4" /> Inactif
+                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded-full">
+                                  <X className="w-3 h-3" /> Inactif
                                 </span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-right">
-                              <button
-                                onClick={() => setEditingLottery(lottery)}
-                                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
-                                data-testid={`edit-${lottery.lottery_id}`}
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
+                            <td className="px-4 py-3 text-center">
+                              <Switch
+                                checked={lottery.is_active_global}
+                                onCheckedChange={() => toggleGlobalStatus(lottery.lottery_id, lottery.is_active_global)}
+                                disabled={togglingLotteries[lottery.lottery_id]}
+                                data-testid={`toggle-${lottery.lottery_id}`}
+                              />
                             </td>
                           </tr>
                         ))}
@@ -240,6 +292,7 @@ export const SuperLotteryCatalogPage = () => {
 
             {filteredStates.length === 0 && (
               <div className="text-center py-12 text-slate-400">
+                <Globe className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 Aucune loterie trouvée
               </div>
             )}
