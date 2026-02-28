@@ -51,6 +51,8 @@ import {
   AgentReportsPage 
 } from '@/pages/agent';
 import { AgentLotterySelectionPage } from '@/pages/agent/AgentLotterySelectionPage';
+import { AgentSearchTicketsPage } from '@/pages/agent/AgentSearchTicketsPage';
+import { AgentAvailableDrawsPage } from '@/pages/agent/AgentAvailableDrawsPage';
 
 // LOTO PAM Public Platform Pages
 import LotoPamHomePage from '@/pages/lotopam/LotoPamHomePage';
