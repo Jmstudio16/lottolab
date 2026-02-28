@@ -1152,20 +1152,32 @@ async def toggle_lottery(
     request: Request,
     current_user: dict = Depends(get_company_admin)
 ):
-    """Enable or disable a lottery for the company"""
+    """Enable or disable a lottery for the company (respects super admin control)"""
     company_id = require_admin(current_user)
     
-    # Verify lottery exists
-    lottery = await db.global_lotteries.find_one({"lottery_id": lottery_id}, {"_id": 0})
+    # Verify lottery exists in master catalog
+    lottery = await db.master_lotteries.find_one({"lottery_id": lottery_id}, {"_id": 0})
     if not lottery:
         raise HTTPException(status_code=404, detail="Loterie non trouvée")
+    
+    # Check if globally active
+    if not lottery.get("is_active_global"):
+        raise HTTPException(status_code=400, detail="Cette loterie est désactivée globalement par Super Admin")
+    
+    # Check if disabled by super admin for this company
+    cl = await db.company_lotteries.find_one(
+        {"company_id": company_id, "lottery_id": lottery_id},
+        {"_id": 0}
+    )
+    if cl and cl.get("disabled_by_super_admin") and enabled:
+        raise HTTPException(status_code=400, detail="Cette loterie a été désactivée par Super Admin pour votre entreprise")
     
     now = get_current_timestamp()
     
     await db.company_lotteries.update_one(
         {"company_id": company_id, "lottery_id": lottery_id},
         {"$set": {
-            "enabled": enabled,
+            "is_enabled": enabled,
             "lottery_name": lottery.get("lottery_name"),
             "state_code": lottery.get("state_code"),
             "updated_at": now
@@ -1174,6 +1186,7 @@ async def toggle_lottery(
             "id": generate_id("cla_"),
             "company_id": company_id,
             "lottery_id": lottery_id,
+            "disabled_by_super_admin": False,
             "created_at": now
         }},
         upsert=True
