@@ -1972,7 +1972,7 @@ async def get_my_subscription(current_user: dict = Depends(get_authenticated_use
 def get_subscription_message(remaining_days: int, is_expired: bool, user_name: str) -> str:
     """Generate subscription status message in French"""
     if is_expired:
-        return f"Votre abonnement est expiré. Contactez l'administrateur pour renouveler."
+        return "Votre abonnement est expiré. Contactez l'administrateur pour renouveler."
     elif remaining_days <= 5:
         return f"ATTENTION: Votre abonnement expire dans {remaining_days} jour(s)!"
     elif remaining_days <= 15:
