@@ -84,10 +84,10 @@ test.describe('LOTTOLAB Company Suspension/Activation Flow', () => {
     await page.click('a[href*="/companies"], button:has-text("Entreprises")');
     await expect(page.locator('text=Entreprises SaaS')).toBeVisible({ timeout: 10000 });
     
-    // Check stats panel
-    await expect(page.locator('text=Total')).toBeVisible();
-    await expect(page.locator('text=Actives')).toBeVisible();
-    await expect(page.locator('text=Suspendues')).toBeVisible();
+    // Check stats panel - use more specific selectors
+    await expect(page.getByText('Total', { exact: true })).toBeVisible();
+    await expect(page.getByText('Actives', { exact: true })).toBeVisible();
+    await expect(page.getByText('Suspendues', { exact: true })).toBeVisible();
   });
 
 });
