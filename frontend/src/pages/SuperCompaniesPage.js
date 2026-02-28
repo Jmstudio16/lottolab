@@ -545,7 +545,7 @@ export const SuperCompaniesPage = () => {
 
         {/* Edit Company Modal */}
         <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-          <DialogContent className="bg-slate-900 border-slate-800 max-w-lg">
+          <DialogContent className="bg-slate-900 border-slate-800 max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-xl text-white flex items-center gap-2">
                 <Edit className="w-5 h-5 text-yellow-400" />
@@ -554,46 +554,92 @@ export const SuperCompaniesPage = () => {
             </DialogHeader>
 
             <form onSubmit={handleEdit} className="space-y-4">
-              <div>
-                <Label className="text-slate-300">Nom Entreprise</Label>
-                <Input
-                  value={editData.company_name}
-                  onChange={(e) => setEditData({...editData, company_name: e.target.value})}
-                  className="bg-slate-800 border-slate-700 text-white"
-                />
-              </div>
-              <div>
-                <Label className="text-slate-300">Email</Label>
-                <Input
-                  type="email"
-                  value={editData.contact_email}
-                  onChange={(e) => setEditData({...editData, contact_email: e.target.value})}
-                  className="bg-slate-800 border-slate-700 text-white"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-purple-400 uppercase">Informations</h3>
                 <div>
-                  <Label className="text-slate-300">Plan</Label>
-                  <select
-                    value={editData.plan}
-                    onChange={(e) => setEditData({...editData, plan: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
-                  >
-                    <option value="Starter">Starter</option>
-                    <option value="Basic">Basic</option>
-                    <option value="Professional">Professional</option>
-                    <option value="Enterprise">Enterprise</option>
-                  </select>
-                </div>
-                <div>
-                  <Label className="text-slate-300">Commission %</Label>
+                  <Label className="text-slate-300">Nom Entreprise</Label>
                   <Input
-                    type="number"
-                    value={editData.default_commission_rate}
-                    onChange={(e) => setEditData({...editData, default_commission_rate: parseFloat(e.target.value) || 0})}
+                    value={editData.company_name}
+                    onChange={(e) => setEditData({...editData, company_name: e.target.value})}
                     className="bg-slate-800 border-slate-700 text-white"
+                    data-testid="edit-company-name"
                   />
                 </div>
+                <div>
+                  <Label className="text-slate-300">Email Contact</Label>
+                  <Input
+                    type="email"
+                    value={editData.contact_email}
+                    onChange={(e) => setEditData({...editData, contact_email: e.target.value})}
+                    className="bg-slate-800 border-slate-700 text-white"
+                    data-testid="edit-contact-email"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-emerald-400 uppercase">Plan & Commission</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-slate-300">Plan</Label>
+                    <select
+                      value={editData.plan}
+                      onChange={(e) => setEditData({...editData, plan: e.target.value})}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                      data-testid="edit-plan"
+                    >
+                      <option value="Starter">Starter</option>
+                      <option value="Basic">Basic</option>
+                      <option value="Professional">Professional</option>
+                      <option value="Enterprise">Enterprise</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-slate-300">Commission %</Label>
+                    <Input
+                      type="number"
+                      value={editData.default_commission_rate}
+                      onChange={(e) => setEditData({...editData, default_commission_rate: parseFloat(e.target.value) || 0})}
+                      className="bg-slate-800 border-slate-700 text-white"
+                      min="0"
+                      max="100"
+                      data-testid="edit-commission"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-blue-400 uppercase">Abonnement</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-slate-300">Date fin abonnement</Label>
+                    <Input
+                      type="date"
+                      value={editData.subscription_end_date}
+                      onChange={(e) => setEditData({...editData, subscription_end_date: e.target.value})}
+                      className="bg-slate-800 border-slate-700 text-white"
+                      data-testid="edit-subscription-end"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-slate-300">Statut</Label>
+                    <select
+                      value={editData.status}
+                      onChange={(e) => setEditData({...editData, status: e.target.value})}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                      data-testid="edit-status"
+                    >
+                      <option value="ACTIVE">Actif</option>
+                      <option value="SUSPENDED">Suspendu</option>
+                      <option value="EXPIRED">Expiré</option>
+                      <option value="TRIAL">Essai</option>
+                    </select>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Note: Changer le statut affectera tous les utilisateurs de l'entreprise.
+                </p>
               </div>
 
               <div className="flex gap-3 pt-4 border-t border-slate-800">
@@ -608,6 +654,7 @@ export const SuperCompaniesPage = () => {
                 <Button
                   type="submit"
                   className="flex-1 bg-yellow-600 hover:bg-yellow-700"
+                  data-testid="save-edit-btn"
                 >
                   Enregistrer
                 </Button>
