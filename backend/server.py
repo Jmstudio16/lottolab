@@ -654,6 +654,60 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# ============ SCHEDULER INITIALIZATION ============
+scheduler = AsyncIOScheduler()
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize scheduler on startup"""
+    # Set database for scheduler
+    set_scheduler_db(db)
+    
+    # Add daily job to check expired subscriptions at 00:00
+    scheduler.add_job(
+        check_expired_subscriptions,
+        CronTrigger(hour=0, minute=0),
+        id="check_expired_subscriptions",
+        name="Daily Subscription Expiration Check",
+        replace_existing=True
+    )
+    
+    # Add job to check expiring soon (runs at 06:00 for notifications)
+    scheduler.add_job(
+        check_expiring_soon,
+        CronTrigger(hour=6, minute=0),
+        id="check_expiring_soon",
+        name="Check Expiring Subscriptions",
+        replace_existing=True
+    )
+    
+    # Start the scheduler
+    scheduler.start()
+    logger.info("[SCHEDULER] Started - Daily subscription check at 00:00")
+    
+    # Run initial check at startup
+    asyncio.create_task(check_expired_subscriptions())
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    # Shutdown scheduler
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
+        logger.info("[SCHEDULER] Stopped")
     client.close()
+
+
+# ============ MANUAL CRON TRIGGER (Super Admin Only) ============
+@api_router.post("/admin/trigger-subscription-check")
+async def trigger_subscription_check(current_user: dict = Depends(get_current_user)):
+    """Manually trigger subscription check (Super Admin only)"""
+    if current_user.get("role") != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    await check_expired_subscriptions()
+    await check_expiring_soon()
+    
+    return {"message": "Vérification des abonnements terminée", "timestamp": get_current_timestamp()}
