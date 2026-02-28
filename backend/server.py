@@ -587,6 +587,10 @@ set_online_db(db)
 set_lottery_engine_db(db)
 set_succursale_db(db)
 set_saas_core_db(db)
+set_staff_db(db)
+
+# Initialize staff endpoints with dependency
+create_staff_endpoints(get_current_user)
 
 # Connect ticket processor for automatic winning detection
 set_ticket_processor(process_all_tickets_for_result)
@@ -604,6 +608,9 @@ app.include_router(settings_router)
 app.include_router(financial_router)
 app.include_router(succursale_router)
 app.include_router(saas_core_router)
+
+# Include staff router under /api prefix
+api_router.include_router(staff_router)
 
 # Include online routers under /api prefix
 api_router.include_router(online_router)
