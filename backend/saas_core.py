@@ -1896,3 +1896,104 @@ async def get_dashboard_stats(current_user: dict = Depends(require_super_admin))
             "unread": unread_notifications
         }
     }
+
+
+
+# ============================================================================
+# COMPANY SUBSCRIPTION STATUS (For Company Admin Dashboard)
+# ============================================================================
+
+@saas_core_router.get("/my-subscription")
+async def get_my_subscription(current_user: dict = Depends(get_authenticated_user)):
+    """
+    Get subscription status for the current company (Company Admin view).
+    Returns remaining days and alerts.
+    """
+    if MultiTenantGuard.is_super_admin(current_user):
+        raise HTTPException(status_code=400, detail="Super Admin n'a pas d'abonnement")
+    
+    company_id = current_user.get("company_id")
+    if not company_id:
+        raise HTTPException(status_code=400, detail="Aucune entreprise associée")
+    
+    company = await db.companies.find_one(
+        {"company_id": company_id},
+        {"_id": 0}
+    )
+    
+    if not company:
+        raise HTTPException(status_code=404, detail="Entreprise non trouvée")
+    
+    now = datetime.now(timezone.utc)
+    
+    # Get subscription end date
+    end_date_str = company.get("license_end") or company.get("subscription_end_date")
+    
+    remaining_days = 0
+    is_expired = False
+    is_expiring_soon = False
+    alert_level = None  # "critical", "warning", None
+    
+    if end_date_str:
+        try:
+            end_date = datetime.fromisoformat(end_date_str.replace("Z", "+00:00"))
+            remaining_days = (end_date - now).days
+            
+            if remaining_days < 0:
+                is_expired = True
+                remaining_days = 0
+                alert_level = "critical"
+            elif remaining_days <= 5:
+                is_expiring_soon = True
+                alert_level = "critical"
+            elif remaining_days <= 15:
+                is_expiring_soon = True
+                alert_level = "warning"
+        except:
+            remaining_days = 30
+    else:
+        remaining_days = 30  # Default if no date set
+    
+    return {
+        "company_id": company_id,
+        "company_name": company.get("name"),
+        "plan": company.get("plan", "Basic"),
+        "status": company.get("status"),
+        "subscription_start": company.get("license_start") or company.get("subscription_start_date"),
+        "subscription_end": end_date_str,
+        "remaining_days": remaining_days,
+        "is_expired": is_expired,
+        "is_expiring_soon": is_expiring_soon,
+        "alert_level": alert_level,
+        "message": get_subscription_message(remaining_days, is_expired, current_user.get("name", ""))
+    }
+
+
+def get_subscription_message(remaining_days: int, is_expired: bool, user_name: str) -> str:
+    """Generate subscription status message in French"""
+    if is_expired:
+        return f"Votre abonnement est expiré. Contactez l'administrateur pour renouveler."
+    elif remaining_days <= 5:
+        return f"ATTENTION: Votre abonnement expire dans {remaining_days} jour(s)!"
+    elif remaining_days <= 15:
+        return f"Votre abonnement expire dans {remaining_days} jours. Pensez à renouveler."
+    else:
+        return f"Votre abonnement expire dans {remaining_days} jours."
+
+
+# ============================================================================
+# CRON JOB STATUS (For Super Admin)
+# ============================================================================
+
+@saas_core_router.get("/cron-logs")
+async def get_cron_logs(
+    current_user: dict = Depends(require_super_admin),
+    limit: int = 50
+):
+    """Get recent cron job execution logs"""
+    logs = await db.cron_logs.find(
+        {},
+        {"_id": 0}
+    ).sort("run_at", -1).limit(limit).to_list(limit)
+    
+    return logs
