@@ -77,6 +77,38 @@ async def login(request: Request, credentials: LoginRequest):
     if not user_doc or not verify_password(credentials.password, user_doc.get("password_hash", "")):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
+    # Check if user is suspended or deleted
+    if user_doc.get("status") in ["SUSPENDED", "DELETED"]:
+        raise HTTPException(status_code=403, detail="Compte suspendu ou supprimé. Contactez l'administrateur.")
+    
+    # Check if company is suspended or expired (for non-super-admin)
+    if user_doc.get("role") != UserRole.SUPER_ADMIN and user_doc.get("company_id"):
+        company = await db.companies.find_one(
+            {"company_id": user_doc["company_id"]},
+            {"_id": 0, "status": 1, "license_end": 1}
+        )
+        if company:
+            if company.get("status") in ["SUSPENDED", "DELETED"]:
+                raise HTTPException(status_code=403, detail="Entreprise suspendue. Contactez l'administrateur.")
+            if company.get("status") == "EXPIRED":
+                raise HTTPException(status_code=403, detail="Abonnement expiré. Contactez l'administrateur.")
+            
+            # Check license expiration
+            license_end = company.get("license_end")
+            if license_end:
+                try:
+                    from datetime import datetime, timezone
+                    end_date = datetime.fromisoformat(license_end.replace("Z", "+00:00"))
+                    if end_date < datetime.now(timezone.utc):
+                        # Auto-expire the company
+                        await db.companies.update_one(
+                            {"company_id": user_doc["company_id"]},
+                            {"$set": {"status": "EXPIRED", "updated_at": get_current_timestamp()}}
+                        )
+                        raise HTTPException(status_code=403, detail="Abonnement expiré. Contactez l'administrateur.")
+                except ValueError:
+                    pass
+    
     # Update last_login
     now = get_current_timestamp()
     await db.users.update_one(
