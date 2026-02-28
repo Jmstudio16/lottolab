@@ -142,6 +142,7 @@ const SubscriptionCounter = ({ subscription }) => {
 export const CompanyDashboardPage = () => {
   const [stats, setStats] = useState(null);
   const [tickets, setTickets] = useState([]);
+  const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -150,12 +151,14 @@ export const CompanyDashboardPage = () => {
 
   const fetchData = async () => {
     try {
-      const [statsRes, ticketsRes] = await Promise.all([
+      const [statsRes, ticketsRes, subscriptionRes] = await Promise.all([
         apiClient.get('/company/dashboard/stats'),
-        apiClient.get('/company/tickets')
+        apiClient.get('/company/tickets'),
+        apiClient.get('/saas/my-subscription').catch(() => ({ data: null }))
       ]);
       setStats(statsRes.data);
       setTickets(ticketsRes.data.slice(0, 10));
+      setSubscription(subscriptionRes.data);
     } catch (error) {
       toast.error('Failed to load dashboard data');
     } finally {
@@ -176,6 +179,12 @@ export const CompanyDashboardPage = () => {
   return (
     <AdminLayout title="Dashboard" subtitle="Company Overview" role="COMPANY_ADMIN">
       <div className="space-y-6">
+        {/* Subscription Alert (Critical warnings) */}
+        <SubscriptionAlert subscription={subscription} />
+        
+        {/* Subscription Counter (Always visible) */}
+        <SubscriptionCounter subscription={subscription} />
+        
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
