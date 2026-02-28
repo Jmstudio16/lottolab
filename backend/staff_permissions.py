@@ -167,316 +167,324 @@ class StaffUpdate(BaseModel):
 # STAFF MANAGEMENT ENDPOINTS
 # ============================================================================
 
-from server import get_current_user
+# Note: get_current_user is injected from server.py during router registration
 
-
-@staff_router.get("/")
-async def get_company_staff(current_user: dict = Depends(get_current_user)):
-    """Get all staff members for the company (Admin only)"""
-    await require_company_admin(current_user)
+def create_staff_endpoints(get_current_user_dep):
+    """Factory function to create endpoints with dependency injection"""
     
-    company_id = current_user.get("company_id")
-    if not company_id:
-        raise HTTPException(status_code=400, detail="Aucune entreprise associée")
-    
-    staff_roles = [UserRole.COMPANY_MANAGER, UserRole.AUDITOR_READONLY, UserRole.BRANCH_USER]
-    
-    staff = await db.users.find(
-        {
-            "company_id": company_id,
-            "role": {"$in": [r.value for r in staff_roles]},
-            "status": {"$ne": "DELETED"}
-        },
-        {"_id": 0, "password_hash": 0}
-    ).to_list(100)
-    
-    return staff
-
-
-@staff_router.post("/")
-async def create_staff_member(
-    staff_data: StaffCreate,
-    request: Request,
-    current_user: dict = Depends(get_current_user)
-):
-    """Create a new staff member (Admin only)"""
-    await require_company_admin(current_user)
-    
-    company_id = current_user.get("company_id")
-    if not company_id:
-        raise HTTPException(status_code=400, detail="Aucune entreprise associée")
-    
-    # Validate role
-    allowed_roles = ["COMPANY_MANAGER", "AUDITOR_READONLY", "BRANCH_USER"]
-    if staff_data.role not in allowed_roles:
-        raise HTTPException(status_code=400, detail=f"Rôle invalide. Choisissez parmi: {allowed_roles}")
-    
-    # Check if email is already used
-    existing = await db.users.find_one({"email": staff_data.email})
-    if existing:
-        raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
-    
-    # Validate succursale for BRANCH_USER
-    if staff_data.role == "BRANCH_USER" and not staff_data.succursale_id:
-        raise HTTPException(status_code=400, detail="Une succursale est requise pour ce rôle")
-    
-    now = get_current_timestamp()
-    user_id = generate_id("staff")
-    
-    new_staff = {
-        "user_id": user_id,
-        "email": staff_data.email,
-        "password_hash": get_password_hash(staff_data.password),
-        "name": staff_data.name,
-        "role": staff_data.role,
-        "company_id": company_id,
-        "succursale_id": staff_data.succursale_id,
-        "status": "ACTIVE",
-        "created_at": now,
-        "updated_at": now,
-        "created_by": current_user["user_id"]
-    }
-    
-    await db.users.insert_one(new_staff)
-    
-    # Log activity
-    await log_activity(
-        db=db,
-        action_type="STAFF_CREATED",
-        entity_type="user",
-        entity_id=user_id,
-        performed_by=current_user["user_id"],
-        company_id=company_id,
-        metadata={
-            "staff_name": staff_data.name,
-            "staff_email": staff_data.email,
-            "role": staff_data.role
-        },
-        ip_address=request.client.host if request.client else None
-    )
-    
-    new_staff.pop("password_hash", None)
-    new_staff.pop("_id", None)
-    
-    return new_staff
-
-
-@staff_router.put("/{user_id}/suspend")
-async def suspend_staff_member(
-    user_id: str,
-    request: Request,
-    current_user: dict = Depends(get_current_user)
-):
-    """Suspend a staff member - blocks their login and API access"""
-    await require_company_admin(current_user)
-    
-    company_id = current_user.get("company_id")
-    
-    # Find the staff member
-    staff = await db.users.find_one({
-        "user_id": user_id,
-        "company_id": company_id,
-        "role": {"$in": ["COMPANY_MANAGER", "AUDITOR_READONLY", "BRANCH_USER"]}
-    })
-    
-    if not staff:
-        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-    
-    if staff.get("status") == "SUSPENDED":
-        raise HTTPException(status_code=400, detail="Cet utilisateur est déjà suspendu")
-    
-    now = get_current_timestamp()
-    
-    # Suspend the staff member
-    await db.users.update_one(
-        {"user_id": user_id},
-        {"$set": {
-            "status": "SUSPENDED",
-            "suspended_at": now,
-            "suspended_by": current_user["user_id"],
-            "suspended_reason": "ADMIN_SUSPENSION",
-            "updated_at": now
-        }}
-    )
-    
-    # Log activity
-    await log_activity(
-        db=db,
-        action_type="STAFF_SUSPENDED",
-        entity_type="user",
-        entity_id=user_id,
-        performed_by=current_user["user_id"],
-        company_id=company_id,
-        metadata={
-            "staff_name": staff.get("name"),
-            "staff_email": staff.get("email"),
-            "role": staff.get("role")
-        },
-        ip_address=request.client.host if request.client else None
-    )
-    
-    return {
-        "message": f"Utilisateur {staff.get('name')} suspendu",
-        "user_id": user_id,
-        "status": "SUSPENDED"
-    }
-
-
-@staff_router.put("/{user_id}/activate")
-async def activate_staff_member(
-    user_id: str,
-    request: Request,
-    current_user: dict = Depends(get_current_user)
-):
-    """Activate a suspended staff member"""
-    await require_company_admin(current_user)
-    
-    company_id = current_user.get("company_id")
-    
-    # Find the staff member
-    staff = await db.users.find_one({
-        "user_id": user_id,
-        "company_id": company_id,
-        "role": {"$in": ["COMPANY_MANAGER", "AUDITOR_READONLY", "BRANCH_USER"]}
-    })
-    
-    if not staff:
-        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-    
-    if staff.get("status") == "ACTIVE":
-        raise HTTPException(status_code=400, detail="Cet utilisateur est déjà actif")
-    
-    now = get_current_timestamp()
-    
-    # Activate the staff member
-    await db.users.update_one(
-        {"user_id": user_id},
-        {
-            "$set": {
-                "status": "ACTIVE",
-                "activated_at": now,
-                "activated_by": current_user["user_id"],
-                "updated_at": now
+    @staff_router.get("/")
+    async def get_company_staff(current_user: dict = Depends(get_current_user_dep)):
+        """Get all staff members for the company (Admin only)"""
+        if current_user.get("role") != UserRole.COMPANY_ADMIN:
+            raise HTTPException(status_code=403, detail="Accès réservé à l'administrateur de l'entreprise")
+        
+        company_id = current_user.get("company_id")
+        if not company_id:
+            raise HTTPException(status_code=400, detail="Aucune entreprise associée")
+        
+        staff_roles = [UserRole.COMPANY_MANAGER, UserRole.AUDITOR_READONLY, UserRole.BRANCH_USER]
+        
+        staff = await db.users.find(
+            {
+                "company_id": company_id,
+                "role": {"$in": [r.value for r in staff_roles]},
+                "status": {"$ne": "DELETED"}
             },
-            "$unset": {
-                "suspended_at": "",
-                "suspended_by": "",
-                "suspended_reason": ""
-            }
+            {"_id": 0, "password_hash": 0}
+        ).to_list(100)
+        
+        return staff
+
+
+    @staff_router.post("/")
+    async def create_staff_member(
+        staff_data: StaffCreate,
+        request: Request,
+        current_user: dict = Depends(get_current_user_dep)
+    ):
+        """Create a new staff member (Admin only)"""
+        if current_user.get("role") != UserRole.COMPANY_ADMIN:
+            raise HTTPException(status_code=403, detail="Accès réservé à l'administrateur de l'entreprise")
+        
+        company_id = current_user.get("company_id")
+        if not company_id:
+            raise HTTPException(status_code=400, detail="Aucune entreprise associée")
+        
+        # Validate role
+        allowed_roles = ["COMPANY_MANAGER", "AUDITOR_READONLY", "BRANCH_USER"]
+        if staff_data.role not in allowed_roles:
+            raise HTTPException(status_code=400, detail=f"Rôle invalide. Choisissez parmi: {allowed_roles}")
+        
+        # Check if email is already used
+        existing = await db.users.find_one({"email": staff_data.email})
+        if existing:
+            raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
+        
+        # Validate succursale for BRANCH_USER
+        if staff_data.role == "BRANCH_USER" and not staff_data.succursale_id:
+            raise HTTPException(status_code=400, detail="Une succursale est requise pour ce rôle")
+        
+        now = get_current_timestamp()
+        user_id = generate_id("staff")
+        
+        new_staff = {
+            "user_id": user_id,
+            "email": staff_data.email,
+            "password_hash": get_password_hash(staff_data.password),
+            "name": staff_data.name,
+            "role": staff_data.role,
+            "company_id": company_id,
+            "succursale_id": staff_data.succursale_id,
+            "status": "ACTIVE",
+            "created_at": now,
+            "updated_at": now,
+            "created_by": current_user["user_id"]
         }
-    )
-    
-    # Log activity
-    await log_activity(
-        db=db,
-        action_type="STAFF_ACTIVATED",
-        entity_type="user",
-        entity_id=user_id,
-        performed_by=current_user["user_id"],
-        company_id=company_id,
-        metadata={
-            "staff_name": staff.get("name"),
-            "staff_email": staff.get("email"),
-            "role": staff.get("role")
-        },
-        ip_address=request.client.host if request.client else None
-    )
-    
-    return {
-        "message": f"Utilisateur {staff.get('name')} activé",
-        "user_id": user_id,
-        "status": "ACTIVE"
-    }
+        
+        await db.users.insert_one(new_staff)
+        
+        # Log activity
+        await log_activity(
+            db=db,
+            action_type="STAFF_CREATED",
+            entity_type="user",
+            entity_id=user_id,
+            performed_by=current_user["user_id"],
+            company_id=company_id,
+            metadata={
+                "staff_name": staff_data.name,
+                "staff_email": staff_data.email,
+                "role": staff_data.role
+            },
+            ip_address=request.client.host if request.client else None
+        )
+        
+        new_staff.pop("password_hash", None)
+        new_staff.pop("_id", None)
+        
+        return new_staff
 
 
-@staff_router.delete("/{user_id}")
-async def delete_staff_member(
-    user_id: str,
-    request: Request,
-    current_user: dict = Depends(get_current_user)
-):
-    """Soft delete a staff member - blocks access permanently"""
-    await require_company_admin(current_user)
-    
-    company_id = current_user.get("company_id")
-    
-    # Find the staff member
-    staff = await db.users.find_one({
-        "user_id": user_id,
-        "company_id": company_id,
-        "role": {"$in": ["COMPANY_MANAGER", "AUDITOR_READONLY", "BRANCH_USER"]}
-    })
-    
-    if not staff:
-        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-    
-    now = get_current_timestamp()
-    
-    # Soft delete the staff member
-    await db.users.update_one(
-        {"user_id": user_id},
-        {"$set": {
-            "status": "DELETED",
-            "deleted_at": now,
-            "deleted_by": current_user["user_id"],
-            "updated_at": now
-        }}
-    )
-    
-    # Log activity
-    await log_activity(
-        db=db,
-        action_type="STAFF_DELETED",
-        entity_type="user",
-        entity_id=user_id,
-        performed_by=current_user["user_id"],
-        company_id=company_id,
-        metadata={
-            "staff_name": staff.get("name"),
-            "staff_email": staff.get("email"),
-            "role": staff.get("role")
-        },
-        ip_address=request.client.host if request.client else None
-    )
-    
-    return {
-        "message": f"Utilisateur {staff.get('name')} supprimé",
-        "user_id": user_id,
-        "status": "DELETED"
-    }
-
-
-@staff_router.get("/permissions")
-async def get_my_permissions(current_user: dict = Depends(get_current_user)):
-    """Get current user's permissions based on their role"""
-    role = current_user.get("role")
-    permissions = ROLE_PERMISSIONS.get(role, {})
-    
-    return {
-        "user_id": current_user.get("user_id"),
-        "role": role,
-        "permissions": permissions
-    }
-
-
-@staff_router.get("/roles")
-async def get_available_roles(current_user: dict = Depends(get_current_user)):
-    """Get all available staff roles with their permissions"""
-    await require_company_admin(current_user)
-    
-    staff_roles = ["COMPANY_MANAGER", "AUDITOR_READONLY", "BRANCH_USER"]
-    
-    roles_info = []
-    for role in staff_roles:
-        perms = ROLE_PERMISSIONS.get(role, {})
-        roles_info.append({
-            "role": role,
-            "name": get_role_display_name(role),
-            "level": perms.get("level", 0),
-            "permissions": perms
+    @staff_router.put("/{user_id}/suspend")
+    async def suspend_staff_member(
+        user_id: str,
+        request: Request,
+        current_user: dict = Depends(get_current_user_dep)
+    ):
+        """Suspend a staff member - blocks their login and API access"""
+        if current_user.get("role") != UserRole.COMPANY_ADMIN:
+            raise HTTPException(status_code=403, detail="Accès réservé à l'administrateur de l'entreprise")
+        
+        company_id = current_user.get("company_id")
+        
+        # Find the staff member
+        staff = await db.users.find_one({
+            "user_id": user_id,
+            "company_id": company_id,
+            "role": {"$in": ["COMPANY_MANAGER", "AUDITOR_READONLY", "BRANCH_USER"]}
         })
-    
-    return roles_info
+        
+        if not staff:
+            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+        
+        if staff.get("status") == "SUSPENDED":
+            raise HTTPException(status_code=400, detail="Cet utilisateur est déjà suspendu")
+        
+        now = get_current_timestamp()
+        
+        # Suspend the staff member
+        await db.users.update_one(
+            {"user_id": user_id},
+            {"$set": {
+                "status": "SUSPENDED",
+                "suspended_at": now,
+                "suspended_by": current_user["user_id"],
+                "suspended_reason": "ADMIN_SUSPENSION",
+                "updated_at": now
+            }}
+        )
+        
+        # Log activity
+        await log_activity(
+            db=db,
+            action_type="STAFF_SUSPENDED",
+            entity_type="user",
+            entity_id=user_id,
+            performed_by=current_user["user_id"],
+            company_id=company_id,
+            metadata={
+                "staff_name": staff.get("name"),
+                "staff_email": staff.get("email"),
+                "role": staff.get("role")
+            },
+            ip_address=request.client.host if request.client else None
+        )
+        
+        return {
+            "message": f"Utilisateur {staff.get('name')} suspendu",
+            "user_id": user_id,
+            "status": "SUSPENDED"
+        }
+
+
+    @staff_router.put("/{user_id}/activate")
+    async def activate_staff_member(
+        user_id: str,
+        request: Request,
+        current_user: dict = Depends(get_current_user_dep)
+    ):
+        """Activate a suspended staff member"""
+        if current_user.get("role") != UserRole.COMPANY_ADMIN:
+            raise HTTPException(status_code=403, detail="Accès réservé à l'administrateur de l'entreprise")
+        
+        company_id = current_user.get("company_id")
+        
+        # Find the staff member
+        staff = await db.users.find_one({
+            "user_id": user_id,
+            "company_id": company_id,
+            "role": {"$in": ["COMPANY_MANAGER", "AUDITOR_READONLY", "BRANCH_USER"]}
+        })
+        
+        if not staff:
+            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+        
+        if staff.get("status") == "ACTIVE":
+            raise HTTPException(status_code=400, detail="Cet utilisateur est déjà actif")
+        
+        now = get_current_timestamp()
+        
+        # Activate the staff member
+        await db.users.update_one(
+            {"user_id": user_id},
+            {
+                "$set": {
+                    "status": "ACTIVE",
+                    "activated_at": now,
+                    "activated_by": current_user["user_id"],
+                    "updated_at": now
+                },
+                "$unset": {
+                    "suspended_at": "",
+                    "suspended_by": "",
+                    "suspended_reason": ""
+                }
+            }
+        )
+        
+        # Log activity
+        await log_activity(
+            db=db,
+            action_type="STAFF_ACTIVATED",
+            entity_type="user",
+            entity_id=user_id,
+            performed_by=current_user["user_id"],
+            company_id=company_id,
+            metadata={
+                "staff_name": staff.get("name"),
+                "staff_email": staff.get("email"),
+                "role": staff.get("role")
+            },
+            ip_address=request.client.host if request.client else None
+        )
+        
+        return {
+            "message": f"Utilisateur {staff.get('name')} activé",
+            "user_id": user_id,
+            "status": "ACTIVE"
+        }
+
+
+    @staff_router.delete("/{user_id}")
+    async def delete_staff_member(
+        user_id: str,
+        request: Request,
+        current_user: dict = Depends(get_current_user_dep)
+    ):
+        """Soft delete a staff member - blocks access permanently"""
+        if current_user.get("role") != UserRole.COMPANY_ADMIN:
+            raise HTTPException(status_code=403, detail="Accès réservé à l'administrateur de l'entreprise")
+        
+        company_id = current_user.get("company_id")
+        
+        # Find the staff member
+        staff = await db.users.find_one({
+            "user_id": user_id,
+            "company_id": company_id,
+            "role": {"$in": ["COMPANY_MANAGER", "AUDITOR_READONLY", "BRANCH_USER"]}
+        })
+        
+        if not staff:
+            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+        
+        now = get_current_timestamp()
+        
+        # Soft delete the staff member
+        await db.users.update_one(
+            {"user_id": user_id},
+            {"$set": {
+                "status": "DELETED",
+                "deleted_at": now,
+                "deleted_by": current_user["user_id"],
+                "updated_at": now
+            }}
+        )
+        
+        # Log activity
+        await log_activity(
+            db=db,
+            action_type="STAFF_DELETED",
+            entity_type="user",
+            entity_id=user_id,
+            performed_by=current_user["user_id"],
+            company_id=company_id,
+            metadata={
+                "staff_name": staff.get("name"),
+                "staff_email": staff.get("email"),
+                "role": staff.get("role")
+            },
+            ip_address=request.client.host if request.client else None
+        )
+        
+        return {
+            "message": f"Utilisateur {staff.get('name')} supprimé",
+            "user_id": user_id,
+            "status": "DELETED"
+        }
+
+
+    @staff_router.get("/permissions")
+    async def get_my_permissions(current_user: dict = Depends(get_current_user_dep)):
+        """Get current user's permissions based on their role"""
+        role = current_user.get("role")
+        permissions = ROLE_PERMISSIONS.get(role, {})
+        
+        return {
+            "user_id": current_user.get("user_id"),
+            "role": role,
+            "permissions": permissions
+        }
+
+
+    @staff_router.get("/roles")
+    async def get_available_roles(current_user: dict = Depends(get_current_user_dep)):
+        """Get all available staff roles with their permissions"""
+        if current_user.get("role") != UserRole.COMPANY_ADMIN:
+            raise HTTPException(status_code=403, detail="Accès réservé à l'administrateur")
+        
+        staff_roles = ["COMPANY_MANAGER", "AUDITOR_READONLY", "BRANCH_USER"]
+        
+        roles_info = []
+        for role in staff_roles:
+            perms = ROLE_PERMISSIONS.get(role, {})
+            roles_info.append({
+                "role": role,
+                "name": get_role_display_name(role),
+                "level": perms.get("level", 0),
+                "permissions": perms
+            })
+        
+        return roles_info
 
 
 def get_role_display_name(role: str) -> str:
