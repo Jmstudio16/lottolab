@@ -37,6 +37,7 @@ from lottery_engine import set_lottery_engine_db, process_result_for_online_tick
 from succursale_routes import succursale_router, set_succursale_db
 from saas_core import saas_core_router, set_saas_core_db
 from scheduler_tasks import set_scheduler_db, check_expired_subscriptions, check_expiring_soon
+from staff_permissions import staff_router, set_staff_db, create_staff_endpoints
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
