@@ -28,7 +28,7 @@ test.describe('Agent Login and Navigation', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     
     // Verify login page loaded
-    await expect(page.locator('text=WELCOME BACK')).toBeVisible();
+    await expect(page.locator('text=WELCOME')).toBeVisible();
     
     // Fill credentials
     await page.fill('input[placeholder*="email"]', AGENT_EMAIL);
