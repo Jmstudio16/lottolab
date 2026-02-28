@@ -1069,3 +1069,487 @@ async def extend_company_license(
     )
     
     return {"message": f"License étendue de {days} jours", "new_expiration": new_end}
+
+
+
+# ============================================================================
+# COMPANY CRUD - EDIT / DELETE
+# ============================================================================
+
+class CompanyUpdate(BaseModel):
+    """Update company details"""
+    company_name: Optional[str] = None
+    slogan: Optional[str] = None
+    contact_email: Optional[EmailStr] = None
+    plan: Optional[str] = None
+    default_commission_rate: Optional[float] = None
+    timezone: Optional[str] = None
+    currency: Optional[str] = None
+    max_agents: Optional[int] = None
+    max_daily_sales: Optional[float] = None
+
+
+@saas_core_router.get("/companies")
+async def get_all_companies(current_user: dict = Depends(require_super_admin)):
+    """Get all companies with full stats (Super Admin only)"""
+    companies = await db.companies.find(
+        {"status": {"$ne": "DELETED"}},
+        {"_id": 0}
+    ).to_list(500)
+    
+    now = datetime.now(timezone.utc)
+    
+    for company in companies:
+        company_id = company["company_id"]
+        
+        # Agent count
+        agents_count = await db.users.count_documents({
+            "company_id": company_id,
+            "role": UserRole.AGENT_POS,
+            "status": {"$ne": "DELETED"}
+        })
+        company["agents_count"] = agents_count
+        
+        # Active agents
+        active_agents = await db.users.count_documents({
+            "company_id": company_id,
+            "role": UserRole.AGENT_POS,
+            "status": "ACTIVE"
+        })
+        company["active_agents"] = active_agents
+        
+        # Suspended agents
+        company["suspended_agents"] = agents_count - active_agents
+        
+        # Succursales count
+        succursales_count = await db.succursales.count_documents({
+            "company_id": company_id,
+            "status": {"$ne": "DELETED"}
+        })
+        company["succursales_count"] = succursales_count
+        
+        # Calculate remaining days
+        license_end = company.get("license_end") or company.get("subscription_end_date")
+        if license_end:
+            try:
+                end_date = datetime.fromisoformat(license_end.replace("Z", "+00:00"))
+                remaining = (end_date - now).days
+                company["remaining_days"] = max(0, remaining)
+                
+                # Auto-expire if needed
+                if remaining < 0 and company.get("status") == "ACTIVE":
+                    await db.companies.update_one(
+                        {"company_id": company_id},
+                        {"$set": {"status": "EXPIRED", "updated_at": get_current_timestamp()}}
+                    )
+                    company["status"] = "EXPIRED"
+            except:
+                company["remaining_days"] = 30
+        else:
+            company["remaining_days"] = 30
+        
+        # Today's sales (simplified)
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+        pipeline = [
+            {"$match": {"company_id": company_id, "created_at": {"$gte": today_start}}},
+            {"$group": {"_id": None, "total": {"$sum": "$total_amount"}}}
+        ]
+        sales = await db.lottery_transactions.aggregate(pipeline).to_list(1)
+        company["sales_today"] = sales[0]["total"] if sales else 0
+    
+    return companies
+
+
+@saas_core_router.get("/companies/{company_id}")
+async def get_company_detail(
+    company_id: str,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Get single company details with all stats"""
+    company = await db.companies.find_one(
+        {"company_id": company_id},
+        {"_id": 0}
+    )
+    
+    if not company:
+        raise HTTPException(status_code=404, detail="Entreprise non trouvée")
+    
+    now = datetime.now(timezone.utc)
+    
+    # All agents
+    agents = await db.users.find(
+        {"company_id": company_id, "role": UserRole.AGENT_POS, "status": {"$ne": "DELETED"}},
+        {"_id": 0, "password_hash": 0}
+    ).to_list(500)
+    company["agents"] = agents
+    company["agents_count"] = len(agents)
+    company["active_agents"] = len([a for a in agents if a.get("status") == "ACTIVE"])
+    company["suspended_agents"] = len([a for a in agents if a.get("status") == "SUSPENDED"])
+    
+    # Succursales
+    succursales = await db.succursales.find(
+        {"company_id": company_id, "status": {"$ne": "DELETED"}},
+        {"_id": 0}
+    ).to_list(100)
+    company["succursales"] = succursales
+    company["succursales_count"] = len(succursales)
+    
+    # Remaining days
+    license_end = company.get("license_end") or company.get("subscription_end_date")
+    if license_end:
+        try:
+            end_date = datetime.fromisoformat(license_end.replace("Z", "+00:00"))
+            company["remaining_days"] = max(0, (end_date - now).days)
+        except:
+            company["remaining_days"] = 30
+    else:
+        company["remaining_days"] = 30
+    
+    return company
+
+
+@saas_core_router.put("/companies/{company_id}")
+async def update_company(
+    company_id: str,
+    updates: CompanyUpdate,
+    request: Request,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Update company details (Super Admin only)"""
+    update_data = {k: v for k, v in updates.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="Aucun champ à modifier")
+    
+    # Map field names if needed
+    if "company_name" in update_data:
+        update_data["name"] = update_data.pop("company_name")
+    
+    update_data["updated_at"] = get_current_timestamp()
+    
+    result = await db.companies.update_one(
+        {"company_id": company_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Entreprise non trouvée")
+    
+    await log_activity(
+        db=db,
+        action_type="COMPANY_UPDATED",
+        entity_type="company",
+        entity_id=company_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={"updates": update_data},
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {"message": "Entreprise mise à jour"}
+
+
+@saas_core_router.delete("/companies/{company_id}")
+async def delete_company(
+    company_id: str,
+    hard_delete: bool = False,
+    request: Request = None,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Delete company (soft or hard delete)"""
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Entreprise non trouvée")
+    
+    now = get_current_timestamp()
+    
+    if hard_delete:
+        # Hard delete - remove all data
+        await db.companies.delete_one({"company_id": company_id})
+        await db.users.delete_many({"company_id": company_id})
+        await db.succursales.delete_many({"company_id": company_id})
+        await db.agent_policies.delete_many({"company_id": company_id})
+        await db.agent_balances.delete_many({"company_id": company_id})
+        await db.company_lotteries.delete_many({"company_id": company_id})
+        await db.company_configurations.delete_many({"company_id": company_id})
+        message = "Entreprise supprimée définitivement"
+    else:
+        # Soft delete - mark as deleted
+        await db.companies.update_one(
+            {"company_id": company_id},
+            {"$set": {"status": "DELETED", "updated_at": now}}
+        )
+        
+        # Suspend all users
+        await db.users.update_many(
+            {"company_id": company_id},
+            {"$set": {"status": "SUSPENDED", "updated_at": now}}
+        )
+        message = "Entreprise désactivée"
+    
+    await log_activity(
+        db=db,
+        action_type="COMPANY_DELETED",
+        entity_type="company",
+        entity_id=company_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={"hard_delete": hard_delete, "company_name": company.get("name")},
+        ip_address=request.client.host if request and request.client else None
+    )
+    
+    return {"message": message}
+
+
+# ============================================================================
+# SUBSCRIPTION MANAGEMENT
+# ============================================================================
+
+@saas_core_router.get("/companies/{company_id}/subscription")
+async def get_company_subscription(
+    company_id: str,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Get company subscription details"""
+    company = await db.companies.find_one(
+        {"company_id": company_id},
+        {"_id": 0, "company_id": 1, "name": 1, "plan": 1, "status": 1, 
+         "license_start": 1, "license_end": 1, "subscription_start_date": 1, 
+         "subscription_end_date": 1, "subscription_status": 1}
+    )
+    
+    if not company:
+        raise HTTPException(status_code=404, detail="Entreprise non trouvée")
+    
+    now = datetime.now(timezone.utc)
+    
+    # Get dates
+    start_date = company.get("license_start") or company.get("subscription_start_date")
+    end_date = company.get("license_end") or company.get("subscription_end_date")
+    
+    remaining_days = 0
+    if end_date:
+        try:
+            end = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+            remaining_days = max(0, (end - now).days)
+        except:
+            remaining_days = 30
+    
+    return {
+        "company_id": company_id,
+        "company_name": company.get("name"),
+        "plan": company.get("plan", "Basic"),
+        "status": company.get("status"),
+        "subscription_start": start_date,
+        "subscription_end": end_date,
+        "remaining_days": remaining_days,
+        "is_expired": remaining_days <= 0,
+        "is_expiring_soon": 0 < remaining_days <= 7
+    }
+
+
+@saas_core_router.put("/companies/{company_id}/subscription")
+async def update_subscription(
+    company_id: str,
+    plan: str,
+    days: int = 30,
+    request: Request = None,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Set or renew company subscription"""
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Entreprise non trouvée")
+    
+    now = datetime.now(timezone.utc)
+    start_date = now.isoformat()
+    end_date = (now + timedelta(days=days)).isoformat()
+    
+    await db.companies.update_one(
+        {"company_id": company_id},
+        {"$set": {
+            "plan": plan,
+            "license_start": start_date,
+            "license_end": end_date,
+            "subscription_start_date": start_date,
+            "subscription_end_date": end_date,
+            "subscription_status": "ACTIVE",
+            "status": "ACTIVE",
+            "updated_at": get_current_timestamp()
+        }}
+    )
+    
+    await log_activity(
+        db=db,
+        action_type="SUBSCRIPTION_UPDATED",
+        entity_type="company",
+        entity_id=company_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={"plan": plan, "days": days, "end_date": end_date},
+        ip_address=request.client.host if request and request.client else None
+    )
+    
+    return {
+        "message": f"Abonnement {plan} activé pour {days} jours",
+        "subscription_end": end_date,
+        "remaining_days": days
+    }
+
+
+# ============================================================================
+# SUPER ADMIN NOTIFICATIONS
+# ============================================================================
+
+@saas_core_router.get("/notifications")
+async def get_admin_notifications(
+    current_user: dict = Depends(require_super_admin),
+    unread_only: bool = False
+):
+    """Get notifications for Super Admin"""
+    query = {"target_role": "SUPER_ADMIN"}
+    if unread_only:
+        query["read"] = False
+    
+    notifications = await db.admin_notifications.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).limit(100).to_list(100)
+    
+    return notifications
+
+
+@saas_core_router.put("/notifications/{notification_id}/read")
+async def mark_notification_read(
+    notification_id: str,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Mark notification as read"""
+    await db.admin_notifications.update_one(
+        {"notification_id": notification_id},
+        {"$set": {"read": True}}
+    )
+    return {"message": "Notification marquée comme lue"}
+
+
+# ============================================================================
+# SUPER ADMIN SUCCURSALES VIEW (ALL COMPANIES)
+# ============================================================================
+
+@saas_core_router.get("/all-succursales")
+async def get_all_succursales(current_user: dict = Depends(require_super_admin)):
+    """Get all succursales across all companies (Super Admin view)"""
+    succursales = await db.succursales.find(
+        {"status": {"$ne": "DELETED"}},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    for succ in succursales:
+        # Agent count
+        agent_count = await db.users.count_documents({
+            "succursale_id": succ["succursale_id"],
+            "role": UserRole.AGENT_POS,
+            "status": {"$ne": "DELETED"}
+        })
+        succ["agent_count"] = agent_count
+    
+    return succursales
+
+
+# ============================================================================
+# SUPER ADMIN AGENTS VIEW (ALL COMPANIES)
+# ============================================================================
+
+@saas_core_router.get("/all-agents")
+async def get_all_agents(
+    current_user: dict = Depends(require_super_admin),
+    company_id: Optional[str] = None
+):
+    """Get all agents across all companies (Super Admin view)"""
+    query = {"role": UserRole.AGENT_POS, "status": {"$ne": "DELETED"}}
+    if company_id:
+        query["company_id"] = company_id
+    
+    agents = await db.users.find(
+        query,
+        {"_id": 0, "password_hash": 0}
+    ).to_list(5000)
+    
+    # Enrich with company and succursale names
+    for agent in agents:
+        if agent.get("company_id"):
+            company = await db.companies.find_one(
+                {"company_id": agent["company_id"]},
+                {"_id": 0, "name": 1}
+            )
+            agent["company_name"] = company.get("name") if company else "N/A"
+        
+        if agent.get("succursale_id"):
+            succursale = await db.succursales.find_one(
+                {"succursale_id": agent["succursale_id"]},
+                {"_id": 0, "nom_succursale": 1}
+            )
+            agent["succursale_name"] = succursale.get("nom_succursale") if succursale else "N/A"
+    
+    return agents
+
+
+# ============================================================================
+# DASHBOARD STATS
+# ============================================================================
+
+@saas_core_router.get("/dashboard-stats")
+async def get_dashboard_stats(current_user: dict = Depends(require_super_admin)):
+    """Get platform-wide statistics for Super Admin dashboard"""
+    
+    # Companies
+    total_companies = await db.companies.count_documents({"status": {"$ne": "DELETED"}})
+    active_companies = await db.companies.count_documents({"status": "ACTIVE"})
+    suspended_companies = await db.companies.count_documents({"status": "SUSPENDED"})
+    expired_companies = await db.companies.count_documents({"status": "EXPIRED"})
+    
+    # Agents
+    total_agents = await db.users.count_documents({"role": UserRole.AGENT_POS, "status": {"$ne": "DELETED"}})
+    active_agents = await db.users.count_documents({"role": UserRole.AGENT_POS, "status": "ACTIVE"})
+    suspended_agents = await db.users.count_documents({"role": UserRole.AGENT_POS, "status": "SUSPENDED"})
+    online_agents = await db.users.count_documents({"role": UserRole.AGENT_POS, "is_online": True})
+    
+    # Succursales
+    total_succursales = await db.succursales.count_documents({"status": {"$ne": "DELETED"}})
+    
+    # Lotteries
+    total_lotteries = await db.master_lotteries.count_documents({})
+    active_lotteries = await db.master_lotteries.count_documents({"is_active_global": True})
+    
+    # Schedules
+    total_schedules = await db.global_schedules.count_documents({"is_active": True})
+    
+    # Unread notifications
+    unread_notifications = await db.admin_notifications.count_documents({"read": False})
+    
+    return {
+        "companies": {
+            "total": total_companies,
+            "active": active_companies,
+            "suspended": suspended_companies,
+            "expired": expired_companies
+        },
+        "agents": {
+            "total": total_agents,
+            "active": active_agents,
+            "suspended": suspended_agents,
+            "online": online_agents
+        },
+        "succursales": {
+            "total": total_succursales
+        },
+        "lotteries": {
+            "total": total_lotteries,
+            "active": active_lotteries
+        },
+        "schedules": {
+            "active": total_schedules
+        },
+        "notifications": {
+            "unread": unread_notifications
+        }
+    }
