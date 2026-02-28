@@ -1177,7 +1177,8 @@ async def toggle_lottery(
     await db.company_lotteries.update_one(
         {"company_id": company_id, "lottery_id": lottery_id},
         {"$set": {
-            "is_enabled": enabled,
+            "is_enabled_for_company": enabled,
+            "is_enabled": enabled,  # Keep both for backward compatibility
             "lottery_name": lottery.get("lottery_name"),
             "state_code": lottery.get("state_code"),
             "updated_at": now
