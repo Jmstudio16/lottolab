@@ -145,27 +145,44 @@ async def get_full_device_config(current_agent: dict = Depends(get_current_agent
         }
     
     # ---- 5. ENABLED LOTTERIES (COMPANY CATALOG) ----
+    # Fixed: Use correct field names for company_lotteries
     company_lotteries = await db.company_lotteries.find(
-        {"company_id": company_id, "enabled": True},
+        {
+            "company_id": company_id, 
+            "$or": [
+                {"is_enabled_for_company": True},
+                {"is_enabled": True}
+            ]
+        },
         {"_id": 0}
-    ).to_list(200)
+    ).to_list(300)
     
     lottery_ids = [cl["lottery_id"] for cl in company_lotteries]
     
-    # Get full lottery details
+    # Get full lottery details from master_lotteries
     lotteries = []
     if lottery_ids:
-        global_lotteries = await db.global_lotteries.find(
-            {"lottery_id": {"$in": lottery_ids}, "is_active": True},
+        # Use master_lotteries as the source of truth
+        master_lotteries_data = await db.master_lotteries.find(
+            {"lottery_id": {"$in": lottery_ids}, "is_active_global": True},
             {"_id": 0}
-        ).to_list(200)
+        ).to_list(300)
+        
+        # Also check global_lotteries for backward compatibility
+        if not master_lotteries_data:
+            master_lotteries_data = await db.global_lotteries.find(
+                {"lottery_id": {"$in": lottery_ids}, "is_active": True},
+                {"_id": 0}
+            ).to_list(300)
         
         # Merge company settings with global lottery data
         cl_map = {cl["lottery_id"]: cl for cl in company_lotteries}
-        for gl in global_lotteries:
+        for gl in master_lotteries_data:
             cl = cl_map.get(gl["lottery_id"], {})
             lotteries.append({
                 **gl,
+                "lottery_name": gl.get("lottery_name") or cl.get("lottery_name"),
+                "state_code": gl.get("state_code") or cl.get("state_code"),
                 "max_bet_per_ticket": cl.get("max_bet_per_ticket", config.get("max_bet_amount", 10000.0)),
                 "max_bet_per_number": cl.get("max_bet_per_number", config.get("max_bet_per_number", 5000.0))
             })
