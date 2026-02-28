@@ -60,7 +60,7 @@ test.describe('LOTTOLAB Golden Path - Full Flow Test', () => {
     
     // Step 2: Verify Company Admin dashboard
     await expect(page.locator('text=Dashboard').first()).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('text=COMPANY ADMIN')).toBeVisible();
+    await expect(page.getByText('COMPANY ADMIN', { exact: true })).toBeVisible();
     
     // Step 3: Verify subscription counter
     const subscriptionCounter = page.getByTestId('subscription-counter');
