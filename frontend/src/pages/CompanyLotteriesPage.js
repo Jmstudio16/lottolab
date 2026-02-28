@@ -47,7 +47,7 @@ export const CompanyLotteriesPage = () => {
   const fetchLotteries = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/company/lotteries');
+      const response = await apiClient.get('/company/lottery-catalog');
       setLotteries(response.data);
     } catch (error) {
       toast.error('Erreur lors du chargement des loteries');
@@ -58,20 +58,20 @@ export const CompanyLotteriesPage = () => {
 
   const handleToggle = async (lotteryId, currentStatus) => {
     try {
-      await apiClient.put(`/company/lotteries/${lotteryId}/toggle`, null, {
+      await apiClient.put(`/company/lottery-catalog/${lotteryId}/toggle`, null, {
         params: { enabled: !currentStatus }
       });
       toast.success(`Loterie ${!currentStatus ? 'activée' : 'désactivée'}`);
       fetchLotteries();
     } catch (error) {
-      toast.error('Erreur lors du changement de statut');
+      toast.error(error.response?.data?.detail || 'Erreur lors du changement de statut');
     }
   };
 
   const handleBulkToggle = async (enable) => {
     try {
       for (const lotteryId of selectedIds) {
-        await apiClient.put(`/company/lotteries/${lotteryId}/toggle`, null, {
+        await apiClient.put(`/company/lottery-catalog/${lotteryId}/toggle`, null, {
           params: { enabled: enable }
         });
       }
