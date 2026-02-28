@@ -16,7 +16,7 @@ from models import UserRole
 from utils import generate_id, get_current_timestamp
 from activity_logger import log_activity
 
-ticket_print_router = APIRouter(tags=["Ticket Printing"])
+ticket_print_router = APIRouter(prefix="/api", tags=["Ticket Printing"])
 
 db = None
 
