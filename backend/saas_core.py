@@ -1233,16 +1233,80 @@ async def update_company(
     request: Request,
     current_user: dict = Depends(require_super_admin)
 ):
-    """Update company details (Super Admin only)"""
+    """
+    Update company details (Super Admin only).
+    Allows modification of:
+    - company_name (name)
+    - contact_email
+    - plan
+    - default_commission_rate
+    - subscription_end_date
+    - status
+    All modifications are logged.
+    """
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Entreprise non trouvée")
+    
     update_data = {k: v for k, v in updates.model_dump().items() if v is not None}
     if not update_data:
         raise HTTPException(status_code=400, detail="Aucun champ à modifier")
     
-    # Map field names if needed
+    old_values = {}
+    now = get_current_timestamp()
+    
+    # Map field names
     if "company_name" in update_data:
+        old_values["name"] = company.get("name")
         update_data["name"] = update_data.pop("company_name")
     
-    update_data["updated_at"] = get_current_timestamp()
+    # Handle subscription_end_date -> also update license_end
+    if "subscription_end_date" in update_data:
+        old_values["subscription_end_date"] = company.get("subscription_end_date")
+        old_values["license_end"] = company.get("license_end")
+        update_data["license_end"] = update_data["subscription_end_date"]
+    
+    # Track old status for suspension/activation handling
+    if "status" in update_data:
+        old_values["status"] = company.get("status")
+        new_status = update_data["status"]
+        
+        # If suspending company
+        if new_status in ["SUSPENDED", "EXPIRED", "DELETED"]:
+            # Suspend all users of this company
+            await db.users.update_many(
+                {"company_id": company_id, "status": "ACTIVE"},
+                {"$set": {
+                    "status": "SUSPENDED",
+                    "suspended_reason": f"COMPANY_{new_status}",
+                    "suspended_at": now,
+                    "updated_at": now
+                }}
+            )
+            # Suspend all succursales
+            await db.succursales.update_many(
+                {"company_id": company_id, "status": {"$ne": "DELETED"}},
+                {"$set": {
+                    "status": "SUSPENDED",
+                    "updated_at": now
+                }}
+            )
+        
+        # If activating company
+        elif new_status == "ACTIVE" and old_values.get("status") in ["SUSPENDED", "EXPIRED"]:
+            # Reactivate company admin
+            await db.users.update_many(
+                {"company_id": company_id, "role": UserRole.COMPANY_ADMIN, "suspended_reason": {"$regex": "^COMPANY_"}},
+                {"$set": {"status": "ACTIVE", "updated_at": now}}
+            )
+    
+    # Track other old values
+    for key in update_data:
+        if key not in old_values:
+            old_values[key] = company.get(key)
+    
+    update_data["updated_at"] = now
+    update_data["last_modified_by"] = current_user["user_id"]
     
     result = await db.companies.update_one(
         {"company_id": company_id},
@@ -1252,18 +1316,29 @@ async def update_company(
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Entreprise non trouvée")
     
+    # Log activity with before/after values
     await log_activity(
         db=db,
-        action_type="COMPANY_UPDATED",
+        action_type="COMPANY_MODIFIED",
         entity_type="company",
         entity_id=company_id,
         performed_by=current_user["user_id"],
         company_id=company_id,
-        metadata={"updates": update_data},
+        metadata={
+            "company_name": company.get("name"),
+            "changes": {
+                "before": old_values,
+                "after": {k: v for k, v in update_data.items() if k not in ["updated_at", "last_modified_by"]}
+            }
+        },
         ip_address=request.client.host if request.client else None
     )
     
-    return {"message": "Entreprise mise à jour"}
+    return {
+        "message": "Entreprise mise à jour",
+        "company_id": company_id,
+        "updated_fields": list(update_data.keys())
+    }
 
 
 @saas_core_router.delete("/companies/{company_id}")
