@@ -1232,6 +1232,31 @@ class CompanyFullUpdate(BaseModel):
     subscription_end_date: Optional[str] = None
 
 
+# ============================================================================
+# ARCHIVED COMPANIES (Soft Deleted) - Must be before /{company_id} routes
+# ============================================================================
+
+@saas_core_router.get("/archived-companies")
+async def get_archived_companies(current_user: dict = Depends(require_super_admin)):
+    """Get all soft-deleted (archived) companies"""
+    companies = await db.companies.find(
+        {"status": "DELETED"},
+        {"_id": 0}
+    ).sort("deleted_at", -1).to_list(500)
+    
+    for company in companies:
+        # Get counts
+        company["agents_count"] = await db.users.count_documents({
+            "company_id": company["company_id"],
+            "role": UserRole.AGENT_POS
+        })
+        company["tickets_count"] = await db.tickets.count_documents({
+            "company_id": company["company_id"]
+        })
+    
+    return companies
+
+
 @saas_core_router.get("/companies")
 async def get_all_companies(current_user: dict = Depends(require_super_admin)):
     """Get all companies with full stats (Super Admin only)"""
