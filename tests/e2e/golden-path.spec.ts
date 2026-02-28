@@ -26,7 +26,7 @@ test.describe('LOTTOLAB Golden Path - Full Flow Test', () => {
     
     // Step 2: Verify Super Admin dashboard loads
     await expect(page.locator('text=Dashboard').first()).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('text=SUPER ADMIN')).toBeVisible();
+    await expect(page.getByText('SUPER ADMIN', { exact: true })).toBeVisible();
     
     // Step 3: Navigate to Companies
     await page.click('a:has-text("Companies"), button:has-text("Companies")');
