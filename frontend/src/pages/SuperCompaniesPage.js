@@ -46,7 +46,9 @@ export const SuperCompaniesPage = () => {
     plan: '',
     timezone: '',
     currency: '',
-    default_commission_rate: 0
+    default_commission_rate: 0,
+    subscription_end_date: '',
+    status: ''
   });
 
   const headers = { Authorization: `Bearer ${token}` };
