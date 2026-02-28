@@ -17,7 +17,9 @@ import {
   Monitor,
   Smartphone,
   Tablet,
-  Printer
+  Printer,
+  Search,
+  Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -36,10 +38,12 @@ const AgentSidebar = ({ isOpen, onClose }) => {
 
   const navItems = [
     { path: '/agent/dashboard', icon: Home, label: 'Tableau de bord' },
-    { path: '/agent/lottery-selection', icon: PlusCircle, label: 'Nouveau Ticket' },
-    { path: '/agent/tickets', icon: Ticket, label: 'Mes Tickets' },
+    { path: '/agent/pos', icon: PlusCircle, label: 'Nouvelle Vente' },
+    { path: '/agent/my-tickets', icon: Ticket, label: 'Mes Tickets' },
+    { path: '/agent/search-tickets', icon: Search, label: 'Rechercher Fiches' },
+    { path: '/agent/available-draws', icon: Clock, label: 'Tirages Disponibles' },
     { path: '/agent/results', icon: Trophy, label: 'Résultats' },
-    { path: '/agent/reports', icon: BarChart3, label: 'Rapports' },
+    { path: '/agent/my-sales', icon: BarChart3, label: 'Mes Ventes' },
   ];
 
   return (
