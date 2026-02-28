@@ -102,6 +102,15 @@ export const SuperCompaniesPage = () => {
   };
 
   const openEditModal = (company) => {
+    // Parse subscription_end date for input
+    let subscriptionEnd = '';
+    if (company.license_end || company.subscription_end_date) {
+      try {
+        const date = new Date(company.license_end || company.subscription_end_date);
+        subscriptionEnd = date.toISOString().split('T')[0];
+      } catch (e) {}
+    }
+    
     setEditData({
       company_name: company.name || '',
       slogan: company.slogan || '',
@@ -109,7 +118,9 @@ export const SuperCompaniesPage = () => {
       plan: company.plan || 'Basic',
       timezone: company.timezone || 'America/Port-au-Prince',
       currency: company.currency || 'HTG',
-      default_commission_rate: company.default_commission_rate || 10
+      default_commission_rate: company.default_commission_rate || 10,
+      subscription_end_date: subscriptionEnd,
+      status: company.status || 'ACTIVE'
     });
     setSelectedCompany(company);
     setShowEditModal(true);
