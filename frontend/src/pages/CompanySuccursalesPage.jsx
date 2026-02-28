@@ -3,8 +3,8 @@ import { useAuth } from '@/api/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { 
-  Building2, Plus, Edit2, Trash2, Save, X, Users, Eye, 
-  RefreshCw, Upload, UserPlus, ChevronRight, Store
+  Building2, Plus, Trash2, Save, Users, Eye, 
+  RefreshCw, UserPlus, Store, Mail, Phone, User, Lock
 } from 'lucide-react';
 import CompanyLayout from '@/components/CompanyLayout';
 import { Button } from '@/components/ui/button';
@@ -23,39 +23,38 @@ export const CompanySuccursalesPage = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedSuccursale, setSelectedSuccursale] = useState(null);
   const [showAgentModal, setShowAgentModal] = useState(false);
+  const [creating, setCreating] = useState(false);
 
-  // Form state for creating succursale
+  // NEW Form state - EMAIL BASED (no pseudo/identifiant)
   const [formData, setFormData] = useState({
-    nom_succursale: '',
-    nom_bank: '',
-    message: '',
-    allow_sub_supervisor: false,
-    mariage_gratuit: false,
+    // Section 1 - Superviseur
     supervisor_nom: '',
     supervisor_prenom: '',
-    supervisor_pseudo: '',
+    supervisor_email: '',  // EMAIL replaces pseudo
+    supervisor_telephone: '',  // REQUIRED
     supervisor_password: '',
     supervisor_password_confirm: '',
-    user_nom: '',
-    user_prenom: '',
-    user_pseudo: '',
-    user_password: '',
-    user_password_confirm: ''
+    // Section 2 - Paramètres
+    allow_sub_supervisor: false,
+    superviseur_principal: true,
+    mariage_gratuit: false,
+    nom_succursale: '',
+    nom_bank: '',
+    message: ''
   });
 
-  // Form state for creating agent
+  // NEW Agent form - EMAIL BASED
   const [agentForm, setAgentForm] = useState({
-    device_id: '',
-    zone_adresse: '',
     nom_agent: '',
     prenom_agent: '',
+    email: '',  // EMAIL replaces identifiant
     telephone: '',
-    identifiant: '',
-    mot_de_passe: '',
-    percent_agent: 0,
-    percent_superviseur: 0,
+    password: '',
+    password_confirm: '',
+    commission_percent: 0,
     limite_credit: 50000,
-    limite_balance_gain: 100000
+    limite_gain: 100000,
+    status: 'ACTIVE'
   });
 
   const headers = { Authorization: `Bearer ${token}` };
@@ -66,7 +65,7 @@ export const CompanySuccursalesPage = () => {
       const res = await axios.get(`${API_URL}/api/company/succursales`, { headers });
       setSuccursales(res.data);
     } catch (error) {
-      toast.error('Erreur lors du chargement des succursales');
+      toast.error(error.response?.data?.detail || 'Erreur lors du chargement');
     } finally {
       setLoading(false);
     }
@@ -90,16 +89,17 @@ export const CompanySuccursalesPage = () => {
     e.preventDefault();
     
     if (formData.supervisor_password !== formData.supervisor_password_confirm) {
-      toast.error('Les mots de passe du superviseur ne correspondent pas');
+      toast.error('Les mots de passe ne correspondent pas');
       return;
     }
     
-    if (formData.user_password && formData.user_password !== formData.user_password_confirm) {
-      toast.error('Les mots de passe de l\'utilisateur ne correspondent pas');
+    if (!formData.supervisor_email) {
+      toast.error('Email superviseur requis');
       return;
     }
     
     try {
+      setCreating(true);
       await axios.post(`${API_URL}/api/company/succursales`, formData, { headers });
       toast.success('Succursale créée avec succès');
       setShowCreateModal(false);
@@ -107,6 +107,8 @@ export const CompanySuccursalesPage = () => {
       fetchSuccursales();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erreur lors de la création');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -115,7 +117,18 @@ export const CompanySuccursalesPage = () => {
     
     if (!selectedSuccursale) return;
     
+    if (agentForm.password !== agentForm.password_confirm) {
+      toast.error('Les mots de passe ne correspondent pas');
+      return;
+    }
+    
+    if (!agentForm.email) {
+      toast.error('Email agent requis');
+      return;
+    }
+    
     try {
+      setCreating(true);
       await axios.post(
         `${API_URL}/api/company/succursales/${selectedSuccursale.succursale_id}/agents`,
         agentForm,
@@ -127,6 +140,8 @@ export const CompanySuccursalesPage = () => {
       fetchSuccursaleDetail(selectedSuccursale.succursale_id);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erreur lors de la création');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -155,39 +170,49 @@ export const CompanySuccursalesPage = () => {
     }
   };
 
+  const handleSuspendAgent = async (agentId) => {
+    try {
+      await axios.put(
+        `${API_URL}/api/company/succursales/${selectedSuccursale.succursale_id}/agents/${agentId}/suspend`,
+        {},
+        { headers }
+      );
+      toast.success('Agent suspendu');
+      fetchSuccursaleDetail(selectedSuccursale.succursale_id);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur');
+    }
+  };
+
   const resetForm = () => {
     setFormData({
-      nom_succursale: '',
-      nom_bank: '',
-      message: '',
-      allow_sub_supervisor: false,
-      mariage_gratuit: false,
       supervisor_nom: '',
       supervisor_prenom: '',
-      supervisor_pseudo: '',
+      supervisor_email: '',
+      supervisor_telephone: '',
       supervisor_password: '',
       supervisor_password_confirm: '',
-      user_nom: '',
-      user_prenom: '',
-      user_pseudo: '',
-      user_password: '',
-      user_password_confirm: ''
+      allow_sub_supervisor: false,
+      superviseur_principal: true,
+      mariage_gratuit: false,
+      nom_succursale: '',
+      nom_bank: '',
+      message: ''
     });
   };
 
   const resetAgentForm = () => {
     setAgentForm({
-      device_id: '',
-      zone_adresse: '',
       nom_agent: '',
       prenom_agent: '',
+      email: '',
       telephone: '',
-      identifiant: '',
-      mot_de_passe: '',
-      percent_agent: 0,
-      percent_superviseur: 0,
+      password: '',
+      password_confirm: '',
+      commission_percent: 0,
       limite_credit: 50000,
-      limite_balance_gain: 100000
+      limite_gain: 100000,
+      status: 'ACTIVE'
     });
   };
 
@@ -230,7 +255,7 @@ export const CompanySuccursalesPage = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {succursales.filter(s => s.status !== 'DELETED').map(succ => (
+            {succursales.map(succ => (
               <div
                 key={succ.succursale_id}
                 className="bg-slate-900/50 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors"
@@ -255,9 +280,15 @@ export const CompanySuccursalesPage = () => {
                     <Users className="w-4 h-4" />
                     <span>{succ.agent_count || 0} agents</span>
                   </div>
+                  {succ.supervisor_email && (
+                    <div className="flex items-center gap-2 text-slate-400 text-sm">
+                      <Mail className="w-4 h-4 text-yellow-400" />
+                      <span className="truncate">{succ.supervisor_email}</span>
+                    </div>
+                  )}
                   {succ.supervisor_name && (
                     <div className="flex items-center gap-2 text-slate-400 text-sm">
-                      <span className="text-yellow-400">Superviseur:</span>
+                      <User className="w-4 h-4" />
                       <span>{succ.supervisor_name}</span>
                     </div>
                   )}
@@ -288,7 +319,7 @@ export const CompanySuccursalesPage = () => {
               </div>
             ))}
 
-            {succursales.filter(s => s.status !== 'DELETED').length === 0 && (
+            {succursales.length === 0 && (
               <div className="col-span-full text-center py-12 text-slate-400">
                 <Store className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p>Aucune succursale. Créez votre première succursale.</p>
@@ -297,7 +328,7 @@ export const CompanySuccursalesPage = () => {
           </div>
         )}
 
-        {/* Create Succursale Modal */}
+        {/* Create Succursale Modal - NEW FORM WITH EMAIL */}
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
           <DialogContent className="bg-slate-900 border-slate-800 max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -308,28 +339,11 @@ export const CompanySuccursalesPage = () => {
             </DialogHeader>
 
             <form onSubmit={handleCreateSuccursale} className="space-y-6">
-              {/* Options */}
-              <div className="grid grid-cols-2 gap-4 p-4 bg-slate-800/50 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <Label className="text-slate-300">Possibilité sous-superviseur</Label>
-                  <Switch
-                    checked={formData.allow_sub_supervisor}
-                    onCheckedChange={(checked) => setFormData({...formData, allow_sub_supervisor: checked})}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-slate-300">Mariage Gratuit</Label>
-                  <Switch
-                    checked={formData.mariage_gratuit}
-                    onCheckedChange={(checked) => setFormData({...formData, mariage_gratuit: checked})}
-                  />
-                </div>
-              </div>
-
-              {/* Superviseur Principal */}
+              {/* SECTION 1 - SUPERVISEUR */}
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-yellow-400 uppercase tracking-wider">
-                  Superviseur Principal
+                <h3 className="text-sm font-semibold text-yellow-400 uppercase tracking-wider flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Superviseur
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -353,19 +367,43 @@ export const CompanySuccursalesPage = () => {
                     />
                   </div>
                 </div>
-                <div>
-                  <Label className="text-slate-300">Pseudo (Identifiant) *</Label>
-                  <Input
-                    value={formData.supervisor_pseudo}
-                    onChange={(e) => setFormData({...formData, supervisor_pseudo: e.target.value})}
-                    className="bg-slate-800 border-slate-700 text-white"
-                    required
-                    data-testid="supervisor-pseudo"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-slate-300 flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-blue-400" />
+                      Email (Login) *
+                    </Label>
+                    <Input
+                      type="email"
+                      value={formData.supervisor_email}
+                      onChange={(e) => setFormData({...formData, supervisor_email: e.target.value})}
+                      className="bg-slate-800 border-slate-700 text-white"
+                      placeholder="superviseur@email.com"
+                      required
+                      data-testid="supervisor-email"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-slate-300 flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-green-400" />
+                      Téléphone *
+                    </Label>
+                    <Input
+                      value={formData.supervisor_telephone}
+                      onChange={(e) => setFormData({...formData, supervisor_telephone: e.target.value})}
+                      className="bg-slate-800 border-slate-700 text-white"
+                      placeholder="+509-XXXX-XXXX"
+                      required
+                      data-testid="supervisor-telephone"
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-slate-300">Mot de passe *</Label>
+                    <Label className="text-slate-300 flex items-center gap-2">
+                      <Lock className="w-4 h-4" />
+                      Mot de passe *
+                    </Label>
                     <Input
                       type="password"
                       value={formData.supervisor_password}
@@ -389,69 +427,37 @@ export const CompanySuccursalesPage = () => {
                 </div>
               </div>
 
-              {/* Utilisateur (Optional) */}
+              {/* SECTION 2 - PARAMÈTRES */}
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-blue-400 uppercase tracking-wider">
-                  Utilisateur (Optionnel)
+                <h3 className="text-sm font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
+                  Paramètres Succursale
                 </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-slate-300">Nom Utilisateur</Label>
-                    <Input
-                      value={formData.user_nom}
-                      onChange={(e) => setFormData({...formData, user_nom: e.target.value})}
-                      className="bg-slate-800 border-slate-700 text-white"
-                      data-testid="user-nom"
+                
+                <div className="grid grid-cols-3 gap-4 p-4 bg-slate-800/50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-slate-300 text-sm">Sous-superviseur</Label>
+                    <Switch
+                      checked={formData.allow_sub_supervisor}
+                      onCheckedChange={(checked) => setFormData({...formData, allow_sub_supervisor: checked})}
                     />
                   </div>
-                  <div>
-                    <Label className="text-slate-300">Prénom Utilisateur</Label>
-                    <Input
-                      value={formData.user_prenom}
-                      onChange={(e) => setFormData({...formData, user_prenom: e.target.value})}
-                      className="bg-slate-800 border-slate-700 text-white"
-                      data-testid="user-prenom"
+                  <div className="flex items-center justify-between">
+                    <Label className="text-slate-300 text-sm">Principal</Label>
+                    <Switch
+                      checked={formData.superviseur_principal}
+                      onCheckedChange={(checked) => setFormData({...formData, superviseur_principal: checked})}
                     />
                   </div>
-                </div>
-                <div>
-                  <Label className="text-slate-300">Pseudo</Label>
-                  <Input
-                    value={formData.user_pseudo}
-                    onChange={(e) => setFormData({...formData, user_pseudo: e.target.value})}
-                    className="bg-slate-800 border-slate-700 text-white"
-                    data-testid="user-pseudo"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-slate-300">Mot de passe</Label>
-                    <Input
-                      type="password"
-                      value={formData.user_password}
-                      onChange={(e) => setFormData({...formData, user_password: e.target.value})}
-                      className="bg-slate-800 border-slate-700 text-white"
-                      data-testid="user-password"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-slate-300">Confirmer mot de passe</Label>
-                    <Input
-                      type="password"
-                      value={formData.user_password_confirm}
-                      onChange={(e) => setFormData({...formData, user_password_confirm: e.target.value})}
-                      className="bg-slate-800 border-slate-700 text-white"
-                      data-testid="user-password-confirm"
+                  <div className="flex items-center justify-between">
+                    <Label className="text-slate-300 text-sm">Mariage Gratuit</Label>
+                    <Switch
+                      checked={formData.mariage_gratuit}
+                      onCheckedChange={(checked) => setFormData({...formData, mariage_gratuit: checked})}
                     />
                   </div>
                 </div>
-              </div>
 
-              {/* Succursale Info */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-emerald-400 uppercase tracking-wider">
-                  Informations Succursale
-                </h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-slate-300">Nom Succursale *</Label>
@@ -480,10 +486,17 @@ export const CompanySuccursalesPage = () => {
                     value={formData.message}
                     onChange={(e) => setFormData({...formData, message: e.target.value})}
                     className="bg-slate-800 border-slate-700 text-white"
-                    placeholder="Message de bienvenue ou note..."
+                    placeholder="Message de bienvenue..."
                     data-testid="message"
                   />
                 </div>
+              </div>
+
+              {/* Info Box */}
+              <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <p className="text-sm text-blue-400">
+                  Le superviseur utilisera son <strong>email</strong> pour se connecter.
+                </p>
               </div>
 
               <div className="flex gap-3 pt-4 border-t border-slate-800">
@@ -498,10 +511,15 @@ export const CompanySuccursalesPage = () => {
                 <Button
                   type="submit"
                   className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  disabled={creating}
                   data-testid="save-succursale-btn"
                 >
-                  <Save className="w-4 h-4 mr-2" />
-                  Créer Succursale
+                  {creating ? 'Création...' : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Créer Succursale
+                    </>
+                  )}
                 </Button>
               </div>
             </form>
@@ -524,10 +542,14 @@ export const CompanySuccursalesPage = () => {
             {selectedSuccursale && (
               <div className="space-y-6">
                 {/* Info */}
-                <div className="grid grid-cols-3 gap-4 p-4 bg-slate-800/50 rounded-lg">
+                <div className="grid grid-cols-4 gap-4 p-4 bg-slate-800/50 rounded-lg">
                   <div>
                     <p className="text-xs text-slate-400 uppercase">Superviseur</p>
                     <p className="text-white font-medium">{selectedSuccursale.supervisor?.name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 uppercase">Email</p>
+                    <p className="text-blue-400 font-medium text-sm truncate">{selectedSuccursale.supervisor_email || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-400 uppercase">Mariage Gratuit</p>
@@ -563,10 +585,9 @@ export const CompanySuccursalesPage = () => {
                       <thead className="bg-slate-800">
                         <tr>
                           <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Nom</th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Device ID</th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Zone</th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">%Agent</th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Limite Crédit</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Email</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Téléphone</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Commission</th>
                           <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Statut</th>
                           <th className="px-4 py-3 text-right text-xs font-bold text-slate-400 uppercase">Actions</th>
                         </tr>
@@ -575,10 +596,9 @@ export const CompanySuccursalesPage = () => {
                         {selectedSuccursale.agents?.map((agent) => (
                           <tr key={agent.user_id} className="hover:bg-slate-800/50">
                             <td className="px-4 py-3 text-white font-medium">{agent.name}</td>
-                            <td className="px-4 py-3 text-slate-300 font-mono text-sm">{agent.device_id || 'N/A'}</td>
-                            <td className="px-4 py-3 text-slate-400">{agent.zone_adresse || 'N/A'}</td>
-                            <td className="px-4 py-3 text-emerald-400">{agent.percent_agent}%</td>
-                            <td className="px-4 py-3 text-slate-300">{agent.limite_credit?.toLocaleString()} HTG</td>
+                            <td className="px-4 py-3 text-blue-400 text-sm">{agent.email}</td>
+                            <td className="px-4 py-3 text-slate-300">{agent.telephone || 'N/A'}</td>
+                            <td className="px-4 py-3 text-emerald-400">{agent.commission_percent || 0}%</td>
                             <td className="px-4 py-3">
                               <span className={`px-2 py-0.5 text-xs rounded-full ${
                                 agent.status === 'ACTIVE' 
@@ -589,19 +609,30 @@ export const CompanySuccursalesPage = () => {
                               </span>
                             </td>
                             <td className="px-4 py-3 text-right">
-                              <button
-                                onClick={() => handleDeleteAgent(agent.user_id)}
-                                className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded"
-                                data-testid={`delete-agent-${agent.user_id}`}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              <div className="flex items-center justify-end gap-1">
+                                {agent.status === 'ACTIVE' && (
+                                  <button
+                                    onClick={() => handleSuspendAgent(agent.user_id)}
+                                    className="px-2 py-1 text-xs text-yellow-400 hover:bg-yellow-500/10 rounded"
+                                    title="Suspendre"
+                                  >
+                                    Suspendre
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteAgent(agent.user_id)}
+                                  className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded"
+                                  data-testid={`delete-agent-${agent.user_id}`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
                         {(!selectedSuccursale.agents || selectedSuccursale.agents.length === 0) && (
                           <tr>
-                            <td colSpan="7" className="px-4 py-8 text-center text-slate-400">
+                            <td colSpan="6" className="px-4 py-8 text-center text-slate-400">
                               Aucun agent dans cette succursale
                             </td>
                           </tr>
@@ -615,7 +646,7 @@ export const CompanySuccursalesPage = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Create Agent Modal */}
+        {/* Create Agent Modal - NEW FORM WITH EMAIL */}
         <Dialog open={showAgentModal} onOpenChange={setShowAgentModal}>
           <DialogContent className="bg-slate-900 border-slate-800 max-w-lg">
             <DialogHeader>
@@ -630,28 +661,6 @@ export const CompanySuccursalesPage = () => {
                 <p className="text-sm text-blue-400">
                   Succursale: <span className="font-semibold text-white">{selectedSuccursale?.nom_succursale}</span>
                 </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-slate-300">DEVICE ID *</Label>
-                  <Input
-                    value={agentForm.device_id}
-                    onChange={(e) => setAgentForm({...agentForm, device_id: e.target.value})}
-                    className="bg-slate-800 border-slate-700 text-white font-mono"
-                    required
-                    data-testid="agent-device-id"
-                  />
-                </div>
-                <div>
-                  <Label className="text-slate-300">Zone / Adresse</Label>
-                  <Input
-                    value={agentForm.zone_adresse}
-                    onChange={(e) => setAgentForm({...agentForm, zone_adresse: e.target.value})}
-                    className="bg-slate-800 border-slate-700 text-white"
-                    data-testid="agent-zone"
-                  />
-                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -678,7 +687,26 @@ export const CompanySuccursalesPage = () => {
               </div>
 
               <div>
-                <Label className="text-slate-300">Téléphone</Label>
+                <Label className="text-slate-300 flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-blue-400" />
+                  Email (Login) *
+                </Label>
+                <Input
+                  type="email"
+                  value={agentForm.email}
+                  onChange={(e) => setAgentForm({...agentForm, email: e.target.value})}
+                  className="bg-slate-800 border-slate-700 text-white"
+                  placeholder="agent@email.com"
+                  required
+                  data-testid="agent-email"
+                />
+              </div>
+
+              <div>
+                <Label className="text-slate-300 flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-green-400" />
+                  Téléphone
+                </Label>
                 <Input
                   value={agentForm.telephone}
                   onChange={(e) => setAgentForm({...agentForm, telephone: e.target.value})}
@@ -690,24 +718,28 @@ export const CompanySuccursalesPage = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-slate-300">Identifiant (Login) *</Label>
-                  <Input
-                    value={agentForm.identifiant}
-                    onChange={(e) => setAgentForm({...agentForm, identifiant: e.target.value})}
-                    className="bg-slate-800 border-slate-700 text-white"
-                    required
-                    data-testid="agent-identifiant"
-                  />
-                </div>
-                <div>
-                  <Label className="text-slate-300">Mot de passe *</Label>
+                  <Label className="text-slate-300 flex items-center gap-2">
+                    <Lock className="w-4 h-4" />
+                    Mot de passe *
+                  </Label>
                   <Input
                     type="password"
-                    value={agentForm.mot_de_passe}
-                    onChange={(e) => setAgentForm({...agentForm, mot_de_passe: e.target.value})}
+                    value={agentForm.password}
+                    onChange={(e) => setAgentForm({...agentForm, password: e.target.value})}
                     className="bg-slate-800 border-slate-700 text-white"
                     required
                     data-testid="agent-password"
+                  />
+                </div>
+                <div>
+                  <Label className="text-slate-300">Confirmer *</Label>
+                  <Input
+                    type="password"
+                    value={agentForm.password_confirm}
+                    onChange={(e) => setAgentForm({...agentForm, password_confirm: e.target.value})}
+                    className="bg-slate-800 border-slate-700 text-white"
+                    required
+                    data-testid="agent-password-confirm"
                   />
                 </div>
               </div>
@@ -715,37 +747,22 @@ export const CompanySuccursalesPage = () => {
               {/* Financial Settings */}
               <div className="p-4 bg-slate-800/50 rounded-lg space-y-4">
                 <h4 className="text-sm font-semibold text-yellow-400 uppercase">Paramètres Financiers</h4>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <Label className="text-slate-300">% Agent</Label>
+                    <Label className="text-slate-300">% Commission</Label>
                     <Input
                       type="number"
-                      value={agentForm.percent_agent}
-                      onChange={(e) => setAgentForm({...agentForm, percent_agent: parseFloat(e.target.value) || 0})}
+                      value={agentForm.commission_percent}
+                      onChange={(e) => setAgentForm({...agentForm, commission_percent: parseFloat(e.target.value) || 0})}
                       className="bg-slate-800 border-slate-700 text-white"
                       min="0"
                       max="100"
-                      step="0.1"
-                      data-testid="agent-percent"
+                      step="0.5"
+                      data-testid="agent-commission"
                     />
                   </div>
                   <div>
-                    <Label className="text-slate-300">% Superviseur</Label>
-                    <Input
-                      type="number"
-                      value={agentForm.percent_superviseur}
-                      onChange={(e) => setAgentForm({...agentForm, percent_superviseur: parseFloat(e.target.value) || 0})}
-                      className="bg-slate-800 border-slate-700 text-white"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      data-testid="agent-supervisor-percent"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-slate-300">Limite Crédit (HTG)</Label>
+                    <Label className="text-slate-300">Limite Crédit</Label>
                     <Input
                       type="number"
                       value={agentForm.limite_credit}
@@ -756,17 +773,24 @@ export const CompanySuccursalesPage = () => {
                     />
                   </div>
                   <div>
-                    <Label className="text-slate-300">Limite Balance Gain (HTG)</Label>
+                    <Label className="text-slate-300">Limite Gain</Label>
                     <Input
                       type="number"
-                      value={agentForm.limite_balance_gain}
-                      onChange={(e) => setAgentForm({...agentForm, limite_balance_gain: parseFloat(e.target.value) || 0})}
+                      value={agentForm.limite_gain}
+                      onChange={(e) => setAgentForm({...agentForm, limite_gain: parseFloat(e.target.value) || 0})}
                       className="bg-slate-800 border-slate-700 text-white"
                       min="0"
                       data-testid="agent-win-limit"
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* Info Box */}
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                <p className="text-sm text-emerald-400">
+                  L'agent utilisera son <strong>email</strong> pour se connecter.
+                </p>
               </div>
 
               <div className="flex gap-3 pt-4">
@@ -781,10 +805,15 @@ export const CompanySuccursalesPage = () => {
                 <Button
                   type="submit"
                   className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                  disabled={creating}
                   data-testid="save-agent-btn"
                 >
-                  <Save className="w-4 h-4 mr-2" />
-                  Créer Agent
+                  {creating ? 'Création...' : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Créer Agent
+                    </>
+                  )}
                 </Button>
               </div>
             </form>
