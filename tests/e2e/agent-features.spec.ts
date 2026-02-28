@@ -48,14 +48,15 @@ test.describe('Agent Login and Navigation', () => {
     await loginAsAgent(page);
     await removeEmergentBadge(page);
     
-    // Verify all 6 menu items are visible in sidebar
-    await expect(page.locator('text=Tableau de bord')).toBeVisible();
-    await expect(page.locator('text=Nouvelle Vente')).toBeVisible();
-    await expect(page.locator('text=Mes Tickets')).toBeVisible();
-    await expect(page.locator('text=Rechercher Fiches')).toBeVisible();
-    await expect(page.locator('text=Tirages Disponibles')).toBeVisible();
-    await expect(page.locator('text=Résultats')).toBeVisible();
-    await expect(page.locator('text=Mes Ventes')).toBeVisible();
+    // Verify all 6 menu items are visible in sidebar navigation
+    // Using more specific selectors for nav links
+    await expect(page.getByRole('link', { name: 'Tableau de bord' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Nouvelle Vente' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Mes Tickets' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Rechercher Fiches' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Tirages Disponibles' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Résultats' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Mes Ventes' })).toBeVisible();
     
     // Take screenshot for verification
     await page.screenshot({ path: 'agent-menu.jpeg', quality: 20 });
@@ -278,10 +279,10 @@ test.describe('Mes Tickets Page with Cancellation', () => {
     // Click on status filter
     await page.click('button:has-text("Tous les statuts")');
     
-    // Verify status options
-    await expect(page.locator('text=En attente')).toBeVisible();
-    await expect(page.locator('text=Gagnants')).toBeVisible();
-    await expect(page.locator('text=Non gagnants')).toBeVisible();
-    await expect(page.locator('text=Annulés')).toBeVisible();
+    // Verify status options using exact text match
+    await expect(page.getByText('En attente', { exact: true })).toBeVisible();
+    await expect(page.getByText('Gagnants', { exact: true })).toBeVisible();
+    await expect(page.getByText('Non gagnants', { exact: true })).toBeVisible();
+    await expect(page.getByText('Annulés', { exact: true })).toBeVisible();
   });
 });
