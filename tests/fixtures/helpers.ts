@@ -66,3 +66,19 @@ export async function apiLogin(email: string, password: string): Promise<string>
   const data = await response.json();
   return data.token;
 }
+
+export async function loginAsAgent(page: Page) {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.fill('input[placeholder*="email"]', 'agent.marie@lotopam.com');
+  await page.fill('input[type="password"]', 'Agent123!');
+  await page.click('button:has-text("SIGN IN")');
+  // Agent redirects to /agent/dashboard after login
+  await page.waitForURL('**/agent/**', { timeout: 15000 });
+}
+
+export async function removeEmergentBadge(page: Page) {
+  await page.evaluate(() => {
+    const badge = document.querySelector('[class*="emergent"], [id*="emergent-badge"]');
+    if (badge) badge.remove();
+  });
+}
