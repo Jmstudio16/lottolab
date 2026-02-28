@@ -6,7 +6,9 @@ import {
   DollarSign, 
   Users, 
   Clock,
-  TrendingUp
+  TrendingUp,
+  AlertTriangle,
+  Calendar
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -31,6 +33,108 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color = 'yellow' }) => {
         <p className="text-sm font-medium text-slate-300">{title}</p>
         {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
       </div>
+    </div>
+  );
+};
+
+// Subscription Alert Component
+const SubscriptionAlert = ({ subscription }) => {
+  if (!subscription) return null;
+  
+  const { remaining_days, alert_level, message, is_expired, plan, subscription_end } = subscription;
+  
+  // Don't show if more than 15 days remaining
+  if (remaining_days > 15 && !is_expired) return null;
+  
+  const getAlertStyles = () => {
+    if (is_expired || alert_level === 'critical') {
+      return 'bg-red-950/50 border-red-700 text-red-300';
+    }
+    if (alert_level === 'warning') {
+      return 'bg-yellow-950/50 border-yellow-700 text-yellow-300';
+    }
+    return 'bg-slate-800/50 border-slate-700 text-slate-300';
+  };
+  
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    return new Date(dateStr).toLocaleDateString('fr-FR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  return (
+    <div className={`${getAlertStyles()} border rounded-xl p-4 mb-6`} data-testid="subscription-alert">
+      <div className="flex items-center gap-3">
+        <AlertTriangle className={`w-6 h-6 ${is_expired || alert_level === 'critical' ? 'text-red-400 animate-pulse' : 'text-yellow-400'}`} />
+        <div className="flex-1">
+          <p className="font-bold text-lg">{message}</p>
+          <p className="text-sm opacity-80">
+            Plan: {plan} | Expire le: {formatDate(subscription_end)}
+          </p>
+        </div>
+        <div className="text-right">
+          <span className={`text-3xl font-bold ${is_expired ? 'text-red-400' : remaining_days <= 5 ? 'text-red-400' : 'text-yellow-400'}`}>
+            {is_expired ? '0' : remaining_days}
+          </span>
+          <p className="text-xs opacity-80">jours restants</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Subscription Counter Component (always visible)
+const SubscriptionCounter = ({ subscription }) => {
+  if (!subscription) return null;
+  
+  const { remaining_days, is_expired, plan, subscription_end, company_name } = subscription;
+  
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    return new Date(dateStr).toLocaleDateString('fr-FR', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+  
+  const getProgressColor = () => {
+    if (is_expired || remaining_days <= 5) return 'bg-red-500';
+    if (remaining_days <= 15) return 'bg-yellow-500';
+    return 'bg-green-500';
+  };
+  
+  // Calculate progress (assuming 365 days max)
+  const progress = Math.min(100, (remaining_days / 365) * 100);
+
+  return (
+    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 mb-6" data-testid="subscription-counter">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-yellow-400" />
+          <span className="font-semibold text-white">Abonnement {plan}</span>
+        </div>
+        <div className="text-right">
+          <span className={`text-2xl font-bold ${is_expired ? 'text-red-400' : remaining_days <= 5 ? 'text-red-400' : remaining_days <= 15 ? 'text-yellow-400' : 'text-green-400'}`}>
+            {is_expired ? 'Expiré' : `${remaining_days} jours`}
+          </span>
+        </div>
+      </div>
+      
+      {/* Progress bar */}
+      <div className="w-full bg-slate-700 rounded-full h-2 mb-2">
+        <div 
+          className={`${getProgressColor()} h-2 rounded-full transition-all duration-500`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      
+      <p className="text-xs text-slate-400">
+        Expire le {formatDate(subscription_end)}
+      </p>
     </div>
   );
 };
