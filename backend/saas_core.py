@@ -1251,53 +1251,178 @@ async def update_company(
 @saas_core_router.delete("/companies/{company_id}")
 async def delete_company(
     company_id: str,
-    hard_delete: bool = False,
     request: Request = None,
     current_user: dict = Depends(require_super_admin)
 ):
-    """Delete company (soft or hard delete)"""
+    """
+    SOFT DELETE company only.
+    - Sets status = DELETED
+    - Preserves ALL data (agents, tickets, sales, payments, logs)
+    - Blocks all logins
+    - Hides from active company lists
+    - Visible only in "Archived Companies" section
+    """
     company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
     if not company:
         raise HTTPException(status_code=404, detail="Entreprise non trouvée")
     
     now = get_current_timestamp()
+    company_name = company.get("name", "Unknown")
     
-    if hard_delete:
-        # Hard delete - remove all data
-        await db.companies.delete_one({"company_id": company_id})
-        await db.users.delete_many({"company_id": company_id})
-        await db.succursales.delete_many({"company_id": company_id})
-        await db.agent_policies.delete_many({"company_id": company_id})
-        await db.agent_balances.delete_many({"company_id": company_id})
-        await db.company_lotteries.delete_many({"company_id": company_id})
-        await db.company_configurations.delete_many({"company_id": company_id})
-        message = "Entreprise supprimée définitivement"
-    else:
-        # Soft delete - mark as deleted
-        await db.companies.update_one(
-            {"company_id": company_id},
-            {"$set": {"status": "DELETED", "updated_at": now}}
-        )
-        
-        # Suspend all users
-        await db.users.update_many(
-            {"company_id": company_id},
-            {"$set": {"status": "SUSPENDED", "updated_at": now}}
-        )
-        message = "Entreprise désactivée"
+    # 1. SOFT DELETE - Mark company as DELETED
+    await db.companies.update_one(
+        {"company_id": company_id},
+        {"$set": {
+            "status": "DELETED",
+            "deleted_at": now,
+            "deleted_by": current_user["user_id"],
+            "updated_at": now
+        }}
+    )
     
+    # 2. Block ALL users (Company Admin, Managers, Auditors, Supervisors, Agents)
+    users_updated = await db.users.update_many(
+        {"company_id": company_id, "status": {"$ne": "DELETED"}},
+        {"$set": {
+            "status": "SUSPENDED",
+            "suspended_reason": "COMPANY_DELETED",
+            "suspended_at": now,
+            "updated_at": now
+        }}
+    )
+    
+    # 3. Mark all succursales as suspended
+    succursales_updated = await db.succursales.update_many(
+        {"company_id": company_id, "status": {"$ne": "DELETED"}},
+        {"$set": {
+            "status": "SUSPENDED",
+            "suspended_reason": "COMPANY_DELETED",
+            "updated_at": now
+        }}
+    )
+    
+    # 4. Log activity
     await log_activity(
         db=db,
-        action_type="COMPANY_DELETED",
+        action_type="COMPANY_SOFT_DELETED",
         entity_type="company",
         entity_id=company_id,
         performed_by=current_user["user_id"],
         company_id=company_id,
-        metadata={"hard_delete": hard_delete, "company_name": company.get("name")},
+        metadata={
+            "company_name": company_name,
+            "users_blocked": users_updated.modified_count,
+            "succursales_blocked": succursales_updated.modified_count,
+            "deleted_at": now
+        },
         ip_address=request.client.host if request and request.client else None
     )
     
-    return {"message": message}
+    # 5. Create notification
+    await db.admin_notifications.insert_one({
+        "notification_id": f"notif_deleted_{company_id}",
+        "type": "COMPANY_DELETED",
+        "target_role": "SUPER_ADMIN",
+        "title": f"Entreprise supprimée: {company_name}",
+        "message": f"L'entreprise {company_name} a été supprimée (archivée).",
+        "company_id": company_id,
+        "read": False,
+        "created_at": now
+    })
+    
+    return {
+        "message": f"Entreprise '{company_name}' supprimée (archivée)",
+        "company_id": company_id,
+        "users_blocked": users_updated.modified_count,
+        "succursales_blocked": succursales_updated.modified_count,
+        "deleted_at": now
+    }
+
+
+# ============================================================================
+# ARCHIVED COMPANIES (Soft Deleted)
+# ============================================================================
+
+@saas_core_router.get("/companies/archived")
+async def get_archived_companies(current_user: dict = Depends(require_super_admin)):
+    """Get all soft-deleted (archived) companies"""
+    companies = await db.companies.find(
+        {"status": "DELETED"},
+        {"_id": 0}
+    ).sort("deleted_at", -1).to_list(500)
+    
+    for company in companies:
+        # Get counts
+        company["agents_count"] = await db.users.count_documents({
+            "company_id": company["company_id"],
+            "role": UserRole.AGENT_POS
+        })
+        company["tickets_count"] = await db.tickets.count_documents({
+            "company_id": company["company_id"]
+        })
+    
+    return companies
+
+
+@saas_core_router.put("/companies/{company_id}/restore")
+async def restore_company(
+    company_id: str,
+    days: int = 30,
+    request: Request = None,
+    current_user: dict = Depends(require_super_admin)
+):
+    """Restore a soft-deleted company"""
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Entreprise non trouvée")
+    
+    if company.get("status") != "DELETED":
+        raise HTTPException(status_code=400, detail="Cette entreprise n'est pas supprimée")
+    
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+    new_end_date = (now + timedelta(days=days)).isoformat()
+    
+    # 1. Restore company
+    await db.companies.update_one(
+        {"company_id": company_id},
+        {"$set": {
+            "status": "ACTIVE",
+            "license_end": new_end_date,
+            "subscription_end_date": new_end_date,
+            "restored_at": now_iso,
+            "restored_by": current_user["user_id"],
+            "updated_at": now_iso
+        },
+        "$unset": {"deleted_at": "", "deleted_by": ""}}
+    )
+    
+    # 2. Reactivate company admin only (others stay suspended for security)
+    await db.users.update_many(
+        {"company_id": company_id, "role": UserRole.COMPANY_ADMIN},
+        {"$set": {"status": "ACTIVE", "updated_at": now_iso}}
+    )
+    
+    await log_activity(
+        db=db,
+        action_type="COMPANY_RESTORED",
+        entity_type="company",
+        entity_id=company_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={
+            "company_name": company.get("name"),
+            "subscription_days": days,
+            "new_end_date": new_end_date
+        },
+        ip_address=request.client.host if request and request.client else None
+    )
+    
+    return {
+        "message": f"Entreprise '{company.get('name')}' restaurée",
+        "company_id": company_id,
+        "new_subscription_end": new_end_date
+    }
 
 
 # ============================================================================
