@@ -52,18 +52,19 @@ const SuperAdminMenu = [
 const CompanyAdminMenu = [
   { path: '/company/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/company/succursales', label: 'Succursales', icon: Store },
-  { path: '/company/lotteries', label: 'Lottery Catalog', icon: Ticket },
-  { path: '/company/schedules', label: 'Schedules (View)', icon: CalendarClock },
-  { path: '/company/results', label: 'Results (View)', icon: Trophy },
+  { path: '/company/lotteries', label: 'Catalogue Loteries', icon: Ticket },
+  { path: '/company/lotteries-for-agents', label: 'Loteries pour Agents', icon: Globe },
+  { path: '/company/schedules', label: 'Horaires (Vue)', icon: CalendarClock },
+  { path: '/company/results', label: 'Résultats (Vue)', icon: Trophy },
   { path: '/company/tickets', label: 'Tickets', icon: FileText },
   { path: '/company/winning-tickets', label: 'Gagnants & Paiements', icon: Banknote },
   { path: '/company/configuration', label: 'Configuration', icon: Sliders },
   { path: '/company/statistics', label: 'Statistiques', icon: ChartLine },
   { path: '/company/daily-reports', label: 'Rapports', icon: BarChart3 },
-  { path: '/company/users', label: 'Company Users', icon: Users },
-  { path: '/company/activity-logs', label: 'Activity Logs', icon: Activity },
+  { path: '/company/users', label: 'Utilisateurs', icon: Users },
+  { path: '/company/activity-logs', label: 'Logs Activité', icon: Activity },
   { path: '/company/profile-settings', label: 'Logo & Profil', icon: Image },
-  { path: '/company/settings', label: 'Settings', icon: Settings },
+  { path: '/company/settings', label: 'Paramètres', icon: Settings },
 ];
 
 export const Sidebar = ({ role }) => {
@@ -73,7 +74,7 @@ export const Sidebar = ({ role }) => {
   const menu = role === 'SUPER_ADMIN' ? SuperAdminMenu : CompanyAdminMenu;
   
   return (
-    <div className="w-64 h-screen bg-[#020617] border-r border-slate-800 flex flex-col fixed left-0 top-0">
+    <div className="w-64 h-screen bg-[#020617] border-r border-slate-800 flex flex-col">
       {/* Logo */}
       <div className="p-6 border-b border-slate-800">
         <Logo 

@@ -225,8 +225,8 @@ export const AgentNewTicketPage = () => {
                   </option>
                 ))}
               </select>
-              {lotteries.length === 0 && (
-                <p className="text-xs text-amber-400 mt-1">Aucune loterie disponible. Synchronisation en cours...</p>
+              {lotteries.length === 0 && syncData && (
+                <p className="text-xs text-slate-400 mt-1">Aucune loterie configurée pour votre compte.</p>
               )}
             </div>
 

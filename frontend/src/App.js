@@ -27,6 +27,7 @@ import { AgentResultsViewPage } from '@/pages/agent/AgentResultsViewPage';
 import { CompanyDashboardPage } from '@/pages/CompanyDashboardPage';
 import { CompanySuccursalesPage } from '@/pages/CompanySuccursalesPage';
 import { CompanyLotteriesPage } from '@/pages/CompanyLotteriesPage';
+import { CompanyLotteriesForAgentsPage } from '@/pages/CompanyLotteriesForAgentsPage';
 import { CompanyResultsPage } from '@/pages/CompanyResultsPage';
 import { SchedulesPage } from '@/pages/SchedulesPage';
 import { TicketsPage } from '@/pages/TicketsPage';
@@ -53,6 +54,10 @@ import {
 import { AgentLotterySelectionPage } from '@/pages/agent/AgentLotterySelectionPage';
 import { AgentSearchTicketsPage } from '@/pages/agent/AgentSearchTicketsPage';
 import { AgentAvailableDrawsPage } from '@/pages/agent/AgentAvailableDrawsPage';
+
+// Supervisor Pages
+import { SupervisorLayout } from '@/layouts/SupervisorLayout';
+import { SupervisorDashboardPage } from '@/pages/supervisor/SupervisorDashboardPage';
 
 // LOTO PAM Public Platform Pages
 import LotoPamHomePage from '@/pages/lotopam/LotoPamHomePage';
@@ -364,6 +369,14 @@ const SaaSApp = () => {
                   }
                 />
                 <Route
+                  path="/company/lotteries-for-agents"
+                  element={
+                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
+                      <CompanyLotteriesForAgentsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/company/schedules"
                   element={
                     <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
@@ -481,6 +494,22 @@ const SaaSApp = () => {
                   <Route path="my-sales" element={<AgentReportsPage />} />
                   <Route path="reports" element={<AgentReportsPage />} />
                   <Route index element={<Navigate to="/agent/dashboard" replace />} />
+                </Route>
+
+                {/* ================== SUPERVISOR ROUTES ================== */}
+                <Route
+                  path="/supervisor"
+                  element={
+                    <ProtectedRoute allowedRoles={['BRANCH_SUPERVISOR']}>
+                      <SupervisorLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route path="dashboard" element={<SupervisorDashboardPage />} />
+                  <Route path="agents" element={<SupervisorDashboardPage />} />
+                  <Route path="tickets" element={<SupervisorDashboardPage />} />
+                  <Route path="reports" element={<SupervisorDashboardPage />} />
+                  <Route index element={<Navigate to="/supervisor/dashboard" replace />} />
                 </Route>
 
                 {/* POS Routes - Same as Agent */}

@@ -147,9 +147,9 @@ async def login(request: Request, credentials: LoginRequest):
         UserRole.SUPER_ADMIN: "/super/dashboard",
         UserRole.COMPANY_ADMIN: "/company/dashboard",
         UserRole.COMPANY_MANAGER: "/company/dashboard",
-        UserRole.BRANCH_SUPERVISOR: "/branch/dashboard",
-        UserRole.BRANCH_USER: "/branch/dashboard",
-        UserRole.AGENT_POS: "/pos",
+        UserRole.BRANCH_SUPERVISOR: "/supervisor/dashboard",
+        UserRole.BRANCH_USER: "/supervisor/dashboard",
+        UserRole.AGENT_POS: "/agent/pos",
         UserRole.AUDITOR_READONLY: "/company/dashboard"
     }
     
@@ -449,6 +449,30 @@ async def toggle_lottery(lottery_id: str, enabled: bool, current_user: dict = De
     return {"message": f"Loterie {'activée' if enabled else 'désactivée'} avec succès", "enabled": enabled}
 
 
+@api_router.get("/company/schedules")
+async def get_company_schedules(current_user: dict = Depends(get_current_user)):
+    """Get all schedules for company's enabled lotteries"""
+    company_id = current_user.get("company_id")
+    if not company_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Get enabled lottery IDs
+    company_lotteries = await db.company_lotteries.find(
+        {"company_id": company_id, "$or": [{"enabled": True}, {"is_enabled": True}]},
+        {"_id": 0, "lottery_id": 1}
+    ).to_list(500)
+    
+    lottery_ids = [cl["lottery_id"] for cl in company_lotteries]
+    
+    # Get schedules for these lotteries
+    schedules = await db.global_schedules.find(
+        {"lottery_id": {"$in": lottery_ids}, "is_active": True},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    return schedules
+
+
 # ============ POS ROUTES ============
 @api_router.get("/pos/lotteries/open")
 async def get_open_lotteries(current_user: dict = Depends(get_current_user)):
@@ -745,3 +769,77 @@ async def trigger_subscription_check(current_user: dict = Depends(get_current_us
     await check_expiring_soon()
     
     return {"message": "Vérification des abonnements terminée", "timestamp": get_current_timestamp()}
+
+
+# ============ SUPERVISOR ROUTES ============
+@api_router.get("/supervisor/agents")
+async def get_supervisor_agents(current_user: dict = Depends(get_current_user)):
+    """Get agents managed by this supervisor"""
+    if current_user.get("role") not in [UserRole.BRANCH_SUPERVISOR, "BRANCH_SUPERVISOR"]:
+        raise HTTPException(status_code=403, detail="Access denied - Supervisor only")
+    
+    company_id = current_user.get("company_id")
+    succursale_id = current_user.get("succursale_id")
+    
+    # Get agents in the same succursale or created by this supervisor
+    query = {
+        "company_id": company_id,
+        "role": UserRole.AGENT_POS,
+        "$or": [
+            {"succursale_id": succursale_id},
+            {"created_by": current_user.get("user_id")}
+        ]
+    }
+    
+    agents = await db.users.find(query, {"_id": 0, "password_hash": 0}).to_list(100)
+    
+    # Get sales for today
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    for agent in agents:
+        tickets_today = await db.tickets.count_documents({
+            "agent_id": agent.get("user_id"),
+            "created_at": {"$regex": f"^{today}"}
+        })
+        agent["tickets_today"] = tickets_today
+        agent["sales_today"] = 0  # TODO: Calculate actual sales
+    
+    return agents
+
+
+@api_router.get("/supervisor/dashboard-stats")
+async def get_supervisor_stats(current_user: dict = Depends(get_current_user)):
+    """Get dashboard stats for supervisor"""
+    if current_user.get("role") not in [UserRole.BRANCH_SUPERVISOR, "BRANCH_SUPERVISOR"]:
+        raise HTTPException(status_code=403, detail="Access denied - Supervisor only")
+    
+    company_id = current_user.get("company_id")
+    succursale_id = current_user.get("succursale_id")
+    
+    # Count agents
+    query = {
+        "company_id": company_id,
+        "role": UserRole.AGENT_POS,
+        "$or": [
+            {"succursale_id": succursale_id},
+            {"created_by": current_user.get("user_id")}
+        ]
+    }
+    
+    total_agents = await db.users.count_documents(query)
+    active_agents = await db.users.count_documents({**query, "status": "ACTIVE"})
+    
+    # Today's tickets
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    tickets_today = await db.tickets.count_documents({
+        "company_id": company_id,
+        "succursale_id": succursale_id,
+        "created_at": {"$regex": f"^{today}"}
+    })
+    
+    return {
+        "total_agents": total_agents,
+        "active_agents": active_agents,
+        "suspended_agents": total_agents - active_agents,
+        "tickets_today": tickets_today
+    }
+
