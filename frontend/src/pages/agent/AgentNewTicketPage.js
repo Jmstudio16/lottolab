@@ -36,12 +36,49 @@ export const AgentNewTicketPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastTicket, setLastTicket] = useState(null);
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const numberInputRef = useRef(null);
 
   const lotteries = syncData?.enabled_lotteries || syncData?.lotteries || [];
   const schedules = syncData?.schedules || [];
   const config = syncData?.configuration || syncData?.company_config || {};
   const primeConfigs = syncData?.prime_configs || [];
+
+  // Update time every minute
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Check if schedule is open
+  const isScheduleOpen = (schedule) => {
+    if (!schedule) return false;
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    
+    const parseTime = (timeStr) => {
+      if (!timeStr) return null;
+      const [h, m] = timeStr.split(':').map(Number);
+      return h * 60 + m;
+    };
+    
+    const openMin = parseTime(schedule.open_time) || 0;
+    const closeMin = parseTime(schedule.close_time) || 24 * 60;
+    
+    return currentMinutes >= openMin && currentMinutes < closeMin;
+  };
+
+  // Get time until close
+  const getTimeUntilClose = (schedule) => {
+    if (!schedule?.close_time) return null;
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const [h, m] = schedule.close_time.split(':').map(Number);
+    const closeMin = h * 60 + m;
+    const diff = closeMin - currentMinutes;
+    if (diff <= 0) return null;
+    return { hours: Math.floor(diff / 60), minutes: diff % 60 };
+  };
 
   // Get available schedules for selected lottery
   const availableSchedules = selectedLottery 
@@ -102,6 +139,12 @@ export const AgentNewTicketPage = () => {
   const handleSubmit = async () => {
     if (!selectedLottery || !selectedSchedule) {
       toast.error('Sélectionnez une loterie et un tirage');
+      return;
+    }
+
+    // Check if schedule is open
+    if (!isScheduleOpen(selectedSchedule)) {
+      toast.error('Ce tirage est fermé. Impossible de vendre.');
       return;
     }
 
@@ -243,12 +286,24 @@ export const AgentNewTicketPage = () => {
                 data-testid="schedule-select"
               >
                 <option value="">Choisir un tirage</option>
-                {availableSchedules.map(s => (
-                  <option key={s.schedule_id} value={s.schedule_id}>
-                    {s.draw_name} - {s.draw_time}
-                  </option>
-                ))}
+                {availableSchedules.map(s => {
+                  const open = isScheduleOpen(s);
+                  const timeLeft = getTimeUntilClose(s);
+                  return (
+                    <option key={s.schedule_id} value={s.schedule_id} disabled={!open}>
+                      {s.draw_name} - {s.draw_time} {open ? (timeLeft ? `(${timeLeft.hours}h${timeLeft.minutes}m)` : '✓') : '(Fermé)'}
+                    </option>
+                  );
+                })}
               </select>
+              {selectedSchedule && !isScheduleOpen(selectedSchedule) && (
+                <p className="text-xs text-red-400 mt-1">⚠️ Ce tirage est fermé</p>
+              )}
+              {selectedSchedule && isScheduleOpen(selectedSchedule) && getTimeUntilClose(selectedSchedule) && (
+                <p className="text-xs text-emerald-400 mt-1">
+                  ✓ Ouvert - Ferme dans {getTimeUntilClose(selectedSchedule).hours}h {getTimeUntilClose(selectedSchedule).minutes}m
+                </p>
+              )}
             </div>
           </div>
         </CardContent>

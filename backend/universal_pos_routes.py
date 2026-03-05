@@ -398,8 +398,8 @@ async def sell_lottery_ticket(
     
     if schedule:
         stop_minutes = config.get("stop_sales_before_draw_minutes", 5) if config else 5
-        closing_time_str = schedule.get("closing_time") or schedule.get("draw_time", "00:00")
-        opening_time_str = schedule.get("opening_time", "00:00")
+        closing_time_str = schedule.get("close_time") or schedule.get("closing_time") or schedule.get("draw_time", "00:00")
+        opening_time_str = schedule.get("open_time") or schedule.get("opening_time", "06:00")
         
         # Parse times
         close_hour, close_minute = map(int, closing_time_str.split(":"))

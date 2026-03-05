@@ -39,6 +39,7 @@ from saas_core import saas_core_router, set_saas_core_db
 from scheduler_tasks import set_scheduler_db, check_expired_subscriptions, check_expiring_soon
 from staff_permissions import staff_router, set_staff_db, create_staff_endpoints
 from ticket_print_routes import ticket_print_router, set_ticket_print_db
+from supervisor_routes import supervisor_router
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -655,6 +656,7 @@ app.include_router(settings_router)
 app.include_router(financial_router)
 app.include_router(succursale_router)
 app.include_router(saas_core_router)
+app.include_router(supervisor_router)
 
 # Include ticket print router (PUBLIC routes for verification)
 app.include_router(ticket_print_router)
@@ -842,4 +844,157 @@ async def get_supervisor_stats(current_user: dict = Depends(get_current_user)):
         "suspended_agents": total_agents - active_agents,
         "tickets_today": tickets_today
     }
+
+
+@api_router.put("/supervisor/agents/{agent_id}/suspend")
+async def supervisor_suspend_agent(agent_id: str, current_user: dict = Depends(get_current_user)):
+    """Suspend an agent (Supervisor only)"""
+    if current_user.get("role") not in [UserRole.BRANCH_SUPERVISOR, "BRANCH_SUPERVISOR"]:
+        raise HTTPException(status_code=403, detail="Access denied - Supervisor only")
+    
+    company_id = current_user.get("company_id")
+    succursale_id = current_user.get("succursale_id")
+    
+    # Verify agent belongs to supervisor
+    agent = await db.users.find_one({
+        "user_id": agent_id,
+        "company_id": company_id,
+        "role": UserRole.AGENT_POS,
+        "$or": [
+            {"succursale_id": succursale_id},
+            {"created_by": current_user.get("user_id")}
+        ]
+    })
+    
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent non trouvé ou non autorisé")
+    
+    await db.users.update_one(
+        {"user_id": agent_id},
+        {"$set": {"status": "SUSPENDED", "updated_at": get_current_timestamp()}}
+    )
+    
+    return {"message": "Agent suspendu avec succès"}
+
+
+@api_router.put("/supervisor/agents/{agent_id}/activate")
+async def supervisor_activate_agent(agent_id: str, current_user: dict = Depends(get_current_user)):
+    """Activate an agent (Supervisor only)"""
+    if current_user.get("role") not in [UserRole.BRANCH_SUPERVISOR, "BRANCH_SUPERVISOR"]:
+        raise HTTPException(status_code=403, detail="Access denied - Supervisor only")
+    
+    company_id = current_user.get("company_id")
+    succursale_id = current_user.get("succursale_id")
+    
+    agent = await db.users.find_one({
+        "user_id": agent_id,
+        "company_id": company_id,
+        "role": UserRole.AGENT_POS,
+        "$or": [
+            {"succursale_id": succursale_id},
+            {"created_by": current_user.get("user_id")}
+        ]
+    })
+    
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent non trouvé ou non autorisé")
+    
+    await db.users.update_one(
+        {"user_id": agent_id},
+        {"$set": {"status": "ACTIVE", "updated_at": get_current_timestamp()}}
+    )
+    
+    return {"message": "Agent réactivé avec succès"}
+
+
+@api_router.delete("/supervisor/agents/{agent_id}")
+async def supervisor_delete_agent(agent_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete an agent (Supervisor only)"""
+    if current_user.get("role") not in [UserRole.BRANCH_SUPERVISOR, "BRANCH_SUPERVISOR"]:
+        raise HTTPException(status_code=403, detail="Access denied - Supervisor only")
+    
+    company_id = current_user.get("company_id")
+    succursale_id = current_user.get("succursale_id")
+    
+    agent = await db.users.find_one({
+        "user_id": agent_id,
+        "company_id": company_id,
+        "role": UserRole.AGENT_POS,
+        "$or": [
+            {"succursale_id": succursale_id},
+            {"created_by": current_user.get("user_id")}
+        ]
+    })
+    
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent non trouvé ou non autorisé")
+    
+    # Check if agent has active tickets
+    active_tickets = await db.tickets.count_documents({
+        "agent_id": agent_id,
+        "status": {"$in": ["PENDING", "ACTIVE"]}
+    })
+    
+    if active_tickets > 0:
+        raise HTTPException(status_code=400, detail=f"Impossible de supprimer: {active_tickets} tickets actifs")
+    
+    # Soft delete
+    await db.users.update_one(
+        {"user_id": agent_id},
+        {"$set": {"status": "DELETED", "deleted_at": get_current_timestamp()}}
+    )
+    
+    return {"message": "Agent supprimé avec succès"}
+
+
+@api_router.put("/supervisor/agents/{agent_id}")
+async def supervisor_update_agent(agent_id: str, update_data: dict, current_user: dict = Depends(get_current_user)):
+    """Update agent info (Supervisor only)"""
+    if current_user.get("role") not in [UserRole.BRANCH_SUPERVISOR, "BRANCH_SUPERVISOR"]:
+        raise HTTPException(status_code=403, detail="Access denied - Supervisor only")
+    
+    company_id = current_user.get("company_id")
+    succursale_id = current_user.get("succursale_id")
+    
+    agent = await db.users.find_one({
+        "user_id": agent_id,
+        "company_id": company_id,
+        "role": UserRole.AGENT_POS,
+        "$or": [
+            {"succursale_id": succursale_id},
+            {"created_by": current_user.get("user_id")}
+        ]
+    })
+    
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent non trouvé ou non autorisé")
+    
+    # Only allow certain fields to be updated
+    allowed_fields = {"name", "telephone", "commission_percent"}
+    update_fields = {k: v for k, v in update_data.items() if k in allowed_fields}
+    update_fields["updated_at"] = get_current_timestamp()
+    
+    await db.users.update_one(
+        {"user_id": agent_id},
+        {"$set": update_fields}
+    )
+    
+    return {"message": "Agent mis à jour avec succès"}
+
+
+@api_router.get("/supervisor/agents/{agent_id}/tickets")
+async def supervisor_get_agent_tickets(agent_id: str, current_user: dict = Depends(get_current_user)):
+    """Get tickets for a specific agent (Supervisor only)"""
+    if current_user.get("role") not in [UserRole.BRANCH_SUPERVISOR, "BRANCH_SUPERVISOR"]:
+        raise HTTPException(status_code=403, detail="Access denied - Supervisor only")
+    
+    company_id = current_user.get("company_id")
+    
+    # Get recent tickets (last 50)
+    tickets = await db.tickets.find(
+        {"agent_id": agent_id, "company_id": company_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(50).to_list(50)
+    
+    return tickets
 
