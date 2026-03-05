@@ -39,15 +39,15 @@ export const SuperPlansPage = () => {
 
   const fetchData = async () => {
     try {
-      const [plansRes, licensesRes, companiesRes] = await Promise.all([
-        apiClient.get('/super/plans'),
-        apiClient.get('/super/licenses'),
-        apiClient.get('/super/companies')
+      const [plansRes, companiesRes] = await Promise.all([
+        apiClient.get('/saas/plans').catch(() => ({ data: [] })),
+        apiClient.get('/saas/companies').catch(() => ({ data: [] }))
       ]);
-      setPlans(plansRes.data);
-      setLicenses(licensesRes.data);
-      setCompanies(companiesRes.data);
+      setPlans(plansRes.data || []);
+      setLicenses([]);
+      setCompanies(companiesRes.data || []);
     } catch (error) {
+      console.error('Plans error:', error);
       toast.error('Failed to load data');
     } finally {
       setLoading(false);

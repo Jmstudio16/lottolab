@@ -52,12 +52,13 @@ export const SuperDashboardPage = () => {
   const fetchData = async () => {
     try {
       const [statsRes, companiesRes] = await Promise.all([
-        apiClient.get('/super/dashboard/stats'),
-        apiClient.get('/super/companies')
+        apiClient.get('/saas/dashboard-stats'),
+        apiClient.get('/saas/companies')
       ]);
       setStats(statsRes.data);
       setCompanies(companiesRes.data.slice(0, 5));
     } catch (error) {
+      console.error('Dashboard error:', error);
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);

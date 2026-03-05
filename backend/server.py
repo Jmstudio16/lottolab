@@ -80,7 +80,10 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 @limiter.limit("10/minute")  # 10 login attempts per minute per IP
 async def login(request: Request, credentials: LoginRequest):
     user_doc = await db.users.find_one({"email": credentials.email}, {"_id": 0})
-    if not user_doc or not verify_password(credentials.password, user_doc.get("password_hash", "")):
+    if not user_doc:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    if not verify_password(credentials.password, user_doc.get("password_hash", "")):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     # Check if user is suspended or deleted
@@ -361,8 +364,12 @@ async def get_company_lotteries(current_user: dict = Depends(get_current_user)):
     if not company_id:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    # Get ALL global lotteries (the master catalog)
-    all_lotteries = await db.global_lotteries.find({"is_active": True}, {"_id": 0}).to_list(500)
+    # Get ALL global lotteries (the master catalog) - check master_lotteries first
+    all_lotteries = await db.master_lotteries.find({"is_active_global": True}, {"_id": 0}).to_list(500)
+    
+    # If no master_lotteries, check global_lotteries for backward compatibility
+    if not all_lotteries:
+        all_lotteries = await db.global_lotteries.find({"is_active": True}, {"_id": 0}).to_list(500)
     
     # Also check legacy lotteries collection for backwards compatibility
     legacy_lotteries = await db.lotteries.find({}, {"_id": 0}).to_list(500)
@@ -380,7 +387,10 @@ async def get_company_lotteries(current_user: dict = Depends(get_current_user)):
     result = []
     for lottery in all_lotteries:
         lottery_id = lottery["lottery_id"]
-        lottery["enabled"] = lottery_id in enabled_map and enabled_map[lottery_id].get("enabled", False)
+        cl = enabled_map.get(lottery_id, {})
+        # Check both is_enabled and enabled for backward compatibility
+        is_enabled = cl.get("is_enabled", False) or cl.get("enabled", False)
+        lottery["enabled"] = is_enabled
         result.append(lottery)
     
     # Sort by state_code then lottery_name
@@ -404,13 +414,20 @@ async def toggle_lottery(lottery_id: str, enabled: bool, current_user: dict = De
     if existing:
         await db.company_lotteries.update_one(
             {"company_id": company_id, "lottery_id": lottery_id},
-            {"$set": {"enabled": enabled, "updated_at": now}}
+            {"$set": {
+                "enabled": enabled,
+                "is_enabled": enabled,  # Add both fields for compatibility
+                "is_enabled_for_company": enabled,
+                "updated_at": now
+            }}
         )
     else:
         await db.company_lotteries.insert_one({
             "company_id": company_id,
             "lottery_id": lottery_id,
             "enabled": enabled,
+            "is_enabled": enabled,
+            "is_enabled_for_company": enabled,
             "created_at": now,
             "updated_at": now
         })
@@ -441,7 +458,11 @@ async def get_open_lotteries(current_user: dict = Depends(get_current_user)):
     
     now = datetime.now(timezone.utc)
     
-    company_lotteries = await db.company_lotteries.find({"company_id": company_id, "enabled": True}, {"_id": 0}).to_list(100)
+    # Check both is_enabled and enabled for backward compatibility
+    company_lotteries = await db.company_lotteries.find(
+        {"company_id": company_id, "$or": [{"is_enabled": True}, {"enabled": True}]}, 
+        {"_id": 0}
+    ).to_list(100)
     
     open_lotteries = []
     for cl in company_lotteries:

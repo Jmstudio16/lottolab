@@ -11,7 +11,7 @@ export default defineConfig({
     ['json', { outputFile: '/root/.emergent/automation_output/20260228_061441/results.json' }],
   ],
   use: {
-    baseURL: 'https://multi-tenant-lottery.preview.emergentagent.com',
+    baseURL: 'https://lottery-sync-fix.preview.emergentagent.com',
     screenshot: 'only-on-failure',
     trace: 'off',
     headless: true,

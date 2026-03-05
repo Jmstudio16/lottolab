@@ -33,12 +33,13 @@ export const SuperUsersPage = () => {
   const fetchData = async () => {
     try {
       const [usersRes, companiesRes] = await Promise.all([
-        apiClient.get('/super/users'),
-        apiClient.get('/super/companies')
+        apiClient.get('/saas/all-users').catch(() => ({ data: [] })),
+        apiClient.get('/saas/companies').catch(() => ({ data: [] }))
       ]);
-      setUsers(usersRes.data);
-      setCompanies(companiesRes.data);
+      setUsers(usersRes.data || []);
+      setCompanies(companiesRes.data || []);
     } catch (error) {
+      console.error('Users error:', error);
       toast.error('Failed to load data');
     } finally {
       setLoading(false);

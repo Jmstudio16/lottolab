@@ -168,9 +168,9 @@ async def get_open_lotteries(current_user: dict = Depends(get_agent_user)):
     
     now = datetime.now(timezone.utc)
     
-    # Get enabled lotteries for company
+    # Get enabled lotteries for company (check both is_enabled and enabled for backward compatibility)
     company_lotteries = await db.company_lotteries.find(
-        {"company_id": company_id, "enabled": True}, 
+        {"company_id": company_id, "$or": [{"is_enabled": True}, {"enabled": True}]}, 
         {"_id": 0}
     ).to_list(100)
     
@@ -231,7 +231,7 @@ async def sell_ticket(
     company_lottery = await db.company_lotteries.find_one({
         "company_id": company_id, 
         "lottery_id": ticket_data.lottery_id,
-        "enabled": True
+        "$or": [{"is_enabled": True}, {"enabled": True}]
     })
     if not company_lottery:
         raise HTTPException(status_code=400, detail="Lottery not enabled for your company")

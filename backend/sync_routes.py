@@ -145,13 +145,14 @@ async def get_full_device_config(current_agent: dict = Depends(get_current_agent
         }
     
     # ---- 5. ENABLED LOTTERIES (COMPANY CATALOG) ----
-    # Fixed: Use correct field names for company_lotteries
+    # Fixed: Use correct field names for company_lotteries - check all possible field names
     company_lotteries = await db.company_lotteries.find(
         {
             "company_id": company_id, 
             "$or": [
                 {"is_enabled_for_company": True},
-                {"is_enabled": True}
+                {"is_enabled": True},
+                {"enabled": True}
             ]
         },
         {"_id": 0}
@@ -331,9 +332,9 @@ async def sync_device(
     # ---- 4. LATEST RESULTS FOR TODAY ----
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     
-    # Get enabled lotteries for this company
+    # Get enabled lotteries for this company (check all possible field names)
     company_lotteries = await db.company_lotteries.find(
-        {"company_id": company_id, "enabled": True},
+        {"company_id": company_id, "$or": [{"is_enabled": True}, {"enabled": True}, {"is_enabled_for_company": True}]},
         {"_id": 0, "lottery_id": 1}
     ).to_list(200)
     lottery_ids = [cl["lottery_id"] for cl in company_lotteries]
@@ -829,9 +830,9 @@ async def get_device_results(
     """Get all results for agent device display with auto-sync"""
     company_id = current_agent.get("company_id")
     
-    # Get enabled lotteries for this company
+    # Get enabled lotteries for this company (check both field names)
     company_lotteries = await db.company_lotteries.find(
-        {"company_id": company_id, "enabled": True},
+        {"company_id": company_id, "$or": [{"is_enabled": True}, {"enabled": True}]},
         {"_id": 0, "lottery_id": 1}
     ).to_list(200)
     lottery_ids = [cl["lottery_id"] for cl in company_lotteries]

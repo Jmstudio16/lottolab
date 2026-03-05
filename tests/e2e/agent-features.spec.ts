@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = process.env.REACT_APP_BACKEND_URL || 'https://multi-tenant-lottery.preview.emergentagent.com';
+const BASE_URL = process.env.REACT_APP_BACKEND_URL || 'https://lottery-sync-fix.preview.emergentagent.com';
 
 // Agent credentials
 const AGENT_EMAIL = 'agent.marie@lotopam.com';

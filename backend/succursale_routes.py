@@ -802,6 +802,53 @@ async def suspend_agent(
     return {"message": "Agent suspendu"}
 
 
+@succursale_router.put("/{succursale_id}/agents/{agent_id}/activate")
+async def activate_agent(
+    succursale_id: str,
+    agent_id: str,
+    request: Request,
+    current_user: dict = Depends(get_company_admin)
+):
+    """Activate/reactivate an agent"""
+    company_id = require_admin(current_user)
+    
+    agent = await db.users.find_one({
+        "user_id": agent_id,
+        "succursale_id": succursale_id,
+        "company_id": company_id,
+        "role": UserRole.AGENT_POS
+    })
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent non trouvé")
+    
+    now = get_current_timestamp()
+    
+    await db.users.update_one(
+        {"user_id": agent_id},
+        {"$set": {"status": "ACTIVE", "updated_at": now}}
+    )
+    
+    await db.agent_policies.update_one(
+        {"agent_id": agent_id},
+        {"$set": {"status": "active", "updated_at": now}}
+    )
+    
+    await update_company_agent_count(company_id)
+    
+    await log_activity(
+        db=db,
+        action_type="AGENT_ACTIVATED",
+        entity_type="agent",
+        entity_id=agent_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={"agent_name": agent.get("name"), "succursale_id": succursale_id},
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {"message": "Agent réactivé"}
+
+
 @succursale_router.delete("/{succursale_id}/agents/{agent_id}")
 async def delete_agent_from_succursale(
     succursale_id: str,

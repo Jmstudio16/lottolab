@@ -4,7 +4,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   Building2, Plus, Trash2, Save, Users, Eye, 
-  RefreshCw, UserPlus, Store, Mail, Phone, User, Lock
+  RefreshCw, UserPlus, Store, Mail, Phone, User, Lock, Edit, PlayCircle, StopCircle
 } from 'lucide-react';
 import CompanyLayout from '@/components/CompanyLayout';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,8 @@ export const CompanySuccursalesPage = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedSuccursale, setSelectedSuccursale] = useState(null);
   const [showAgentModal, setShowAgentModal] = useState(false);
+  const [showEditAgentModal, setShowEditAgentModal] = useState(false);
+  const [editingAgent, setEditingAgent] = useState(null);
   const [creating, setCreating] = useState(false);
 
   // NEW Form state - EMAIL BASED (no pseudo/identifiant)
@@ -181,6 +183,64 @@ export const CompanySuccursalesPage = () => {
       fetchSuccursaleDetail(selectedSuccursale.succursale_id);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erreur');
+    }
+  };
+
+  const handleActivateAgent = async (agentId) => {
+    try {
+      await axios.put(
+        `${API_URL}/api/company/succursales/${selectedSuccursale.succursale_id}/agents/${agentId}/activate`,
+        {},
+        { headers }
+      );
+      toast.success('Agent réactivé');
+      fetchSuccursaleDetail(selectedSuccursale.succursale_id);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur');
+    }
+  };
+
+  const openEditAgentModal = (agent) => {
+    setEditingAgent({
+      user_id: agent.user_id,
+      nom_agent: agent.name?.split(' ')[0] || '',
+      prenom_agent: agent.name?.split(' ').slice(1).join(' ') || '',
+      email: agent.email || '',
+      telephone: agent.telephone || '',
+      commission_percent: agent.commission_percent || 0,
+      limite_credit: agent.limite_credit || 50000,
+      limite_gain: agent.limite_gain || 100000,
+      status: agent.status || 'ACTIVE'
+    });
+    setShowEditAgentModal(true);
+  };
+
+  const handleUpdateAgent = async (e) => {
+    e.preventDefault();
+    if (!editingAgent) return;
+    
+    try {
+      setCreating(true);
+      await axios.put(
+        `${API_URL}/api/company/succursales/${selectedSuccursale.succursale_id}/agents/${editingAgent.user_id}`,
+        {
+          nom_agent: editingAgent.nom_agent,
+          prenom_agent: editingAgent.prenom_agent,
+          telephone: editingAgent.telephone,
+          commission_percent: editingAgent.commission_percent,
+          limite_credit: editingAgent.limite_credit,
+          limite_gain: editingAgent.limite_gain
+        },
+        { headers }
+      );
+      toast.success('Agent mis à jour');
+      setShowEditAgentModal(false);
+      setEditingAgent(null);
+      fetchSuccursaleDetail(selectedSuccursale.succursale_id);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la mise à jour');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -610,18 +670,42 @@ export const CompanySuccursalesPage = () => {
                             </td>
                             <td className="px-4 py-3 text-right">
                               <div className="flex items-center justify-end gap-1">
-                                {agent.status === 'ACTIVE' && (
+                                {/* Edit Button */}
+                                <button
+                                  onClick={() => openEditAgentModal(agent)}
+                                  className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded"
+                                  title="Modifier"
+                                  data-testid={`edit-agent-${agent.user_id}`}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                
+                                {/* Suspend/Activate Button */}
+                                {agent.status === 'ACTIVE' ? (
                                   <button
                                     onClick={() => handleSuspendAgent(agent.user_id)}
-                                    className="px-2 py-1 text-xs text-yellow-400 hover:bg-yellow-500/10 rounded"
+                                    className="p-1.5 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10 rounded"
                                     title="Suspendre"
+                                    data-testid={`suspend-agent-${agent.user_id}`}
                                   >
-                                    Suspendre
+                                    <StopCircle className="w-4 h-4" />
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleActivateAgent(agent.user_id)}
+                                    className="p-1.5 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded"
+                                    title="Réactiver"
+                                    data-testid={`activate-agent-${agent.user_id}`}
+                                  >
+                                    <PlayCircle className="w-4 h-4" />
                                   </button>
                                 )}
+                                
+                                {/* Delete Button */}
                                 <button
                                   onClick={() => handleDeleteAgent(agent.user_id)}
                                   className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded"
+                                  title="Supprimer"
                                   data-testid={`delete-agent-${agent.user_id}`}
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -817,6 +901,129 @@ export const CompanySuccursalesPage = () => {
                 </Button>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Agent Modal */}
+        <Dialog open={showEditAgentModal} onOpenChange={setShowEditAgentModal}>
+          <DialogContent className="bg-slate-900 border-slate-800 max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-xl text-white flex items-center gap-2">
+                <Edit className="w-5 h-5 text-blue-400" />
+                Modifier Agent
+              </DialogTitle>
+            </DialogHeader>
+
+            {editingAgent && (
+              <form onSubmit={handleUpdateAgent} className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-slate-400 text-sm">Nom</Label>
+                    <Input
+                      value={editingAgent.nom_agent}
+                      onChange={(e) => setEditingAgent({...editingAgent, nom_agent: e.target.value})}
+                      placeholder="Nom"
+                      className="bg-slate-800 border-slate-700 text-white"
+                      data-testid="edit-agent-nom"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-slate-400 text-sm">Prénom</Label>
+                    <Input
+                      value={editingAgent.prenom_agent}
+                      onChange={(e) => setEditingAgent({...editingAgent, prenom_agent: e.target.value})}
+                      placeholder="Prénom"
+                      className="bg-slate-800 border-slate-700 text-white"
+                      data-testid="edit-agent-prenom"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-slate-400 text-sm">Email (lecture seule)</Label>
+                  <Input
+                    value={editingAgent.email}
+                    disabled
+                    className="bg-slate-800/50 border-slate-700 text-slate-500"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-slate-400 text-sm">Téléphone</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 w-4 h-4" />
+                    <Input
+                      value={editingAgent.telephone}
+                      onChange={(e) => setEditingAgent({...editingAgent, telephone: e.target.value})}
+                      placeholder="Téléphone"
+                      className="bg-slate-800 border-slate-700 text-white pl-10"
+                      data-testid="edit-agent-telephone"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <Label className="text-slate-400 text-sm">Commission %</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={editingAgent.commission_percent}
+                      onChange={(e) => setEditingAgent({...editingAgent, commission_percent: parseFloat(e.target.value) || 0})}
+                      className="bg-slate-800 border-slate-700 text-white"
+                      data-testid="edit-agent-commission"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-slate-400 text-sm">Limite Crédit</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={editingAgent.limite_credit}
+                      onChange={(e) => setEditingAgent({...editingAgent, limite_credit: parseFloat(e.target.value) || 0})}
+                      className="bg-slate-800 border-slate-700 text-white"
+                      data-testid="edit-agent-credit"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-slate-400 text-sm">Limite Gain</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={editingAgent.limite_gain}
+                      onChange={(e) => setEditingAgent({...editingAgent, limite_gain: parseFloat(e.target.value) || 0})}
+                      className="bg-slate-800 border-slate-700 text-white"
+                      data-testid="edit-agent-gain"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => { setShowEditAgentModal(false); setEditingAgent(null); }}
+                    className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800"
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                    disabled={creating}
+                    data-testid="update-agent-btn"
+                  >
+                    {creating ? 'Mise à jour...' : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Mettre à jour
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            )}
           </DialogContent>
         </Dialog>
       </div>

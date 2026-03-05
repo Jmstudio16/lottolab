@@ -1844,16 +1844,16 @@ async def get_all_agents(
 async def get_dashboard_stats(current_user: dict = Depends(require_super_admin)):
     """Get platform-wide statistics for Super Admin dashboard"""
     
-    # Companies
-    total_companies = await db.companies.count_documents({"status": {"$ne": "DELETED"}})
-    active_companies = await db.companies.count_documents({"status": "ACTIVE"})
-    suspended_companies = await db.companies.count_documents({"status": "SUSPENDED"})
-    expired_companies = await db.companies.count_documents({"status": "EXPIRED"})
+    # Companies - support both uppercase and lowercase status values
+    total_companies = await db.companies.count_documents({"status": {"$nin": ["DELETED", "deleted"]}})
+    active_companies = await db.companies.count_documents({"status": {"$in": ["ACTIVE", "active"]}})
+    suspended_companies = await db.companies.count_documents({"status": {"$in": ["SUSPENDED", "suspended"]}})
+    expired_companies = await db.companies.count_documents({"status": {"$in": ["EXPIRED", "expired"]}})
     
-    # Agents
-    total_agents = await db.users.count_documents({"role": UserRole.AGENT_POS, "status": {"$ne": "DELETED"}})
-    active_agents = await db.users.count_documents({"role": UserRole.AGENT_POS, "status": "ACTIVE"})
-    suspended_agents = await db.users.count_documents({"role": UserRole.AGENT_POS, "status": "SUSPENDED"})
+    # Agents - support both uppercase and lowercase status values
+    total_agents = await db.users.count_documents({"role": UserRole.AGENT_POS, "status": {"$nin": ["DELETED", "deleted"]}})
+    active_agents = await db.users.count_documents({"role": UserRole.AGENT_POS, "status": {"$in": ["ACTIVE", "active"]}})
+    suspended_agents = await db.users.count_documents({"role": UserRole.AGENT_POS, "status": {"$in": ["SUSPENDED", "suspended"]}})
     online_agents = await db.users.count_documents({"role": UserRole.AGENT_POS, "is_online": True})
     
     # Succursales
@@ -1869,7 +1869,21 @@ async def get_dashboard_stats(current_user: dict = Depends(require_super_admin))
     # Unread notifications
     unread_notifications = await db.admin_notifications.count_documents({"read": False})
     
+    # Today's tickets count
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    tickets_today = await db.tickets.count_documents({"created_at": {"$gte": today_start}})
+    if tickets_today == 0:
+        # Also check lottery_transactions for tickets
+        tickets_today = await db.lottery_transactions.count_documents({"created_at": {"$gte": today_start}})
+    
     return {
+        # Flat format for frontend compatibility
+        "total_companies": total_companies,
+        "active_companies": active_companies,
+        "total_agents": total_agents,
+        "tickets_today": tickets_today,
+        "monthly_revenue": 0.0,  # TODO: Calculate actual revenue
+        # Detailed format for extended views
         "companies": {
             "total": total_companies,
             "active": active_companies,
