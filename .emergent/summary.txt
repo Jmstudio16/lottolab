@@ -1,82 +1,100 @@
 <analysis>**original_problem_statement:**
-The user was facing a critical, recurring bug on the Agent New Sale page where the list of available lotteries was unstable and would often disappear, showing an Aucune loterie disponible message. This was the most critical page in the application and the instability was a major blocker.
+The user's primary goal is to create a complete, stable, and production-ready Vendeur (Seller) page and associated backend logic for the lottery system. This request came after a series of critical stability issues, including recurring React rendering errors and data synchronization failures, which led to extreme user frustration.
 
-The user escalated the issue, demanding a complete system overhaul for stability and professionalism. The immediate, highest-priority task was to rebuild the Agent New Sale page from scratch to be fast, stable, and professional.
+The user has provided a detailed MÉGA-PROMPT that serves as the definitive Product Requirements Document for this new Vendeur role, which completely replaces the old Agent role.
 
-After resolving the agent page stability, the user has defined the next set of core features to be implemented:
-1.  **Agent Ticket Creation System:** Formalize and test the existing ticket creation flow.
-2.  **POS Ticket Print System:** Implement a feature to generate and print tickets from a thermal printer after a sale is made.
-3.  **Automatic Winning Detection:** Build a system that automatically checks tickets against published results and updates their status to 'WON' or 'LOST'.
-4.  **Super Admin Result Control:** Create an interface for the Super Admin to publish official lottery results, which will trigger the winning detection process.
+**PRODUCT REQUIREMENTS (from the MÉGA-PROMPT):**
+
+1.  **Vendeur Page Structure:** Create a comprehensive, responsive UI for the Vendeur with the following sections:
+    *   **Tableau de bord (Dashboard):** Sales stats (day/month), commissions, notifications, and recent activity.
+    *   **Nouvelle vente (New Sale):** A multi-step process to select from 220 lotteries, configure bets, and validate sales.
+    *   **Mes tickets (My Tickets):** A list of recent tickets with status (Validated, Lost, WON, Pending) and reprint options.
+    *   **Recherche fiches (Search Tickets):** Advanced search for tickets by ID, number played, lottery, date, or status.
+    *   **Tirages disponibles (Available Draws):** A view of all open draws for the day.
+    *   **Résultats (Results):** A view of the latest official results, synced from the Super Admin.
+    *   **Mes ventes (My Sales):** Sales reports with charts and breakdowns by lottery.
+    *   **Mon profil (My Profile):** Vendeur information and password management.
+
+2.  **Stable Architecture (SGL-grade):** Implement a permanent and stable architecture to eliminate all recurring bugs.
+    *   **Data Hierarchy:** Enforce a strict data sync pipeline:  ->  ->  -> .
+    *   **Branch-Level Permissions:** An agent must only see lotteries enabled at both the company level () AND their specific branch level ().
+    *   **Database Integrity:** Enforce strict schemas, indexes, and enums (, , , ) for all core collections.
+    *   **Fix React Rendering Error:** Systematically fix the Objects are not valid as a React child error by ensuring the backend returns numbers as strings/arrays and the frontend always joins them before rendering.
+    *   **Data Validation Script:** Maintain a backend script to validate and repair data integrity issues (e.g., missing schedules, broken relationships, incorrect statuses).
+
+3.  **Technical Features:**
+    *   **Ticket Printing:** Generate a formatted 80mm thermal printer ticket with all relevant details (Company, Agent, Lottery, Numbers, QR code, etc.).
+    *   **Real-time Notifications:** For new draws, results, winning tickets, etc.
+    *   **Offline Mode:** Allow sellers to continue making sales without an internet connection, with local storage and auto-sync.
 
 **User's preferred language**: French
 
 **what currently exists?**
-The application is a multi-tenant lottery management platform. The Agent New Sale page has been completely rebuilt from scratch and is now stable, fast, and responsive. It correctly displays lotteries based on their real-world schedules and timezones, allows agents to select lotteries, enter numbers, and successfully create tickets. The backend validation for ticket sales now correctly handles company-specific timezones. The core data models for users, companies, lotteries, and schedules are in place.
+The application is a multi-tenant lottery management platform. The Agent role has been **completely removed** from the system at the user's explicit request, including all associated frontend pages, components, and routes.
+
+Work has begun on the new Vendeur (Seller) role. The basic file structure for the new Vendeur pages has been created in , and the corresponding routes have been added to . A placeholder backend route file  has also been created.
+
+The backend has been partially refactored to support a more robust data hierarchy, including the addition of  and the logic for  to manage lottery permissions at the branch level. A data validation and repair script is available at the  endpoint.
 
 **Last working item**:
-- Last item agent was working: The agent started implementing the new Super Admin Result Control feature set, as requested by the user. This is the first step towards building the Automatic Winning Detection system. The agent began by creating the necessary backend route file for managing lottery results.
+- Last item agent was working: The agent was in the process of scaffolding the entire new Vendeur (Seller) feature set, as defined by the user's MÉGA-PROMPT. This involved creating all the necessary React component files under , creating an  to export them, and adding the new routes to .
 - Status: IN PROGRESS
 - Agent Testing Done: N
 - Which testing method agent to use? both
 - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-- Issue 1: Finalize Supervisor action buttons (Priority: P1)
-- Issue 2: Verify Company Admin agent deletion button (Priority: P1)
+- Issue 1: Super Admin Delete button is non-functional (Priority: P1)
+- Issue 2: Super Admin Global Schedules page shows Erreur du chargement (Priority: P1)
+- Issue 3: Finalize Supervisor action buttons (Priority: P2)
+- Issue 4: Verify Company Admin agent deletion button (Priority: P2)
 
 **Issues Detail:**
 - **Issue 1:**
-    - **Attempted fixes:** The agent verified that the frontend components in  and the backend endpoints in  exist. The functionality for View, Modify, Suspend/Activate, and Delete agent actions is implemented but has not been end-to-end tested.
+    - **Description**: The user reported that the delete button in the Super Admin panel does not work as expected. The specific context (e.g., deleting a company, user, or lottery) was not fully detailed.
     - **Next debug checklist**:
-        1. Log in as a Supervisor ( / ).
-        2. Navigate to the Supervisor Dashboard.
-        3. Test each button (View, Modify, Suspend, Activate, Delete) on a test agent.
-        4. Verify the corresponding API call succeeds and the database reflects the change.
-    - **Why fix this issue and what will be achieved with the fix?**: Completes the Supervisor role functionality, which was a P1 requirement from the user.
+        1. Log in as Super Admin.
+        2. Navigate to pages with delete functionality (e.g., Company Management, User Management).
+        3. Attempt to delete a test entity.
+        4. Check the browser console and backend logs for errors.
+        5. Verify the backend endpoint for deletion is being called correctly and that the database operation succeeds.
+    - **Why fix this issue and what will be achieved with the fix?**: Provides essential administrative control for the Super Admin.
     - **Status**: NOT STARTED
     - **Is recurring issue?**: N
     - **Should Test frontend/backend/both after fix?**: both
     - **Blocked on other issue**: None
 
 - **Issue 2:**
-    - **Attempted fixes:** The agent verified that the delete handler exists in  and the corresponding backend endpoint  is present in .
+    - **Description**: The user reported that navigating to the Global Schedules page as a Super Admin results in a loading error.
     - **Next debug checklist**:
-        1. Log in as a Company Admin ( / ).
-        2. Navigate to the agent management page.
-        3. Attempt to delete a test agent.
-        4. Confirm the agent is removed from the UI and the database.
-    - **Why fix this issue and what will be achieved with the fix?**: Fulfills a user requirement to ensure all agent management functions are operational for Company Admins.
+        1. Log in as Super Admin.
+        2. Navigate to the Global Schedules page.
+        3. Investigate the API call responsible for fetching schedule data.
+        4. Check backend logs for errors related to this endpoint. The agent previously fixed Pydantic validation errors in  by making fields optional, which may be masking the root cause. The models and data should be made consistent.
+    - **Why fix this issue and what will be achieved with the fix?**: This is a core Super Admin function, as global schedules are the source of truth for all draws.
     - **Status**: NOT STARTED
     - **Is recurring issue?**: N
     - **Should Test frontend/backend/both after fix?**: both
     - **Blocked on other issue**: None
 
+- **Issue 3 & 4**: These were carried over from a previous session and are now lower priority but still pending. They relate to completing the user management lifecycle for Supervisor and Company Admin roles.
+
 **In progress Task List**:
-- Task 1: Build the Super Admin Result Control & Winning Detection System (Priority: P0)
+- Task 1: Build the complete Vendeur (Seller) page and functionality (Priority: P0)
 
 **Task Detail:**
 - **Task 1:**
-    - **Where to resume**: The file  has just been created. The next step is to define the Pydantic models and API endpoints within this file for publishing lottery results.
-    - **What will be achieved with this?**: This will create the foundation for the automatic winner detection system, allowing Super Admins to input official results, which is a critical step in the lottery lifecycle.
+    - **Where to resume**: The frontend file structure under  and routes in  are in place. The next step is to build out the UI for each of these pages according to the MÉGA-PROMPT designs. Concurrently, the backend endpoints in  must be implemented to provide data for the Dashboard, New Sale, My Tickets, etc., respecting the new  permission layer.
+    - **What will be achieved with this?**: This will deliver the primary user-facing feature of the application and address the user's core request for a stable and complete point-of-sale interface.
     - **Status**: IN PROGRESS
     - **Should Test frontend/backend/both after fix?**: both
     - **Blocked on something**: None
 
 **Upcoming and Future Tasks**
 **Upcoming Tasks:**
-*   **P0: Implement POS Ticket Print System:**
-    *   Create a Print Ticket button on the Ticket Created success modal.
-    *   Clicking the button should trigger the  endpoint.
-    *   This endpoint should generate a PDF or a format suitable for an 80mm thermal printer, including all required ticket details (company, agent, lottery, numbers, amount, ticket ID, QR code).
-*   **P0: Implement Automatic Winning Detection Logic:**
-    *   After a Super Admin publishes results via the new  endpoint, create a background task.
-    *   This task should query the  collection for all 'pending' tickets matching the lottery and draw.
-    *   Compare the numbers on each ticket with the winning numbers.
-    *   Update the ticket  to  or .
-    *   For  tickets, calculate the payout and store it.
-*   **P1: Implement Frontend for Super Admin Result Control:**
-    *   Create a new page in the Super Admin dashboard to publish and manage lottery results.
+*   **P0: Systematize Fix for React Rendering Error:** The Objects are not valid as a React child error has been the main source of instability. A global fix is needed. All backend endpoints that return lottery results () must consistently format them as strings or arrays of strings. A frontend utility function should be created and used everywhere to render these numbers, ensuring no raw objects are ever passed to a React child.
+*   **P1: Implement Frontend UI for Branch Lottery Management:** The backend routes are done (). The UI needs to be built, allowing a Company Admin to enable/disable specific lotteries for each branch.
+*   **P1: Implement Frontend Stability Features:** Add API retry mechanisms, loading fallbacks, and React Error Boundaries to the Vendeur pages to prevent crashes and the empty list state.
 
 **Future Tasks:**
 *   Complete a full responsive UI pass on all pages.
@@ -87,24 +105,28 @@ The application is a multi-tenant lottery management platform. The Agent New Sal
 *   Implement SMS/Email notifications.
 
 **Completed work in this session**
-- **Rebuilt Agent New Sale Page (P0 task DONE):**
-    - Created a new, stable, and professional UI from scratch in .
-    - **Fixed Timezone & Schedule Logic:** Implemented correct timezone handling on both frontend (for status display) and backend (for sales validation), and updated the database with realistic lottery schedules. Lotteries now show correct Open, Closing Soon, and Closed statuses.
-    - **Fixed Ticket Creation Flow:** Ensured the ticket entry form appears correctly after selecting a lottery.
-    - **Fixed Backend Validation:** Corrected the backend logic in  to use the company's local timezone () for validating ticket sales against draw times.
-    - **Fixed Payout Calculation:** Added a fallback in the backend to ensure  is calculated correctly even without .
-    - **Resolved User-Specific Bug:** Diagnosed and fixed an issue for user  caused by an incorrect company status ( vs ) in the database.
-- **Thoroughly Tested Agent Page:**
-    - Manually tested the full flow: login, lottery selection, number entry, ticket creation, and success modal display.
-    - Verified mobile responsiveness.
-    - Ran the , which passed all 56 backend and frontend tests, confirming stability and functionality.
+- **System-wide Role Renaming:** Completely removed the Agent role and began scaffolding the new Vendeur role, including deleting all old files and creating new ones.
+- **Implemented Branch-Level Permissions:**
+    - Created the  MongoDB collection.
+    - Added backend endpoints () for managing lottery permissions per branch.
+    - Updated the core data sync logic () to filter lotteries based on .
+- **Resolved Critical Stability Bugs:**
+    - **Fixed React Rendering Error (multiple times):** Patched the Objects are not valid as a React child error in numerous components (, , , , ) by adding logic to join the  object into a string before rendering.
+    - **Fixed Data Sync Failure ():**
+        - Corrected a  bug in .
+        - Created and ran a data repair script () to fix inconsistent data (e.g.,  fields, incorrect user statuses) that was breaking the sync logic.
+- **Implemented Auto-Activation Logic:** Added logic to backend routes for company creation to automatically enable all master lotteries for any newly created company.
 
 **Earlier issues found/mentioned but not fixed**
-- Finalizing Supervisor action buttons (now a P1 pending issue).
-- Verifying Company Admin agent deletion button (now a P1 pending issue).
+- The Super Admin delete button does not work (User Msg 486).
+- The Super Admin Global Schedules page shows a loading error (User Msg 486).
 
 **Known issue recurrence from previous fork**
-- **Agent Lottery Instability**: This critical recurring issue was **RESOLVED** in this session by completely rebuilding the Agent page from the ground up. Subsequent user issues were related to specific account configurations or incorrect data (schedules), not UI instability.
+- **Issue recurrence in previous fork**:
+    1.  **React Rendering Error: Objects are not valid as a React child**: This is the most critical recurring bug. It was fixed in at least 5 different files but reappeared, causing user frustration. It happens when  is an object () and is rendered directly.
+    2.  **Data Sync Failure ():** This issue, where the agent page shows no lotteries, recurred multiple times due to different root causes (bad data, logic bugs in ).
+- **Recurrence count**: At least 3 times for each issue.
+- **Status**: IN PROGRESS. While the immediate bugs were fixed, the systemic weakness remains. A permanent architectural solution is required as part of the Vendeur implementation.
 
 **Code Architecture**
 
@@ -112,53 +134,54 @@ The application is a multi-tenant lottery management platform. The Agent New Sal
 **Key Technical Concepts**
 - **Backend**: FastAPI, MongoDB (), Pydantic, JWT.
 - **Frontend**: React, , , Tailwind CSS, Shadcn UI.
-- **Timezone Handling**: Using  on the backend to perform validations in the company's local timezone is critical.
+- **Data Sync Hierarchy**: The data flow is now strictly  ->  ->  -> . All lottery lists for sellers MUST be filtered through  and .
 
 **key DB schema**
-- ****: { , , , , ,  ('ACTIVE', 'SUSPENDED') }
-- ****: Global catalog of lotteries.
-- ****: Maps  to  with  flag.
-- ****: Defines drawing times (, , ) for each .
-- ****: Stores created tickets. { , , , ,  (numbers, bet_type, amount), , ,  ('pending', 'won', 'lost'),  }
-
-**changes in tech stack**
--  was added to the backend to handle timezone-aware datetime objects.
+- ****: (New) { , , , ,  (boolean) }
+- : { , ,  (branch_id), , ,  }
+- : Global catalog of all 220 lotteries.
+- : Maps  to  with  flag.
+- : Defines drawing times for each .
+-  (Tickets): Stores created tickets with status ('pending', 'won', 'lost').
 
 **All files of reference**
-- : The new, stable agent page. This is the new source of truth for agent sales.
-- : Contains the critical  endpoint. Was modified to handle timezones correctly.
-- : Contains the  endpoint that provides all data to the agent page.
-- : The newly created file to start building the results management feature.
+- **Mega-Prompt/PRD**: User Message 507 contains the full requirements for the Vendeur page.
+- : Contains the updated core logic for fetching lotteries for a seller, now including the branch-level check.
+- : New backend endpoints for managing branch lottery permissions.
+- : Directory containing all new Vendeur components to be built.
+- : Contains the new routing for all Vendeur pages.
 
 **Areas that need refactoring**:
-- The old agent page files (, , and its ) should be deleted to avoid confusion.
-- The task to centralize all API calls into  remains pending.
+- A systematic refactor is needed across the frontend to handle the rendering of . Create and use a single utility function for this to avoid future Objects are not valid... errors.
 
 **key api endpoints**
-- : Endpoint for agents to fetch their configuration (lotteries, schedules).
-- : Creates a new lottery ticket.
-- : Generates a printable ticket.
-- : (To be implemented) Endpoint for Super Admin to publish lottery results.
+- : The main endpoint for a Vendeur to get their configuration (lotteries, schedules). This was heavily modified.
+- : Super Admin endpoint to publish results.
+- : (New) Gets the lottery settings for a specific branch.
+- : (New) Toggles a lottery for a branch.
+- : (New) Runs the data integrity and repair script.
 
 **Critical Info for New Agent**
-- **The Agent page is STABLE.** Do not attempt to fix or modify  unless the user reports a new, specific bug. The previous primary issue is resolved and verified.
-- **New Priority: Winner Detection.** The user's focus has shifted to the next phase of the project: implementing ticket printing, a system for Super Admins to publish results, and the automatic detection of winning tickets. This is the new P0 task.
-- **User-Specific Bugs:** Be aware that user-reported issues might stem from their specific account data (e.g., company status, password) or incorrect data in the database (e.g., schedules), not necessarily a code bug. Always ask for the user's account details to debug effectively if an issue cannot be reproduced.
-- **Timezones are CRITICAL.** All backend logic involving time must use  to convert to the company's local timezone before comparison with schedule times stored in the DB.
+- **User Frustration is High:** The user is extremely unhappy with the recurring stability issues. The top priority is to build a rock-solid, stable system. Do not deviate from the user's MÉGA-PROMPT.
+- **The Agent Role Is DELETED:** Do not attempt to work on or restore any files related to the Agent role. All new development must focus exclusively on the Vendeur role.
+- **The React Rendering Bug is Systemic:** The error Objects are not valid as a React child is your highest priority technical debt. Before rendering any  data from the backend, you MUST ensure it's converted from an object to a string (e.g., ). Implement a reusable helper function for this and apply it everywhere results are displayed.
+- **Data Hierarchy is King:** All logic for displaying lotteries to a Vendeur must respect the full permission chain:  ->  -> .
 
 **documents and test reports created in this job**
--  (Updated)
--  (All tests passed for the agent page rebuild)
+-  (Updated multiple times)
+-  (From a previous state of the app)
 
 **Last 10 User Messages and any pending HUMAN messages**
-- **Msg 296**: User confirms the schedule/status fix is working and lays out the next 5 critical modules to implement: Agent Ticket Creation, POS Ticket Printing, Automatic Winning Detection, Super Admin Result Control, and a full system validation. (STATUS: IN PROGRESS)
-- **Msg 290-295**: User reports that all lotteries are incorrectly showing as Closed. Agent investigates, finds unrealistic schedule data in the DB, updates it with real-world times, and fixes the issue. User confirms the fix. (STATUS: RESOLVED)
-- **Msg 280-286**: User requests their password for  be changed to . Agent updates it and confirms. User confirms they will test. (STATUS: RESOLVED)
-- **Msg 262-279**: User specifies they are using the  account. Agent investigates and finds the user's company status is  (lowercase), which fails the backend's  check. Agent fixes the data and resets the password, resolving the issue. (STATUS: RESOLVED)
-- **Msg 200, 236**: User reports the Aucune loterie disponible error has reappeared, expressing frustration and demanding a full data-flow verification. (STATUS: RESOLVED - was a user-specific data issue)
+- **Msg 507**: User provides a massive, detailed MÉGA-PROMPT to create the entire Vendeur page from scratch, defining the full scope of the current work. **This is the most important message.** (STATUS: IN PROGRESS)
+- **Msg 486**: User reports several issues: Super Admin delete button not working, Global Schedules page has a loading error, and reiterates the need to remove all traces of Agent. (STATUS: PARTIALLY ADDRESSED - Agent removed, bugs pending)
+- **Msg 433**: User explicitly requests to eliminate the agent pages in the system. (STATUS: COMPLETED)
+- **Msg 387**: User reports  again and asks for logic to auto-enable all lotteries for new companies. (STATUS: COMPLETED)
+- **Msg 364**: User expresses extreme frustration about the Nouvelle Vente page showing Chargement des données..., calling the system shit. (STATUS: RESOLVED -  in  was fixed)
+- **Msg 333**: User reports a React crash () and expresses extreme anger, using profanity. (STATUS: PARTIALLY RESOLVED - The specific component was patched, but the systemic issue remains)
+- **Msg 186 (multi-part)**: User provides the SGL-grade stable architecture requirements and then adds the requirement for branch-level lottery permissions. This is the second most important message defining the current architecture. (STATUS: IN PROGRESS)
 
 **Project Health Check:**
-- **Broken**: None. The primary blocking issue has been resolved.
+- **Broken**: Core Vendeur functionality is non-existent as it is being built from scratch. Several Super Admin pages are reportedly broken (delete functionality, global schedules).
 - **Mocked**: None.
 
 **3rd Party Integrations**
@@ -166,20 +189,19 @@ The application is a multi-tenant lottery management platform. The Agent New Sal
 - **fastapi-limiter**: API rate limiting.
 - **python-socketio**: Backend WebSocket handling.
 - **apscheduler**: Background task scheduling.
-- **pytz**: (New) For timezone-aware datetime operations in the backend.
+- **pytz**: For timezone-aware datetime operations in the backend.
 
 **Testing status**
-- Testing agent used after significant changes: YES. A full test suite was run after the Agent page rebuild, and all 56 tests passed.
+- Testing agent used after significant changes: YES, but the report is from a previous state before the major Vendeur refactor. A new suite will be needed.
 - Troubleshoot agent used after agent stuck in loop: NO
-- Test files created: No new persistent test files, but the testing agent ran its suite.
-- Known regressions: None from this session.
+- Test files created: No new persistent test files were created in this session.
+- Known regressions: The entire Agent functionality is a regression by design, as it was deleted.
 
 **Credentials to test flow:**
 - **Super Admin**:  / 
 - **Company Admin**:  / 
 - **Supervisor**:  / 
-- **Agent (User's Account)**:  / 
-- **Agent (Test Account)**:  / 
+- **Vendeur (Seller) - User's Account**:  / 
 
 **What agent forgot to execute**
-- The agent did not delete the old, unused agent page files:  and . These should be removed to prevent confusion and clean up the codebase.</analysis>
+- The agent has not yet addressed the user's report (Msg 486) that the Super Admin delete button and the Global Schedules page are broken. These are pending high-priority bugs.</analysis>

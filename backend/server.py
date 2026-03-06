@@ -43,6 +43,7 @@ from supervisor_routes import supervisor_router
 from results_routes import results_router, set_results_db
 from validation_routes import validation_router, set_validation_db, activate_all_lotteries_for_company
 from branch_lottery_routes import branch_lottery_router, set_branch_lottery_db
+from vendeur.vendeur_routes import vendeur_router, set_vendeur_db
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -625,6 +626,177 @@ async def get_all_lotteries():
     lotteries = await db.lotteries.find({}, {"_id": 0}).to_list(1000)
     return [Lottery(**l) for l in lotteries]
 
+
+# ============ VENDEUR CONVENIENCE ROUTES ============
+# These routes redirect to the vendeur router but are placed here for backward compatibility
+
+from vendeur.vendeur_routes import SellRequest, PlayCreate
+
+@api_router.post("/lottery/sell")
+async def lottery_sell_redirect(
+    request: Request,
+    sell_data: SellRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Convenience endpoint for selling lottery tickets - redirects to vendeur/sell"""
+    vendeur_id = current_user.get("user_id")
+    company_id = current_user.get("company_id")
+    succursale_id = current_user.get("succursale_id")
+    
+    # Check if user can sell
+    allowed_roles = [UserRole.AGENT_POS, "VENDEUR", "AGENT_POS"]
+    if current_user.get("role") not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Accès réservé aux vendeurs")
+    
+    # Validate lottery exists
+    lottery = await db.master_lotteries.find_one({"lottery_id": sell_data.lottery_id}, {"_id": 0})
+    if not lottery:
+        lottery = await db.global_lotteries.find_one({"lottery_id": sell_data.lottery_id}, {"_id": 0})
+    if not lottery:
+        raise HTTPException(status_code=404, detail="Loterie non trouvée")
+    
+    # Check company lottery enabled
+    company_lottery = await db.company_lotteries.find_one({
+        "company_id": company_id,
+        "lottery_id": sell_data.lottery_id,
+        "$or": [{"is_enabled": True}, {"enabled": True}]
+    })
+    if not company_lottery:
+        raise HTTPException(status_code=403, detail="Loterie non activée")
+    
+    # Get company
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
+    
+    # Calculate totals
+    total_amount = sum(play.amount for play in sell_data.plays)
+    
+    # Calculate potential win
+    potential_win = 0
+    for play in sell_data.plays:
+        multiplier = 70
+        if play.bet_type == "LOTO3": multiplier = 500
+        elif play.bet_type == "LOTO4": multiplier = 5000
+        elif play.bet_type == "LOTO5": multiplier = 50000
+        elif play.bet_type == "MARIAGE": multiplier = 1000
+        potential_win += play.amount * multiplier
+    
+    # Generate ticket
+    ticket_id = generate_id("tkt_")
+    ticket_code = generate_ticket_code()
+    verification_code = generate_verification_code()
+    now = get_current_timestamp()
+    
+    ticket_doc = {
+        "ticket_id": ticket_id,
+        "ticket_code": ticket_code,
+        "verification_code": verification_code,
+        "qr_payload": f"{ticket_code}|{verification_code}|{company_id}",
+        "agent_id": vendeur_id,
+        "agent_name": current_user.get("name") or current_user.get("full_name", ""),
+        "company_id": company_id,
+        "succursale_id": succursale_id,
+        "lottery_id": sell_data.lottery_id,
+        "lottery_name": lottery.get("lottery_name", ""),
+        "draw_date": sell_data.draw_date,
+        "draw_name": sell_data.draw_name,
+        "plays": [{"numbers": p.numbers, "bet_type": p.bet_type, "amount": p.amount} for p in sell_data.plays],
+        "total_amount": total_amount,
+        "potential_win": potential_win,
+        "currency": company.get("currency", "HTG") if company else "HTG",
+        "status": "PENDING",
+        "printed_count": 0,
+        "device_type": "WEB",
+        "created_at": now,
+        "updated_at": now
+    }
+    
+    await db.lottery_transactions.insert_one(ticket_doc)
+    
+    return {
+        "ticket_id": ticket_id,
+        "ticket_code": ticket_code,
+        "verification_code": verification_code,
+        "lottery_name": lottery.get("lottery_name", ""),
+        "draw_date": sell_data.draw_date,
+        "draw_name": sell_data.draw_name,
+        "total_amount": total_amount,
+        "potential_win": potential_win,
+        "plays": [{"numbers": p.numbers, "bet_type": p.bet_type, "amount": p.amount} for p in sell_data.plays],
+        "created_at": now
+    }
+
+
+@api_router.get("/results")
+async def get_results_global(
+    current_user: dict = Depends(get_current_user),
+    limit: int = 50,
+    lottery_id: Optional[str] = None,
+    date: Optional[str] = None
+):
+    """Get lottery results for the user's company"""
+    company_id = current_user.get("company_id")
+    
+    # Get enabled lottery IDs for this company
+    company_lotteries = await db.company_lotteries.find(
+        {"company_id": company_id, "$or": [{"is_enabled": True}, {"enabled": True}]},
+        {"lottery_id": 1}
+    ).to_list(300)
+    lottery_ids = [cl["lottery_id"] for cl in company_lotteries]
+    
+    if not lottery_ids:
+        return []
+    
+    query = {"lottery_id": {"$in": lottery_ids}}
+    if lottery_id:
+        query["lottery_id"] = lottery_id
+    if date:
+        query["draw_date"] = date
+    
+    results = await db.global_results.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Format winning numbers to avoid React rendering error
+    for result in results:
+        wn = result.get("winning_numbers")
+        if isinstance(wn, dict):
+            nums = []
+            if wn.get("first"): nums.append(str(wn["first"]))
+            if wn.get("second"): nums.append(str(wn["second"]))
+            if wn.get("third"): nums.append(str(wn["third"]))
+            result["winning_numbers_display"] = " - ".join(nums)
+            result["winning_numbers"] = nums
+        elif isinstance(wn, str):
+            result["winning_numbers_display"] = wn
+        else:
+            result["winning_numbers_display"] = "-"
+    
+    return results
+
+
+@api_router.get("/verify-ticket/{ticket_code}")
+async def verify_ticket_by_code(ticket_code: str):
+    """Public endpoint to verify a ticket by its code"""
+    ticket = await db.lottery_transactions.find_one(
+        {"$or": [
+            {"ticket_code": ticket_code},
+            {"verification_code": ticket_code},
+            {"ticket_id": ticket_code}
+        ]},
+        {"_id": 0}
+    )
+    
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket non trouvé")
+    
+    return {
+        "ticket_id": ticket.get("ticket_id"),
+        "ticket_code": ticket.get("ticket_code"),
+        "status": ticket.get("status"),
+        "win_amount": ticket.get("win_amount", 0),
+        "lottery_name": ticket.get("lottery_name"),
+        "draw_date": ticket.get("draw_date"),
+        "total_amount": ticket.get("total_amount")
+    }
+
 # Initialize all routes with database
 set_db(db)
 set_super_admin_global_db(db)
@@ -645,6 +817,7 @@ set_ticket_print_db(db)
 set_results_db(db)
 set_validation_db(db)
 set_branch_lottery_db(db)
+set_vendeur_db(db)
 
 # Initialize staff endpoints with dependency
 create_staff_endpoints(get_current_user)
@@ -678,6 +851,9 @@ app.include_router(validation_router)
 
 # Include branch lottery router (company admin)
 app.include_router(branch_lottery_router)
+
+# Include vendeur router
+app.include_router(vendeur_router)
 
 # Include staff router under /api prefix
 api_router.include_router(staff_router)

@@ -647,14 +647,15 @@ class LotteryGameType(str, Enum):
 class GlobalLottery(BaseModel):
     model_config = ConfigDict(extra="ignore")
     lottery_id: str
-    state_code: str
-    state_name: str
+    state_code: Optional[str] = None
+    state_name: Optional[str] = None
     country: str = "USA"
     lottery_name: str
-    game_type: str
+    game_type: Optional[str] = None
     description: Optional[str] = None
     is_active: bool = True
-    created_at: str
+    is_active_global: Optional[bool] = True
+    created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
 class GlobalLotteryCreate(BaseModel):

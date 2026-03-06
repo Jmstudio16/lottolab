@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 
-const BASE_URL = process.env.REACT_APP_BACKEND_URL || 'https://super-admin-hub-11.preview.emergentagent.com';
+const BASE_URL = process.env.REACT_APP_BACKEND_URL || 'https://vendeur-stable.preview.emergentagent.com';
 
 // Agent credentials from requirements
 const AGENT_EMAIL = 'agent.marie@lotopam.com';

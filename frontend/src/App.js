@@ -45,6 +45,19 @@ import { BranchLotteriesPage } from '@/pages/BranchLotteriesPage';
 import { SupervisorLayout } from '@/layouts/SupervisorLayout';
 import { SupervisorDashboardPage } from '@/pages/supervisor/SupervisorDashboardPage';
 
+// Vendeur Pages
+import VendeurLayout from '@/layouts/VendeurLayout';
+import {
+  VendeurDashboard,
+  VendeurNouvelleVente,
+  VendeurMesTickets,
+  VendeurResultats,
+  VendeurTirages,
+  VendeurMesVentes,
+  VendeurProfil,
+  VendeurRecherche
+} from '@/pages/vendeur';
+
 // LOTO PAM Public Platform Pages
 import LotoPamHomePage from '@/pages/lotopam/LotoPamHomePage';
 import LotoPamLoginPage from '@/pages/lotopam/LotoPamLoginPage';
@@ -85,7 +98,9 @@ const RoleBasedRedirect = () => {
     SUPER_ADMIN: '/super/dashboard',
     COMPANY_ADMIN: '/company/dashboard',
     COMPANY_MANAGER: '/company/dashboard',
-    AUDITOR_READONLY: '/company/dashboard'
+    AUDITOR_READONLY: '/company/dashboard',
+    VENDEUR: '/vendeur/dashboard',
+    AGENT_POS: '/vendeur/dashboard'
   };
 
   return <Navigate to={redirectMap[user.role] || '/login'} replace />;
@@ -479,6 +494,26 @@ const SaaSApp = () => {
                   <Route path="tickets" element={<SupervisorDashboardPage />} />
                   <Route path="reports" element={<SupervisorDashboardPage />} />
                   <Route index element={<Navigate to="/supervisor/dashboard" replace />} />
+                </Route>
+
+                {/* ================== VENDEUR ROUTES ================== */}
+                <Route
+                  path="/vendeur"
+                  element={
+                    <ProtectedRoute allowedRoles={['VENDEUR', 'AGENT_POS']}>
+                      <VendeurLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route path="dashboard" element={<VendeurDashboard />} />
+                  <Route path="nouvelle-vente" element={<VendeurNouvelleVente />} />
+                  <Route path="mes-tickets" element={<VendeurMesTickets />} />
+                  <Route path="recherche" element={<VendeurRecherche />} />
+                  <Route path="tirages" element={<VendeurTirages />} />
+                  <Route path="resultats" element={<VendeurResultats />} />
+                  <Route path="mes-ventes" element={<VendeurMesVentes />} />
+                  <Route path="profil" element={<VendeurProfil />} />
+                  <Route index element={<Navigate to="/vendeur/dashboard" replace />} />
                 </Route>
 
                 {/* Catch all - redirect to role-based home */}

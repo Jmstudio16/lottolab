@@ -1,6 +1,6 @@
 import { Page, expect } from '@playwright/test';
 
-const BASE_URL = 'https://super-admin-hub-11.preview.emergentagent.com';
+const BASE_URL = 'https://vendeur-stable.preview.emergentagent.com';
 
 export async function waitForAppReady(page: Page) {
   await page.waitForLoadState('domcontentloaded');
@@ -74,6 +74,15 @@ export async function loginAsAgent(page: Page) {
   await page.click('button:has-text("SIGN IN")');
   // Agent redirects to /agent/dashboard after login
   await page.waitForURL('**/agent/**', { timeout: 15000 });
+}
+
+export async function loginAsVendeur(page: Page) {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.fill('input[placeholder*="email"]', 'jean@gmail.com');
+  await page.fill('input[type="password"]', 'Jeff.1995');
+  await page.click('button:has-text("SIGN IN")');
+  // Vendeur redirects to /vendeur/dashboard
+  await page.waitForURL('**/vendeur/**', { timeout: 15000 });
 }
 
 export async function removeEmergentBadge(page: Page) {
