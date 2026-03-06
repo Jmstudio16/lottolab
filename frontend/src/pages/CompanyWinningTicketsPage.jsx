@@ -451,7 +451,9 @@ export const CompanyWinningTicketsPage = () => {
                   <div className="bg-green-500/10 border border-green-500/30 p-3 rounded-lg">
                     <p className="text-xs text-green-400 mb-1">Numéros gagnants</p>
                     <p className="font-mono text-lg text-green-400">
-                      {selectedTicket.winning_numbers.first} - {selectedTicket.winning_numbers.second} - {selectedTicket.winning_numbers.third}
+                      {typeof selectedTicket.winning_numbers === 'object' 
+                        ? Object.values(selectedTicket.winning_numbers).filter(Boolean).join(' - ')
+                        : selectedTicket.winning_numbers}
                     </p>
                   </div>
                 )}

@@ -10,6 +10,29 @@ import {
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+// Helper to parse winning numbers from either string or object format
+const getWinningNumbersArray = (result) => {
+  const wn = result.winning_numbers;
+  if (!wn) return [];
+  
+  // If it's an object (from new API)
+  if (typeof wn === 'object' && !Array.isArray(wn)) {
+    const nums = [];
+    if (wn.first) nums.push(wn.first);
+    if (wn.second) nums.push(wn.second);
+    if (wn.third) nums.push(wn.third);
+    if (wn.borlette && wn.borlette !== wn.first) nums.push(wn.borlette);
+    return nums;
+  }
+  
+  // If it's a string (from legacy API)
+  if (typeof wn === 'string') {
+    return wn.split(/[-,\s]+/).filter(n => n.trim());
+  }
+  
+  return [];
+};
+
 export const SuperGlobalResultsPage = () => {
   const { token } = useAuth();
   const [results, setResults] = useState([]);
@@ -204,7 +227,7 @@ export const SuperGlobalResultsPage = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        {result.winning_numbers.split(/[-,\s]+/).filter(n => n).map((num, idx) => (
+                        {getWinningNumbersArray(result).map((num, idx) => (
                           <span
                             key={idx}
                             className={`w-10 h-10 flex items-center justify-center rounded-full font-bold text-lg ${

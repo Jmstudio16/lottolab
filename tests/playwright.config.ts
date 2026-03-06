@@ -11,7 +11,7 @@ export default defineConfig({
     ['json', { outputFile: './test-results/results.json' }],
   ],
   use: {
-    baseURL: process.env.REACT_APP_BACKEND_URL || 'https://stable-lottery-sales.preview.emergentagent.com',
+    baseURL: process.env.REACT_APP_BACKEND_URL || 'https://super-admin-hub-11.preview.emergentagent.com',
     screenshot: 'on',
     trace: 'on-first-retry',
     headless: true,

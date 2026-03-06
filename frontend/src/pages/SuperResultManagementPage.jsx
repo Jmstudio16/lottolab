@@ -113,11 +113,12 @@ export const SuperResultManagementPage = () => {
       if (filterDate) params.draw_date = filterDate;
 
       const [resultsRes, lotteriesRes] = await Promise.all([
-        axios.get(`${API_URL}/api/super/global-results`, { headers, params }),
-        axios.get(`${API_URL}/api/super/lottery-catalog`, { headers })
+        axios.get(`${API_URL}/api/results`, { headers, params }).catch(() => ({ data: [] })),
+        axios.get(`${API_URL}/api/results/lotteries`, { headers }).catch(() => ({ data: [] }))
       ]);
-      setResults(resultsRes.data);
-      setLotteries(lotteriesRes.data);
+      
+      setResults(resultsRes.data || []);
+      setLotteries(lotteriesRes.data || []);
     } catch (error) {
       toast.error('Erreur lors du chargement');
     } finally {
@@ -179,18 +180,18 @@ export const SuperResultManagementPage = () => {
       if (numbers[1]) parsed.second = numbers[1].trim();
       if (numbers[2]) parsed.third = numbers[2].trim();
 
-      const data = {
-        lottery_id: formData.lottery_id,
-        draw_date: formData.draw_date,
-        draw_name: formData.draw_name,
-        winning_numbers: formData.winning_numbers,
-        winning_numbers_parsed: parsed,
-        bonus_number: formData.bonus_number || null,
-        jackpot_amount: formData.jackpot_amount ? parseFloat(formData.jackpot_amount) : null,
-        notes: formData.notes || null
-      };
-
       if (editMode && selectedResult) {
+        // Update existing result via legacy endpoint
+        const data = {
+          lottery_id: formData.lottery_id,
+          draw_date: formData.draw_date,
+          draw_name: formData.draw_name,
+          winning_numbers: formData.winning_numbers,
+          winning_numbers_parsed: parsed,
+          bonus_number: formData.bonus_number || null,
+          jackpot_amount: formData.jackpot_amount ? parseFloat(formData.jackpot_amount) : null,
+          notes: formData.notes || null
+        };
         await axios.put(
           `${API_URL}/api/super/global-results/${selectedResult.result_id}`,
           data,
@@ -198,8 +199,28 @@ export const SuperResultManagementPage = () => {
         );
         toast.success('Résultat mis à jour avec succès!');
       } else {
-        await axios.post(`${API_URL}/api/super/global-results`, data, { headers });
-        toast.success('Résultat publié avec succès! Tickets en cours de traitement...');
+        // Publish NEW result via the new results API with automatic winner detection
+        const publishData = {
+          lottery_id: formData.lottery_id,
+          draw_date: formData.draw_date,
+          draw_name: formData.draw_name,
+          winning_numbers: parsed,
+          official_source: formData.notes || 'Manual Entry',
+          notes: formData.notes || null
+        };
+        
+        const response = await axios.post(`${API_URL}/api/results/publish`, publishData, { headers });
+        
+        // Show detailed success message with winner info
+        const { winners_count, losers_count, total_payouts, tickets_processed } = response.data;
+        if (tickets_processed > 0) {
+          toast.success(
+            `Résultat publié! ${tickets_processed} tickets traités: ${winners_count} gagnant(s), ${losers_count} perdant(s). Total gains: ${total_payouts?.toLocaleString() || 0} HTG`,
+            { duration: 6000 }
+          );
+        } else {
+          toast.success('Résultat publié avec succès! Aucun ticket en attente pour ce tirage.');
+        }
       }
       
       setShowModal(false);
@@ -257,6 +278,29 @@ export const SuperResultManagementPage = () => {
     });
   };
 
+  // Helper to parse winning numbers from either string or object format
+  const getWinningNumbersArray = (result) => {
+    const wn = result.winning_numbers;
+    if (!wn) return [];
+    
+    // If it's an object (from new API)
+    if (typeof wn === 'object' && !Array.isArray(wn)) {
+      const nums = [];
+      if (wn.first) nums.push(wn.first);
+      if (wn.second) nums.push(wn.second);
+      if (wn.third) nums.push(wn.third);
+      if (wn.borlette && wn.borlette !== wn.first) nums.push(wn.borlette);
+      return nums;
+    }
+    
+    // If it's a string (from legacy API)
+    if (typeof wn === 'string') {
+      return wn.split(/[-,\s]+/).filter(n => n.trim());
+    }
+    
+    return [];
+  };
+
   return (
     <AdminLayout role="SUPER_ADMIN">
       <div className="space-y-6" data-testid="result-management-page">
@@ -284,7 +328,7 @@ export const SuperResultManagementPage = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
             <div className="flex items-center gap-3">
               <Trophy className="w-8 h-8 text-amber-400" />
@@ -305,18 +349,29 @@ export const SuperResultManagementPage = () => {
           </div>
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
             <div className="flex items-center gap-3">
-              <MapPin className="w-8 h-8 text-green-400" />
+              <Award className="w-8 h-8 text-green-400" />
               <div>
                 <p className="text-2xl font-bold text-white">
-                  {[...new Set(results.map(r => r.state_code))].length}
+                  {results.reduce((sum, r) => sum + (r.winners_count || 0), 0)}
                 </p>
-                <p className="text-sm text-slate-400">États Couverts</p>
+                <p className="text-sm text-slate-400">Tickets Gagnants</p>
               </div>
             </div>
           </div>
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
             <div className="flex items-center gap-3">
-              <Clock className="w-8 h-8 text-purple-400" />
+              <Hash className="w-8 h-8 text-purple-400" />
+              <div>
+                <p className="text-2xl font-bold text-white">
+                  {results.reduce((sum, r) => sum + (r.tickets_processed || 0), 0)}
+                </p>
+                <p className="text-sm text-slate-400">Tickets Traités</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <Clock className="w-8 h-8 text-cyan-400" />
               <div>
                 <p className="text-2xl font-bold text-white">
                   {results.filter(r => r.draw_date === new Date().toISOString().split('T')[0]).length}
@@ -456,7 +511,7 @@ export const SuperResultManagementPage = () => {
                             {/* Winning Numbers */}
                             <div className="flex items-center gap-2">
                               <span className="text-slate-400 text-sm mr-2">Numéros:</span>
-                              {result.winning_numbers.split(/[-,\s]+/).filter(n => n.trim()).map((num, idx) => (
+                              {getWinningNumbersArray(result).map((num, idx) => (
                                 <div
                                   key={idx}
                                   className={`w-11 h-11 flex items-center justify-center rounded-full font-bold text-lg shadow-lg ${
@@ -465,7 +520,7 @@ export const SuperResultManagementPage = () => {
                                     'bg-gradient-to-br from-amber-600 to-amber-800 text-white'
                                   }`}
                                 >
-                                  {num.trim()}
+                                  {num}
                                 </div>
                               ))}
                               {result.bonus_number && (
@@ -477,9 +532,36 @@ export const SuperResultManagementPage = () => {
 
                             {/* Verification Badge */}
                             <div className="flex items-center gap-2">
-                              <CheckCircle className="w-5 h-5 text-green-400" />
-                              <span className="text-sm text-green-400">Vérifié</span>
+                              {result.winners_processed ? (
+                                <>
+                                  <CheckCircle className="w-5 h-5 text-green-400" />
+                                  <span className="text-sm text-green-400">
+                                    {result.winners_count > 0 
+                                      ? `${result.winners_count} gagnant(s)` 
+                                      : 'Traité'}
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <Clock className="w-5 h-5 text-amber-400" />
+                                  <span className="text-sm text-amber-400">En attente</span>
+                                </>
+                              )}
                             </div>
+
+                            {/* Winner Stats (if available) */}
+                            {result.tickets_processed > 0 && (
+                              <div className="flex items-center gap-3 text-xs">
+                                <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
+                                  {result.tickets_processed} traités
+                                </span>
+                                {result.total_payouts > 0 && (
+                                  <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded">
+                                    {result.total_payouts?.toLocaleString()} HTG
+                                  </span>
+                                )}
+                              </div>
+                            )}
 
                             {/* Actions */}
                             <div className="flex items-center gap-2">

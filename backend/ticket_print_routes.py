@@ -629,9 +629,9 @@ async def print_ticket_80mm(
         
         <div class="divider"></div>
         
-        <div style="text-align:center;font-size:10px;margin:8px 0;">
-            GAIN POTENTIEL:<br>
-            Selon résultats officiels
+        <div style="text-align:center;margin:8px 0;">
+            <div style="font-size:10px;color:#666;">GAIN POTENTIEL MAX:</div>
+            <div style="font-size:16px;font-weight:bold;">{ticket.get('potential_win', 0):,.0f} {currency}</div>
         </div>
         
         <div class="divider"></div>

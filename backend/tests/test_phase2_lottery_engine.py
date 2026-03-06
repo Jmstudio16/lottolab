@@ -19,7 +19,7 @@ import os
 import time
 import json
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://stable-lottery-sales.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://super-admin-hub-11.preview.emergentagent.com')
 
 # Test credentials
 SUPER_ADMIN_EMAIL = "jefferson@jmstudio.com"

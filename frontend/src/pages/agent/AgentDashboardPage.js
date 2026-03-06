@@ -267,23 +267,39 @@ export const AgentDashboardPage = () => {
               </div>
             ) : (
               <div className="space-y-2">
-                {latestResults.map((result, idx) => (
-                  <div 
-                    key={result.result_id || idx}
-                    className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg"
-                  >
-                    <div>
-                      <p className="font-medium text-white">{result.lottery_name}</p>
-                      <p className="text-xs text-slate-400">{result.draw_name}</p>
+                {latestResults.map((result, idx) => {
+                  // Parse winning numbers from either string or object format
+                  let numbersDisplay = '';
+                  if (result.winning_numbers) {
+                    if (typeof result.winning_numbers === 'object') {
+                      const nums = [];
+                      if (result.winning_numbers.first) nums.push(result.winning_numbers.first);
+                      if (result.winning_numbers.second) nums.push(result.winning_numbers.second);
+                      if (result.winning_numbers.third) nums.push(result.winning_numbers.third);
+                      numbersDisplay = nums.join(' - ');
+                    } else {
+                      numbersDisplay = result.winning_numbers;
+                    }
+                  }
+                  
+                  return (
+                    <div 
+                      key={result.result_id || idx}
+                      className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg"
+                    >
+                      <div>
+                        <p className="font-medium text-white">{result.lottery_name}</p>
+                        <p className="text-xs text-slate-400">{result.draw_name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-mono text-lg text-amber-400 font-bold">
+                          {numbersDisplay}
+                        </p>
+                        <p className="text-xs text-slate-400">{result.draw_date}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-mono text-lg text-amber-400 font-bold">
-                        {result.winning_numbers}
-                      </p>
-                      <p className="text-xs text-slate-400">{result.draw_date}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
