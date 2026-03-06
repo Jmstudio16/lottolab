@@ -53,7 +53,6 @@ const CompanyAdminMenu = [
   { path: '/company/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/company/succursales', label: 'Succursales', icon: Store },
   { path: '/company/lotteries', label: 'Catalogue Loteries', icon: Ticket },
-  { path: '/company/lotteries-for-agents', label: 'Loteries pour Agents', icon: Globe },
   { path: '/company/schedules', label: 'Horaires (Vue)', icon: CalendarClock },
   { path: '/company/results', label: 'Résultats (Vue)', icon: Trophy },
   { path: '/company/tickets', label: 'Tickets', icon: FileText },

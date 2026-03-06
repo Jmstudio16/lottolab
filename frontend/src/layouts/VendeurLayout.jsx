@@ -1,16 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/api/auth';
+import axios from 'axios';
 import { 
   LayoutDashboard, ShoppingCart, Ticket, Search, Calendar,
-  Trophy, BarChart3, User, LogOut, Menu, X, Store
+  Trophy, BarChart3, User, LogOut, Menu, X, Store, Building2
 } from 'lucide-react';
 
+const API_URL = process.env.REACT_APP_BACKEND_URL;
+
 const VendeurLayout = () => {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [companyInfo, setCompanyInfo] = useState(null);
+
+  // Fetch company and succursale info
+  useEffect(() => {
+    const fetchInfo = async () => {
+      if (!token) return;
+      try {
+        const res = await axios.get(`${API_URL}/api/vendeur/profile`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setCompanyInfo({
+          companyName: res.data.company_name || 'Compagnie',
+          succursaleName: res.data.succursale_name || '',
+          vendeurName: res.data.name || user?.full_name || 'Vendeur'
+        });
+      } catch (e) {
+        // Fallback to user data
+        setCompanyInfo({
+          companyName: user?.company_name || 'Compagnie',
+          succursaleName: user?.succursale_name || '',
+          vendeurName: user?.full_name || 'Vendeur'
+        });
+      }
+    };
+    fetchInfo();
+  }, [token, user]);
 
   const menuItems = [
     { path: '/vendeur/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
@@ -28,13 +57,21 @@ const VendeurLayout = () => {
     navigate('/login');
   };
 
+  const displayName = companyInfo?.companyName || 'Compagnie';
+  const succursaleName = companyInfo?.succursaleName;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Mobile Header */}
       <div className="lg:hidden flex items-center justify-between p-4 bg-slate-800 border-b border-slate-700">
         <div className="flex items-center gap-3">
           <Store className="w-8 h-8 text-emerald-400" />
-          <span className="text-xl font-bold text-white">LOTO PAM</span>
+          <div>
+            <span className="text-lg font-bold text-white block">{displayName}</span>
+            {succursaleName && (
+              <span className="text-xs text-emerald-400">{succursaleName}</span>
+            )}
+          </div>
         </div>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -52,12 +89,19 @@ const VendeurLayout = () => {
           transform transition-transform duration-300
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}>
-          {/* Logo */}
-          <div className="hidden lg:flex items-center gap-3 p-6 border-b border-slate-700">
-            <Store className="w-10 h-10 text-emerald-400" />
-            <div>
-              <h1 className="text-xl font-bold text-white">LOTO PAM</h1>
-              <p className="text-xs text-emerald-400">Espace Vendeur</p>
+          {/* Logo / Company Info */}
+          <div className="hidden lg:block p-5 border-b border-slate-700">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-500/20 rounded-xl">
+                <Building2 className="w-8 h-8 text-emerald-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-lg font-bold text-white truncate">{displayName}</h1>
+                {succursaleName && (
+                  <p className="text-xs text-emerald-400 truncate">{succursaleName}</p>
+                )}
+                <p className="text-xs text-slate-500">Espace Vendeur</p>
+              </div>
             </div>
           </div>
 
@@ -67,9 +111,11 @@ const VendeurLayout = () => {
               <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
                 <User className="w-5 h-5 text-emerald-400" />
               </div>
-              <div>
-                <p className="text-sm font-medium text-white">{user?.full_name || 'Vendeur'}</p>
-                <p className="text-xs text-slate-400">{user?.email}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">
+                  {companyInfo?.vendeurName || user?.full_name || 'Vendeur'}
+                </p>
+                <p className="text-xs text-slate-400 truncate">{user?.email}</p>
               </div>
             </div>
           </div>

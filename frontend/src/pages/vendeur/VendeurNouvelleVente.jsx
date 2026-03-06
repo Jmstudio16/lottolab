@@ -3,8 +3,8 @@ import { useAuth } from '@/api/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { 
-  ShoppingCart, Search, Clock, CheckCircle, XCircle,
-  Plus, Trash2, Printer, RefreshCw, DollarSign, Ticket
+  ShoppingCart, Search, Clock, CheckCircle, XCircle, AlertTriangle,
+  Plus, Trash2, Printer, RefreshCw, DollarSign, Ticket, Timer
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ const VendeurNouvelleVente = () => {
     amount: 50
   });
   const [ticketResult, setTicketResult] = useState(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -38,6 +39,14 @@ const VendeurNouvelleVente = () => {
     { value: 'LOTO5', label: 'Loto 5', digits: '5' },
     { value: 'MARIAGE', label: 'Mariage', digits: '4' },
   ];
+
+  // Update time every second for countdown
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -56,32 +65,95 @@ const VendeurNouvelleVente = () => {
     fetchData();
   }, [fetchData]);
 
-  // Get lottery status based on schedule
+  // Get lottery status based on schedule - IMPROVED with countdown
   const getLotteryStatus = (lottery) => {
-    const now = new Date();
+    const now = currentTime;
+    const currentHour = now.getHours();
+    const currentMin = now.getMinutes();
+    const currentTimeMinutes = currentHour * 60 + currentMin;
+    
     const lotterySchedules = schedules.filter(s => s.lottery_id === lottery.lottery_id);
     
+    if (lotterySchedules.length === 0) {
+      // No schedule = always open (during business hours)
+      if (currentHour >= 7 && currentHour < 22) {
+        return { status: 'open', text: 'Ouvert', color: 'text-emerald-400', canSell: true };
+      }
+      return { status: 'closed', text: 'Fermé (hors horaires)', color: 'text-red-400', canSell: false };
+    }
+    
     for (const schedule of lotterySchedules) {
+      // Parse open time
+      let openTimeMinutes = 7 * 60; // Default 7:00 AM
+      if (schedule.open_time) {
+        const [openHour, openMin] = schedule.open_time.split(':').map(Number);
+        openTimeMinutes = openHour * 60 + openMin;
+      }
+      
+      // Parse close time
       if (schedule.close_time) {
         const [closeHour, closeMin] = schedule.close_time.split(':').map(Number);
-        const closeTime = new Date();
-        closeTime.setHours(closeHour, closeMin, 0, 0);
+        const closeTimeMinutes = closeHour * 60 + closeMin;
         
-        if (now < closeTime) {
-          const diffMs = closeTime - now;
-          const diffMins = Math.floor(diffMs / 60000);
+        // Check if we're before opening
+        if (currentTimeMinutes < openTimeMinutes) {
+          const diffMins = openTimeMinutes - currentTimeMinutes;
+          const hours = Math.floor(diffMins / 60);
+          const mins = diffMins % 60;
+          const timeStr = hours > 0 ? `${hours}h${mins.toString().padStart(2, '0')}` : `${mins}min`;
+          return { 
+            status: 'not_open', 
+            text: `Ouvre dans ${timeStr}`, 
+            color: 'text-blue-400', 
+            canSell: false,
+            openTime: schedule.open_time,
+            closeTime: schedule.close_time
+          };
+        }
+        
+        // Check if we're within open hours
+        if (currentTimeMinutes >= openTimeMinutes && currentTimeMinutes < closeTimeMinutes) {
+          const diffMins = closeTimeMinutes - currentTimeMinutes;
+          const hours = Math.floor(diffMins / 60);
+          const mins = diffMins % 60;
+          const seconds = 59 - now.getSeconds();
           
-          if (diffMins <= 60) {
-            return { status: 'closing', text: `Ferme dans ${diffMins}min`, color: 'text-amber-400' };
+          if (diffMins <= 5) {
+            // Less than 5 minutes - show seconds countdown
+            return { 
+              status: 'closing_soon', 
+              text: `Ferme dans ${mins}:${seconds.toString().padStart(2, '0')}`, 
+              color: 'text-red-400 animate-pulse', 
+              canSell: true,
+              urgent: true,
+              closeTime: schedule.close_time
+            };
+          } else if (diffMins <= 30) {
+            const timeStr = hours > 0 ? `${hours}h${mins.toString().padStart(2, '0')}` : `${mins}min`;
+            return { 
+              status: 'closing', 
+              text: `Ferme dans ${timeStr}`, 
+              color: 'text-amber-400', 
+              canSell: true,
+              closeTime: schedule.close_time
+            };
           }
-          return { status: 'open', text: 'Ouvert', color: 'text-emerald-400' };
+          
+          return { 
+            status: 'open', 
+            text: 'Ouvert', 
+            color: 'text-emerald-400', 
+            canSell: true,
+            closeTime: schedule.close_time
+          };
         }
       }
     }
-    return { status: 'closed', text: 'Fermé', color: 'text-red-400' };
+    
+    return { status: 'closed', text: 'Fermé', color: 'text-red-400', canSell: false };
   };
 
-  // Filter lotteries
+  // Filter lotteries - only show those that can sell or are opening soon
   const filteredLotteries = lotteries.filter(lot => {
     const matchesSearch = lot.lottery_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          lot.state_code?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -91,7 +163,16 @@ const VendeurNouvelleVente = () => {
     return matchesSearch && matchesCategory;
   });
 
+  // Separate open and closed lotteries
+  const openLotteries = filteredLotteries.filter(lot => getLotteryStatus(lot).canSell);
+  const closedLotteries = filteredLotteries.filter(lot => !getLotteryStatus(lot).canSell);
+
   const selectLottery = (lottery) => {
+    const status = getLotteryStatus(lottery);
+    if (!status.canSell) {
+      toast.error(`Cette loterie ${status.status === 'not_open' ? "n'est pas encore ouverte" : 'est fermée'}`);
+      return;
+    }
     setSelectedLottery(lottery);
     const lotterySchedules = schedules.filter(s => s.lottery_id === lottery.lottery_id);
     if (lotterySchedules.length > 0) {
@@ -102,6 +183,14 @@ const VendeurNouvelleVente = () => {
   const addToCart = () => {
     if (!currentPlay.numbers || !selectedLottery) {
       toast.error('Veuillez entrer un numéro');
+      return;
+    }
+
+    // Re-check if lottery is still open
+    const status = getLotteryStatus(selectedLottery);
+    if (!status.canSell) {
+      toast.error('Cette loterie vient de fermer!');
+      setSelectedLottery(null);
       return;
     }
 
@@ -134,6 +223,13 @@ const VendeurNouvelleVente = () => {
   const submitSale = async () => {
     if (cart.length === 0) {
       toast.error('Le panier est vide');
+      return;
+    }
+
+    // Final check - is lottery still open?
+    const status = getLotteryStatus(selectedLottery);
+    if (!status.canSell) {
+      toast.error('ERREUR: La loterie vient de fermer! Vente annulée.');
       return;
     }
 
@@ -218,19 +314,28 @@ const VendeurNouvelleVente = () => {
 
   return (
     <div className="p-6 pb-24 lg:pb-6 space-y-6">
-      {/* Header */}
+      {/* Header with current time */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
             <ShoppingCart className="w-7 h-7 text-emerald-400" />
             Nouvelle Vente
           </h1>
-          <p className="text-slate-400">Sélectionnez une loterie et créez un ticket</p>
+          <p className="text-slate-400">Sélectionnez une loterie ouverte</p>
         </div>
-        <Button onClick={fetchData} variant="outline" className="border-slate-700">
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Actualiser
-        </Button>
+        <div className="flex items-center gap-4">
+          {/* Current Time Display */}
+          <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-xl border border-slate-700">
+            <Clock className="w-4 h-4 text-emerald-400" />
+            <span className="text-white font-mono text-lg">
+              {currentTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </span>
+          </div>
+          <Button onClick={fetchData} variant="outline" className="border-slate-700">
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </Button>
+        </div>
       </div>
 
       {/* Search & Filter */}
@@ -261,37 +366,77 @@ const VendeurNouvelleVente = () => {
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Lotteries Grid */}
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-white">Loteries Disponibles ({filteredLotteries.length})</h2>
-          
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto pr-2">
-              {filteredLotteries.slice(0, 50).map(lottery => {
-                const status = getLotteryStatus(lottery);
-                const isSelected = selectedLottery?.lottery_id === lottery.lottery_id;
-                
-                return (
-                  <button
-                    key={lottery.lottery_id}
-                    onClick={() => status.status !== 'closed' && selectLottery(lottery)}
-                    disabled={status.status === 'closed'}
-                    className={`p-3 rounded-xl text-left transition-all ${
-                      isSelected
-                        ? 'bg-emerald-500/20 border-2 border-emerald-500'
-                        : status.status === 'closed'
-                        ? 'bg-slate-800/30 border border-slate-700 opacity-50 cursor-not-allowed'
-                        : 'bg-slate-800/50 border border-slate-700 hover:border-emerald-500/50'
-                    }`}
-                  >
-                    <p className="font-medium text-white text-sm truncate">{lottery.lottery_name}</p>
-                    <p className="text-xs text-slate-400">{lottery.state_code}</p>
-                    <p className={`text-xs mt-1 ${status.color}`}>{status.text}</p>
-                  </button>
-                );
-              })}
+          {/* Open Lotteries */}
+          <div>
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-3">
+              <CheckCircle className="w-5 h-5 text-emerald-400" />
+              Loteries Ouvertes ({openLotteries.length})
+            </h2>
+            
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
+              </div>
+            ) : openLotteries.length === 0 ? (
+              <div className="p-6 bg-slate-800/30 rounded-xl text-center">
+                <Clock className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                <p className="text-slate-400">Aucune loterie ouverte actuellement</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto pr-2">
+                {openLotteries.map(lottery => {
+                  const status = getLotteryStatus(lottery);
+                  const isSelected = selectedLottery?.lottery_id === lottery.lottery_id;
+                  
+                  return (
+                    <button
+                      key={lottery.lottery_id}
+                      onClick={() => selectLottery(lottery)}
+                      className={`p-3 rounded-xl text-left transition-all ${
+                        isSelected
+                          ? 'bg-emerald-500/20 border-2 border-emerald-500'
+                          : 'bg-slate-800/50 border border-slate-700 hover:border-emerald-500/50'
+                      }`}
+                    >
+                      <p className="font-medium text-white text-sm truncate">{lottery.lottery_name}</p>
+                      <p className="text-xs text-slate-400">{lottery.state_code}</p>
+                      <div className={`flex items-center gap-1 text-xs mt-1 ${status.color}`}>
+                        {status.urgent && <Timer className="w-3 h-3" />}
+                        {status.text}
+                      </div>
+                      {status.closeTime && (
+                        <p className="text-xs text-slate-500">Ferme à {status.closeTime}</p>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Closed/Not Yet Open Lotteries */}
+          {closedLotteries.length > 0 && (
+            <div>
+              <h2 className="text-lg font-semibold text-slate-400 flex items-center gap-2 mb-3">
+                <XCircle className="w-5 h-5 text-slate-500" />
+                Non disponibles ({closedLotteries.length})
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[200px] overflow-y-auto pr-2">
+                {closedLotteries.slice(0, 20).map(lottery => {
+                  const status = getLotteryStatus(lottery);
+                  
+                  return (
+                    <div
+                      key={lottery.lottery_id}
+                      className="p-3 rounded-xl bg-slate-800/30 border border-slate-700 opacity-60"
+                    >
+                      <p className="font-medium text-slate-400 text-sm truncate">{lottery.lottery_name}</p>
+                      <p className="text-xs text-slate-500">{lottery.state_code}</p>
+                      <p className={`text-xs mt-1 ${status.color}`}>{status.text}</p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -301,9 +446,23 @@ const VendeurNouvelleVente = () => {
           {selectedLottery ? (
             <>
               <div className="bg-slate-800/50 border border-emerald-500/30 rounded-xl p-4">
-                <h3 className="font-semibold text-emerald-400 mb-3">
-                  {selectedLottery.lottery_name}
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-emerald-400">
+                    {selectedLottery.lottery_name}
+                  </h3>
+                  {(() => {
+                    const status = getLotteryStatus(selectedLottery);
+                    return (
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        status.urgent 
+                          ? 'bg-red-500/20 text-red-400 animate-pulse' 
+                          : 'bg-emerald-500/20 text-emerald-400'
+                      }`}>
+                        {status.text}
+                      </span>
+                    );
+                  })()}
+                </div>
                 
                 <div className="space-y-4">
                   <div>
@@ -421,7 +580,10 @@ const VendeurNouvelleVente = () => {
           ) : (
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-8 text-center">
               <ShoppingCart className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-400">Sélectionnez une loterie pour commencer</p>
+              <p className="text-slate-400">Sélectionnez une loterie ouverte pour commencer</p>
+              <p className="text-xs text-slate-500 mt-2">
+                Les loteries fermées ou pas encore ouvertes ne sont pas sélectionnables
+              </p>
             </div>
           )}
         </div>

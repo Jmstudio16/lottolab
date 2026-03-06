@@ -637,10 +637,16 @@ async def get_profile(current_vendeur: dict = Depends(get_current_vendeur)):
     # Get company info
     company = await db.companies.find_one({"company_id": company_id}, {"_id": 0, "name": 1})
     
-    # Get succursale info
+    # Get succursale info - check multiple field names
     succursale = None
+    succursale_name = None
     if succursale_id:
-        succursale = await db.succursales.find_one({"succursale_id": succursale_id}, {"_id": 0, "name": 1})
+        succursale = await db.succursales.find_one(
+            {"succursale_id": succursale_id}, 
+            {"_id": 0, "name": 1, "nom_succursale": 1, "nom_bank": 1}
+        )
+        if succursale:
+            succursale_name = succursale.get("nom_succursale") or succursale.get("name") or succursale.get("nom_bank")
     
     return {
         "user_id": vendeur_id,
@@ -652,7 +658,7 @@ async def get_profile(current_vendeur: dict = Depends(get_current_vendeur)):
         "company_id": company_id,
         "company_name": company.get("name") if company else None,
         "succursale_id": succursale_id,
-        "succursale_name": succursale.get("name") if succursale else None,
+        "succursale_name": succursale_name,
         "created_at": current_vendeur.get("created_at")
     }
 

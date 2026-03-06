@@ -398,7 +398,7 @@ export const SuperCompaniesPage = () => {
                         
                         {/* Delete */}
                         <button
-                          onClick={() => handleDelete(company.company_id, false)}
+                          onClick={() => handleDelete(company.company_id)}
                           className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded"
                           title="Supprimer"
                           data-testid={`delete-${company.company_id}`}
