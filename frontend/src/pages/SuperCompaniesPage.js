@@ -209,13 +209,17 @@ export const SuperCompaniesPage = () => {
   };
 
   const handleDelete = async (companyId) => {
-    if (!window.confirm('Supprimer (archiver) cette entreprise? Elle sera masquée et tous ses utilisateurs bloqués.')) return;
+    const company = companies.find(c => c.company_id === companyId);
+    const companyName = company?.name || companyId;
+    
+    if (!window.confirm(`⚠️ SUPPRIMER "${companyName}"?\n\nCette action va:\n- Bloquer tous les utilisateurs\n- Bloquer toutes les succursales\n- Archiver l'entreprise\n\nContinuer?`)) return;
+    
     try {
-      await axios.delete(`${API_URL}/api/saas/companies/${companyId}`, { headers });
-      toast.success('Entreprise archivée - Visible dans les archives');
+      const res = await axios.delete(`${API_URL}/api/saas/companies/${companyId}`, { headers });
+      toast.success(`✅ "${companyName}" supprimée! ${res.data.users_blocked} utilisateurs bloqués.`);
       fetchCompanies();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Erreur');
+      toast.error(error.response?.data?.detail || 'Erreur lors de la suppression');
     }
   };
 
@@ -443,8 +447,8 @@ export const SuperCompaniesPage = () => {
                         {/* Delete */}
                         <button
                           onClick={() => handleDelete(company.company_id)}
-                          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded"
-                          title="Supprimer"
+                          className="p-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300 rounded-lg transition-colors"
+                          title="Supprimer définitivement"
                           data-testid={`delete-${company.company_id}`}
                         >
                           <Trash2 className="w-4 h-4" />
