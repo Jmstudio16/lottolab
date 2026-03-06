@@ -10,7 +10,7 @@ import { test, expect } from '@playwright/test';
  * 5. Company Admin: Cannot modify email/password (verified - no such fields)
  */
 
-const BASE_URL = 'https://lottery-sync-hub.preview.emergentagent.com';
+const BASE_URL = 'https://vendeur-dashboard.preview.emergentagent.com';
 
 // Credentials
 const SUPER_ADMIN = {

@@ -243,14 +243,162 @@ async def supervisor_update_agent(agent_id: str, update_data: dict, current_user
 
 @supervisor_router.get("/agents/{agent_id}/tickets")
 async def supervisor_get_agent_tickets(agent_id: str, current_user: dict = Depends(get_current_user)):
-    """Get tickets for a specific agent"""
+    """Get tickets for a specific agent - checks both collections"""
     current_user = require_supervisor(current_user)
     
     company_id = current_user.get("company_id")
     
-    tickets = await db.tickets.find(
+    # First try lottery_transactions (main collection for vendeur sales)
+    tickets = await db.lottery_transactions.find(
         {"agent_id": agent_id, "company_id": company_id},
         {"_id": 0}
-    ).sort("created_at", -1).limit(50).to_list(50)
+    ).sort("created_at", -1).limit(100).to_list(100)
+    
+    # If no tickets found, also check tickets collection as fallback
+    if not tickets:
+        tickets = await db.tickets.find(
+            {"agent_id": agent_id, "company_id": company_id},
+            {"_id": 0}
+        ).sort("created_at", -1).limit(100).to_list(100)
     
     return tickets
+
+
+@supervisor_router.get("/my-profile")
+async def get_supervisor_profile(current_user: dict = Depends(get_current_user)):
+    """Get supervisor profile with commission info"""
+    current_user = require_supervisor(current_user)
+    
+    # Get supervisor's commission percentage
+    commission_percent = current_user.get("commission_percent", 10)
+    
+    # Also check agent_policies for supervisor commission
+    policy = await db.agent_policies.find_one(
+        {"user_id": current_user.get("user_id")},
+        {"_id": 0}
+    )
+    if policy and policy.get("commission_percent"):
+        commission_percent = policy.get("commission_percent")
+    
+    return {
+        "user_id": current_user.get("user_id"),
+        "name": current_user.get("name") or current_user.get("full_name"),
+        "email": current_user.get("email"),
+        "role": current_user.get("role"),
+        "company_id": current_user.get("company_id"),
+        "succursale_id": current_user.get("succursale_id"),
+        "commission_percent": commission_percent,
+        "status": current_user.get("status")
+    }
+
+
+@supervisor_router.get("/sales-report")
+async def get_supervisor_sales_report(
+    date_from: str = None,
+    date_to: str = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get detailed sales report for supervisor's agents"""
+    current_user = require_supervisor(current_user)
+    
+    company_id = current_user.get("company_id")
+    succursale_id = current_user.get("succursale_id")
+    supervisor_id = current_user.get("user_id")
+    
+    # Get supervisor's commission percentage
+    supervisor_commission = current_user.get("commission_percent", 10)
+    policy = await db.agent_policies.find_one({"user_id": supervisor_id}, {"_id": 0})
+    if policy and policy.get("commission_percent"):
+        supervisor_commission = policy.get("commission_percent")
+    
+    # Get agents under this supervisor
+    agents_query = {
+        "company_id": company_id,
+        "role": UserRole.AGENT_POS,
+        "status": {"$ne": "DELETED"},
+        "$or": [
+            {"succursale_id": succursale_id},
+            {"created_by": supervisor_id}
+        ]
+    }
+    agents = await db.users.find(agents_query, {"_id": 0, "password_hash": 0}).to_list(100)
+    
+    # Build date filter
+    date_filter = {}
+    if date_from:
+        date_filter["$gte"] = date_from
+    if date_to:
+        date_filter["$lte"] = date_to + "T23:59:59"
+    
+    # Build report data for each agent
+    report_data = []
+    totals = {
+        "total_tickets": 0,
+        "total_gagnants": 0,
+        "total_ventes": 0,
+        "total_paye": 0,
+        "total_comm_agent": 0,
+        "total_comm_sup": 0,
+        "balance_final": 0
+    }
+    
+    for agent in agents:
+        agent_id = agent.get("user_id")
+        agent_commission = agent.get("commission_percent", 10)
+        
+        # Build ticket query
+        ticket_query = {"agent_id": agent_id, "company_id": company_id}
+        if date_filter:
+            ticket_query["created_at"] = date_filter
+        
+        # Get tickets from lottery_transactions
+        tickets = await db.lottery_transactions.find(
+            ticket_query,
+            {"_id": 0, "total_amount": 1, "status": 1, "winnings": 1, "payout_amount": 1}
+        ).to_list(1000)
+        
+        # Calculate stats
+        total_tickets = len(tickets)
+        tickets_gagnants = sum(1 for t in tickets if t.get("status") == "WINNER")
+        total_ventes = sum(t.get("total_amount", 0) for t in tickets)
+        total_paye = sum(t.get("winnings", 0) or t.get("payout_amount", 0) for t in tickets if t.get("status") == "WINNER")
+        
+        # Calculate commissions
+        comm_agent = (total_ventes * agent_commission) / 100
+        comm_sup = (total_ventes * supervisor_commission) / 100
+        pp_sans_agent = total_ventes - total_paye
+        pp_avec_agent = pp_sans_agent - comm_agent
+        balance_final = pp_avec_agent - comm_sup
+        
+        report_data.append({
+            "agent_id": agent_id,
+            "agent_name": agent.get("name") or agent.get("full_name") or "Agent",
+            "total_tickets": total_tickets,
+            "tickets_gagnants": tickets_gagnants,
+            "total_ventes": total_ventes,
+            "total_paye": total_paye,
+            "pourcentage_agent": agent_commission,
+            "comm_agent": comm_agent,
+            "pp_sans_agent": pp_sans_agent,
+            "pp_avec_agent": pp_avec_agent,
+            "pourcentage_sup": supervisor_commission,
+            "comm_sup": comm_sup,
+            "balance_final": balance_final
+        })
+        
+        # Update totals
+        totals["total_tickets"] += total_tickets
+        totals["total_gagnants"] += tickets_gagnants
+        totals["total_ventes"] += total_ventes
+        totals["total_paye"] += total_paye
+        totals["total_comm_agent"] += comm_agent
+        totals["total_comm_sup"] += comm_sup
+        totals["balance_final"] += balance_final
+    
+    return {
+        "supervisor_commission": supervisor_commission,
+        "agents": report_data,
+        "totals": totals,
+        "date_from": date_from,
+        "date_to": date_to
+    }

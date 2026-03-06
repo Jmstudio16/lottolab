@@ -1,6 +1,6 @@
 import { Page, expect } from '@playwright/test';
 
-const BASE_URL = 'https://lottery-sync-hub.preview.emergentagent.com';
+const BASE_URL = 'https://vendeur-dashboard.preview.emergentagent.com';
 
 export async function waitForAppReady(page: Page) {
   await page.waitForLoadState('domcontentloaded');
@@ -90,4 +90,12 @@ export async function removeEmergentBadge(page: Page) {
     const badge = document.querySelector('[class*="emergent"], [id*="emergent-badge"]');
     if (badge) badge.remove();
   });
+}
+
+export async function loginAsSupervisor(page: Page) {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.fill('input[placeholder*="email"]', 'supervisor@lotopam.com');
+  await page.fill('input[type="password"]', 'Supervisor123!');
+  await page.click('button:has-text("SIGN IN")');
+  await page.waitForURL('**/supervisor/**', { timeout: 15000 });
 }

@@ -10,7 +10,7 @@ import uuid
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://lottery-sync-hub.preview.emergentagent.com"
+    BASE_URL = "https://vendeur-dashboard.preview.emergentagent.com"
 
 # Test credentials
 COMPANY_ADMIN_EMAIL = "admin@lotopam.com"

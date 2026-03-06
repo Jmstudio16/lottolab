@@ -45,6 +45,9 @@ import CompanyRapportVentes from '@/pages/CompanyRapportVentes';
 // Supervisor Pages
 import { SupervisorLayout } from '@/layouts/SupervisorLayout';
 import { SupervisorDashboardPage } from '@/pages/supervisor/SupervisorDashboardPage';
+import { SupervisorAgentsPage } from '@/pages/supervisor/SupervisorAgentsPage';
+import { SupervisorTicketsPage } from '@/pages/supervisor/SupervisorTicketsPage';
+import { SupervisorReportsPage } from '@/pages/supervisor/SupervisorReportsPage';
 
 // Vendeur Pages
 import VendeurLayout from '@/layouts/VendeurLayout';
@@ -499,9 +502,9 @@ const SaaSApp = () => {
                   }
                 >
                   <Route path="dashboard" element={<SupervisorDashboardPage />} />
-                  <Route path="agents" element={<SupervisorDashboardPage />} />
-                  <Route path="tickets" element={<SupervisorDashboardPage />} />
-                  <Route path="reports" element={<SupervisorDashboardPage />} />
+                  <Route path="agents" element={<SupervisorAgentsPage />} />
+                  <Route path="tickets" element={<SupervisorTicketsPage />} />
+                  <Route path="reports" element={<SupervisorReportsPage />} />
                   <Route index element={<Navigate to="/supervisor/dashboard" replace />} />
                 </Route>
 
