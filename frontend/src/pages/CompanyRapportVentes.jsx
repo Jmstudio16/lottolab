@@ -63,11 +63,11 @@ const CompanyRapportVentes = () => {
     }
   };
 
+  // Auto-fetch on mount and when dates change
   useEffect(() => {
-    if (dateFrom && dateTo) {
-      fetchReport();
-    }
-  }, []);
+    // Fetch immediately without waiting for dates
+    fetchReport();
+  }, [token]);
 
   const handleSearch = () => {
     fetchReport();
