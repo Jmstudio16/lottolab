@@ -97,6 +97,7 @@ async def get_full_device_config(current_agent: dict = Depends(get_current_agent
     """
     company_id = current_agent.get("company_id")
     agent_id = current_agent.get("user_id")
+    succursale_id = current_agent.get("succursale_id")
     device_session = current_agent.get("device_session", {})
     
     # ---- 1. COMPANY INFO ----
