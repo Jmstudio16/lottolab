@@ -598,21 +598,36 @@ export const AgentNewSalePage = () => {
       <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
         <Loader2 className="w-12 h-12 text-emerald-500 animate-spin mb-4" />
         <p className="text-slate-400">Chargement des données...</p>
+        <p className="text-xs text-slate-500 mt-2">Si ce message persiste, rafraîchissez la page</p>
       </div>
     );
   }
   
-  // No lotteries available
+  // No lotteries available - with reload button
   if (lotteries.length === 0) {
+    const handleReload = () => {
+      localStorage.removeItem('agent_config_cache');
+      window.location.reload();
+    };
+    
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-center px-4">
         <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-6">
           <AlertTriangle className="w-10 h-10 text-amber-500" />
         </div>
         <h2 className="text-xl font-bold text-white mb-2">Aucune loterie disponible</h2>
-        <p className="text-slate-400 max-w-md">
-          Aucune loterie n'est actuellement configurée pour votre compte. 
-          Veuillez contacter votre administrateur.
+        <p className="text-slate-400 max-w-md mb-6">
+          Les données ne sont pas encore chargées. Cliquez sur le bouton ci-dessous pour recharger.
+        </p>
+        <Button
+          onClick={handleReload}
+          className="bg-emerald-600 hover:bg-emerald-700"
+        >
+          <Loader2 className="w-4 h-4 mr-2" />
+          Recharger les données
+        </Button>
+        <p className="text-xs text-slate-500 mt-4">
+          Si le problème persiste, déconnectez-vous et reconnectez-vous.
         </p>
       </div>
     );

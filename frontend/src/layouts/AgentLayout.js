@@ -178,6 +178,7 @@ export const AgentLayout = () => {
     if (!token) return;
     
     try {
+      console.log('[AgentLayout] Loading config...');
       const response = await fetch(`${API_URL}/api/device/config`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -187,6 +188,10 @@ export const AgentLayout = () => {
       
       if (response.ok) {
         const data = await response.json();
+        console.log('[AgentLayout] Config loaded:', {
+          lotteries: data.enabled_lotteries?.length || 0,
+          schedules: data.schedules?.length || 0
+        });
         setSyncData(data);
         setIsConnected(true);
         
@@ -195,9 +200,13 @@ export const AgentLayout = () => {
           data,
           timestamp: Date.now()
         }));
+      } else {
+        console.error('[AgentLayout] Config load failed:', response.status);
+        // Clear bad cache
+        localStorage.removeItem('agent_config_cache');
       }
     } catch (error) {
-      console.error('Config load error:', error);
+      console.error('[AgentLayout] Config load error:', error);
       // Try to use cached data
       const cached = localStorage.getItem('agent_config_cache');
       if (cached) {
