@@ -155,7 +155,9 @@ export const SuperResultManagementPage = () => {
       lottery_id: result.lottery_id,
       draw_date: result.draw_date,
       draw_name: result.draw_name,
-      winning_numbers: result.winning_numbers,
+      winning_numbers: typeof result.winning_numbers === 'object'
+        ? Object.values(result.winning_numbers).filter(Boolean).join('-')
+        : result.winning_numbers,
       bonus_number: result.bonus_number || '',
       jackpot_amount: result.jackpot_amount || '',
       notes: result.notes || ''
@@ -244,10 +246,18 @@ export const SuperResultManagementPage = () => {
 
   // Filter results
   const filteredResults = results.filter(r => {
+    // Convert winning_numbers to string for search
+    let wnStr = '';
+    if (typeof r.winning_numbers === 'object') {
+      wnStr = Object.values(r.winning_numbers).filter(Boolean).join('-');
+    } else if (r.winning_numbers) {
+      wnStr = String(r.winning_numbers);
+    }
+    
     const matchesSearch = 
       (r.lottery_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (r.state_code || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (r.winning_numbers || '').includes(searchTerm);
+      wnStr.includes(searchTerm);
     const matchesState = !filterState || r.state_code === filterState;
     return matchesSearch && matchesState;
   });

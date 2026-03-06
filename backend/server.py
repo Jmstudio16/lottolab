@@ -41,6 +41,8 @@ from staff_permissions import staff_router, set_staff_db, create_staff_endpoints
 from ticket_print_routes import ticket_print_router, set_ticket_print_db
 from supervisor_routes import supervisor_router
 from results_routes import results_router, set_results_db
+from validation_routes import validation_router, set_validation_db
+from branch_lottery_routes import branch_lottery_router, set_branch_lottery_db
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -638,6 +640,8 @@ set_saas_core_db(db)
 set_staff_db(db)
 set_ticket_print_db(db)
 set_results_db(db)
+set_validation_db(db)
+set_branch_lottery_db(db)
 
 # Initialize staff endpoints with dependency
 create_staff_endpoints(get_current_user)
@@ -665,6 +669,12 @@ app.include_router(ticket_print_router)
 
 # Include results router
 app.include_router(results_router)
+
+# Include validation router (admin only)
+app.include_router(validation_router)
+
+# Include branch lottery router (company admin)
+app.include_router(branch_lottery_router)
 
 # Include staff router under /api prefix
 api_router.include_router(staff_router)

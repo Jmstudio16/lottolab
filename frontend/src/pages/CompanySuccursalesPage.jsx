@@ -4,9 +4,10 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   Building2, Plus, Trash2, Save, Users, Eye, 
-  RefreshCw, UserPlus, Store, Mail, Phone, User, Lock, Edit, PlayCircle, StopCircle
+  RefreshCw, UserPlus, Store, Mail, Phone, User, Lock, Edit, PlayCircle, StopCircle, Settings
 } from 'lucide-react';
 import CompanyLayout from '@/components/CompanyLayout';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +18,7 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 export const CompanySuccursalesPage = () => {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [succursales, setSuccursales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -367,6 +369,14 @@ export const CompanySuccursalesPage = () => {
                   >
                     <Eye className="w-4 h-4" />
                     Détails
+                  </button>
+                  <button
+                    onClick={() => navigate(`/company/branches/${succ.succursale_id}/lotteries`)}
+                    className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 rounded-lg transition-colors"
+                    title="Gérer les loteries"
+                    data-testid={`lotteries-${succ.succursale_id}`}
+                  >
+                    <Settings className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDeleteSuccursale(succ.succursale_id)}

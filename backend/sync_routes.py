@@ -144,7 +144,7 @@ async def get_full_device_config(current_agent: dict = Depends(get_current_agent
             "status": "active"
         }
     
-    # ---- 5. ENABLED LOTTERIES (COMPANY CATALOG) ----
+    # ---- 5. ENABLED LOTTERIES (COMPANY CATALOG + BRANCH FILTER) ----
     # Fixed: Use correct field names for company_lotteries - check all possible field names
     company_lotteries = await db.company_lotteries.find(
         {
@@ -159,6 +159,19 @@ async def get_full_device_config(current_agent: dict = Depends(get_current_agent
     ).to_list(300)
     
     lottery_ids = [cl["lottery_id"] for cl in company_lotteries]
+    
+    # ---- 5b. BRANCH-LEVEL FILTER ----
+    # Get branch-level overrides (disabled lotteries for this branch)
+    branch_disabled_ids = set()
+    if succursale_id:
+        branch_disabled = await db.branch_lotteries.find(
+            {"branch_id": succursale_id, "enabled": False},
+            {"lottery_id": 1}
+        ).to_list(300)
+        branch_disabled_ids = {bl["lottery_id"] for bl in branch_disabled}
+    
+    # Filter out branch-disabled lotteries
+    lottery_ids = [lid for lid in lottery_ids if lid not in branch_disabled_ids]
     
     # Get full lottery details from master_lotteries
     lotteries = []

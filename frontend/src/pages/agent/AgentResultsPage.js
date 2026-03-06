@@ -105,7 +105,9 @@ export const AgentResultsPage = () => {
                   </div>
                   <div className="text-center py-4">
                     <span className="text-3xl font-mono font-bold text-amber-400 tracking-widest">
-                      {result.winning_numbers}
+                      {typeof result.winning_numbers === 'object' 
+                        ? Object.values(result.winning_numbers).filter(Boolean).join(' - ')
+                        : result.winning_numbers}
                     </span>
                   </div>
                   <div className="text-center text-xs text-slate-400">
@@ -162,7 +164,9 @@ export const AgentResultsPage = () => {
                         
                         <div className="text-center py-3">
                           <span className="text-2xl font-mono font-bold text-emerald-400 tracking-widest">
-                            {result.winning_numbers}
+                            {typeof result.winning_numbers === 'object' 
+                              ? Object.values(result.winning_numbers).filter(Boolean).join(' - ')
+                              : result.winning_numbers}
                           </span>
                         </div>
 

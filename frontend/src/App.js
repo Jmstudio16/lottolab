@@ -40,6 +40,7 @@ import { CompanyStatisticsPage } from '@/pages/CompanyStatisticsPage';
 import { CompanyDailyReportsPage } from '@/pages/CompanyDailyReportsPage';
 import CompanyProfileSettingsPage from '@/pages/company/CompanySettingsPage';
 import { CompanyWinningTicketsPage } from '@/pages/CompanyWinningTicketsPage';
+import { BranchLotteriesPage } from '@/pages/BranchLotteriesPage';
 
 // Agent Universal Terminal Pages
 import { AgentLayout } from '@/layouts/AgentLayout';
@@ -358,6 +359,14 @@ const SaaSApp = () => {
                   element={
                     <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
                       <CompanySuccursalesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/company/branches/:branchId/lotteries"
+                  element={
+                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
+                      <BranchLotteriesPage />
                     </ProtectedRoute>
                   }
                 />
