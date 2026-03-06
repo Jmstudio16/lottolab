@@ -913,6 +913,7 @@ app.add_middleware(
 UPLOAD_DIR = "/app/backend/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(f"{UPLOAD_DIR}/company-logos", exist_ok=True)
+os.makedirs(f"{UPLOAD_DIR}/vendeur-photos", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 

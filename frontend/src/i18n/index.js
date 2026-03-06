@@ -19,8 +19,9 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: 'en',
-    supportedLngs: ['en', 'fr', 'ht', 'es'],
+    fallbackLng: 'fr',
+    lng: 'fr', // Force French as default
+    supportedLngs: ['fr', 'en', 'es', 'ht'],
     detection: {
       order: ['localStorage', 'navigator', 'htmlTag'],
       caches: ['localStorage'],
@@ -37,10 +38,10 @@ i18n
 export default i18n;
 
 export const LANGUAGES = [
-  { code: 'ht', name: 'Kreyòl Ayisyen', flag: '🇭🇹' },
   { code: 'fr', name: 'Français', flag: '🇫🇷' },
   { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'es', name: 'Español', flag: '🇪🇸' }
+  { code: 'es', name: 'Español', flag: '🇪🇸' },
+  { code: 'ht', name: 'Kreyòl Ayisyen', flag: '🇭🇹' }
 ];
 
 export const changeLanguage = (lang) => {

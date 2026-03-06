@@ -84,6 +84,7 @@ class SuccursaleCreate(BaseModel):
     supervisor_telephone: str  # REQUIRED
     supervisor_password: str
     supervisor_password_confirm: str
+    supervisor_commission_percent: float = 10.0  # Pourcentage superviseur sur ventes agents
     
     # SECTION 2 - PARAMÈTRES
     allow_sub_supervisor: bool = False
@@ -289,6 +290,18 @@ async def create_succursale(
     }
     await db.users.insert_one(supervisor_doc)
     
+    # 1b. Create supervisor policy (commission percent)
+    supervisor_policy = {
+        "id": generate_id("policy_"),
+        "supervisor_id": supervisor_id,
+        "company_id": company_id,
+        "succursale_id": succursale_id,
+        "commission_percent": data.supervisor_commission_percent,
+        "created_at": now,
+        "updated_at": now
+    }
+    await db.supervisor_policies.insert_one(supervisor_policy)
+    
     # 2. Create succursale record
     succursale_doc = {
         "succursale_id": succursale_id,
@@ -306,6 +319,7 @@ async def create_succursale(
         "supervisor_prenom": data.supervisor_prenom,
         "supervisor_email": data.supervisor_email.lower(),
         "supervisor_telephone": data.supervisor_telephone,
+        "supervisor_commission_percent": data.supervisor_commission_percent,
         "status": "ACTIVE",
         "created_at": now,
         "updated_at": now

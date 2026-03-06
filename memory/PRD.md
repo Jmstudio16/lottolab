@@ -1,132 +1,148 @@
-# LOTTOLAB SaaS Enterprise - Version 3.8.0
+# LOTTOLAB SaaS Enterprise - Version 3.9.0
 
-## Release: COMPANY CREATION FORM & LOGO MANAGEMENT
+## Release: VENDEUR PROFILE & COMMISSION SYSTEM
 Date: 2026-03-06
 
 ---
 
 ## ACCOMPLISSEMENTS DE CETTE SESSION
 
-### Session Précédente (v3.7.0)
-1. ✅ **Synchronisation Tickets Vendeur → Company Admin** - 14 tickets visibles
-2. ✅ **Gestion Succursales** - Boutons Modifier/Suspendre/Réactiver
-3. ✅ **Page Global Schedules** - Erreur de chargement corrigée
+### Bugs Corrigés (P0)
+1. ✅ **Page "Mes Ventes" Vendeur** - Fonctionne correctement (940 HTG, 14 tickets)
+2. ✅ **Page "Mes Tickets" Vendeur** - Affiche tous les tickets avec statuts
 
-### Session Actuelle (v3.8.0)
+### Profil Vendeur Complet (P1)
+3. ✅ **Page Profil** avec toutes les informations:
+   - Photo de profil (avec upload)
+   - Nom du vendeur
+   - Compagnie (sync depuis `companies`)
+   - Succursale (sync depuis `succursales`)
+   - Superviseur (nom + téléphone)
+   - ID Vendeur
+   - ID Appareil (Device)
+   - Taux de commission (%)
 
-#### 1. ✅ Formulaire Création Entreprise (Super Admin)
-- **Champ Commission supprimé** - Plus de `default_commission_rate` dans le formulaire
-- **Section Upload Logo ajoutée** - Nouvelle section "Logo de l'Entreprise" avec:
-  - Zone de drop/click pour télécharger
-  - Prévisualisation du logo sélectionné
-  - Support PNG, JPG, WEBP (max 5MB)
-  - Bouton supprimer pour effacer la sélection
+4. ✅ **Nouveau endpoint** `GET /api/vendeur/profile`:
+   - Retourne company, succursale, supervisor, device, commission
 
-#### 2. ✅ API Upload Logo Super Admin
-- Nouvel endpoint: `POST /api/saas/companies/{id}/logo`
-- Sauvegarde dans `/uploads/company-logos/`
-- Met à jour `company_logo_url` dans la collection `companies`
-- Accessible via URL statique: `/uploads/company-logos/{filename}`
+5. ✅ **Upload photo** `POST /api/vendeur/profile/photo`
 
-#### 3. ✅ Bouton Supprimer Entreprise
-- Fonctionne correctement (soft delete)
-- Bloque tous les utilisateurs de l'entreprise
-- L'entreprise devient visible dans "Archives"
+6. ✅ **Header Vendeur** avec logo compagnie (VendeurLayout.jsx)
 
-#### 4. ✅ Paramètres Company Admin
-**Ce que le Company Admin PEUT modifier:**
-- Nom de l'entreprise
-- Logo de l'entreprise
-- Téléphone de contact
-- Adresse
+### Système de Commissions (P2)
+7. ✅ **Formulaire Création Succursale**:
+   - Nouveau champ "Pourcentage Commission Superviseur" (10% par défaut)
+   - Sauvegardé dans `supervisor_policies` collection
+   - Également stocké dans document `succursales`
 
-**Ce que le Company Admin NE PEUT PAS modifier:**
-- Email de connexion admin (défini par Super Admin)
-- Mot de passe admin (défini par Super Admin)
+8. ✅ **Page Tickets Company Admin**:
+   - Nouvelle colonne "% AGENT" affichant le pourcentage de commission
+   - Statuts traduits en français (Gagnant, Perdant, En attente)
+   - Stats en français
 
----
-
-## TESTS EFFECTUÉS (Iteration 19)
-
-| Test | Endpoint/Page | Résultat |
-|------|---------------|----------|
-| Commission supprimée | SuperCompaniesPage.js | ✅ PASS |
-| Upload logo (form) | Super Admin Modal | ✅ PASS |
-| Upload logo (API) | POST /api/saas/companies/{id}/logo | ✅ PASS |
-| Delete company | DELETE /api/saas/companies/{id} | ✅ PASS |
-| Company profile edit | PUT /api/company/profile | ✅ PASS |
-| No password field | /company/profile-settings | ✅ PASS |
-
-**Backend: 92% (11/12)** - 1 échec dû au rate limiting, pas un bug
-**Frontend: 100% (8/8)**
+### Traductions Françaises (P3)
+9. ✅ **i18n configuré** avec français par défaut (`lng: 'fr'`)
+10. ✅ **Page Tickets** entièrement en français
+11. ✅ **Formulaire Succursale** en français
 
 ---
 
-## FICHIERS MODIFIÉS
+## ENDPOINTS CRÉÉS
 
-### Backend
-- `/app/backend/saas_core.py` - Ajout endpoint upload logo + imports
-- `/app/backend/server.py` - Mount static files /uploads
-
-### Frontend
-- `/app/frontend/src/pages/SuperCompaniesPage.js`:
-  - Suppression champ commission
-  - Ajout section upload logo
-  - Ajout état logoFile, logoPreview
-  - Ajout fonctions handleLogoSelect, clearLogo
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| GET | /api/vendeur/profile | Profil complet vendeur |
+| POST | /api/vendeur/profile/photo | Upload photo profil |
+| POST | /api/saas/companies/{id}/logo | Upload logo entreprise (Super Admin) |
+| PUT | /api/company/succursales/{id}/suspend | Suspendre succursale |
+| PUT | /api/company/succursales/{id}/activate | Réactiver succursale |
 
 ---
 
-## ARCHITECTURE LOGO
+## COLLECTIONS MONGODB
 
-```
-Super Admin crée entreprise
-    │
-    ├─→ Formulaire avec upload logo
-    │       └─→ POST /api/saas/companies/{id}/logo
-    │              └─→ Sauvegarde /uploads/company-logos/
-    │
-    └─→ companies.company_logo_url = "/uploads/company-logos/..."
-
-Company Admin modifie logo
-    │
-    └─→ POST /api/company/logo/upload (settings_routes.py)
-           └─→ Même dossier /uploads/company-logos/
-
-Affichage logo (tickets, UI)
-    │
-    └─→ sync_routes.py → display_logo_url
-           └─→ Priorise company_logo_url > system_logo_url
+### `supervisor_policies` (NOUVELLE)
+```json
+{
+  "id": "policy_xxx",
+  "supervisor_id": "user_xxx",
+  "company_id": "comp_xxx",
+  "succursale_id": "succ_xxx",
+  "commission_percent": 10.0,
+  "created_at": "ISO date",
+  "updated_at": "ISO date"
+}
 ```
 
+### Champs ajoutés
+- `succursales.supervisor_commission_percent` - Pourcentage superviseur
+- `users.photo_url` - Photo de profil vendeur
+- `companies.company_logo_url` - Logo entreprise
+
 ---
 
-## TÂCHES RESTANTES
+## TESTS EFFECTUÉS
 
-### P0 (Fait)
-- [x] ~~Formulaire création: suppression commission~~
-- [x] ~~Formulaire création: upload logo~~
-- [x] ~~Bouton Delete fonctionnel~~
-
-### P1 (Prochaine priorité)
-- [ ] **Page Statistiques Company Admin** - Blocage boules, Limites ventes, Lots gagnants
-- [ ] **Configuration Company Admin** - Tables des primes, Limites mise, Mariage
-- [ ] **Système Reçu** - Logo sur tickets thermiques 80mm
-
-### P2 (Backlog)
-- [ ] **Traductions** - Français, Anglais, Espagnol (i18n)
-- [ ] **Notifications (cloche)** - Activer et afficher mises à jour
-- [ ] **Page Superviseur** - Tous les boutons fonctionnels
-- [ ] **Dashboard Company Admin** - Stats temps réel
+| Feature | Status |
+|---------|--------|
+| Page Mes Ventes | ✅ PASS |
+| Page Mes Tickets | ✅ PASS |
+| Profil Vendeur complet | ✅ PASS |
+| Upload photo vendeur | ✅ PASS |
+| Logo compagnie header | ✅ PASS |
+| Commission superviseur form | ✅ PASS |
+| Page Tickets % Agent | ✅ PASS |
+| Français par défaut | ✅ PASS |
 
 ---
 
 ## CREDENTIALS DE TEST
 
-| Rôle | Email | Password | Company |
-|------|-------|----------|---------|
-| Super Admin | jefferson@jmstudio.com | JMStudio@2026! | - |
-| Company Admin | admin@lotopam.com | Admin123! | LotoPam Center |
+| Rôle | Email | Password |
+|------|-------|----------|
+| Super Admin | jefferson@jmstudio.com | JMStudio@2026! |
+| Company Admin | admin@lotopam.com | Admin123! |
+| Vendeur | agent.marie@lotopam.com | Agent123! |
+
+---
+
+## TÂCHES RESTANTES
+
+### P1 (Prochaine priorité)
+- [ ] Page Statistiques Company Admin complète (Blocage boules, Limites, Lots)
+- [ ] Configuration Company Admin (Tables primes, Limites mise, Mariage)
+- [ ] Ticket thermique 80mm avec logo
+
+### P2 (Backlog)
+- [ ] Traduction complète de toutes les pages
+- [ ] Page Superviseur fonctionnelle
+- [ ] Notifications temps réel (cloche)
+- [ ] Dashboard Company Admin (agents actifs, loteries ouvertes)
+- [ ] Rapports avec pourcentages (superviseur/agent)
+
+---
+
+## ARCHITECTURE
+
+```
+/app
+├── backend/
+│   ├── vendeur/vendeur_routes.py  # +profile, +photo upload
+│   ├── succursale_routes.py       # +supervisor_commission_percent
+│   ├── saas_core.py               # +company logo upload
+│   └── server.py                  # +static files mount
+└── frontend/
+    └── src/
+        ├── pages/
+        │   ├── vendeur/
+        │   │   └── VendeurProfil.jsx  # Refait complètement
+        │   ├── TicketsPage.js         # +% Agent column, French
+        │   └── CompanySuccursalesPage.jsx  # +supervisor commission
+        ├── layouts/
+        │   └── VendeurLayout.jsx      # +company logo
+        └── i18n/
+            └── index.js               # lng: 'fr' default
+```
 
 ---
 

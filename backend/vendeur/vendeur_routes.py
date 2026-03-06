@@ -3,7 +3,7 @@ Vendeur (Seller) Routes - Complete POS functionality for lottery sales
 Implements the full Vendeur experience as defined in the MÉGA-PROMPT requirements
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing import Optional, List
@@ -208,6 +208,128 @@ async def get_vendeur_dashboard(current_vendeur: dict = Depends(get_current_vend
             "status": current_vendeur.get("status")
         }
     }
+
+
+# ============================================================================
+# VENDEUR PROFILE - Complete profile info
+# ============================================================================
+
+@vendeur_router.get("/profile")
+async def get_vendeur_profile(current_vendeur: dict = Depends(get_current_vendeur)):
+    """
+    Get complete vendeur profile with company, branch, commission info
+    """
+    vendeur_id = current_vendeur.get("user_id")
+    company_id = current_vendeur.get("company_id")
+    succursale_id = current_vendeur.get("succursale_id")
+    
+    # Get company info
+    company = await db.companies.find_one(
+        {"company_id": company_id},
+        {"_id": 0, "name": 1, "company_logo_url": 1, "contact_email": 1}
+    )
+    
+    # Get succursale info
+    succursale = await db.succursales.find_one(
+        {"succursale_id": succursale_id},
+        {"_id": 0, "nom_succursale": 1, "supervisor_id": 1, "supervisor_name": 1}
+    )
+    
+    # Get supervisor info
+    supervisor = None
+    if succursale and succursale.get("supervisor_id"):
+        supervisor = await db.users.find_one(
+            {"user_id": succursale["supervisor_id"]},
+            {"_id": 0, "name": 1, "email": 1, "telephone": 1}
+        )
+    
+    # Get agent policy (commission rate)
+    agent_policy = await db.agent_policies.find_one(
+        {"agent_id": vendeur_id},
+        {"_id": 0}
+    )
+    commission_rate = agent_policy.get("commission_percent", 10) if agent_policy else 10
+    
+    # Get device info
+    device = await db.pos_devices.find_one(
+        {"$or": [{"agent_id": vendeur_id}, {"assigned_to": vendeur_id}]},
+        {"_id": 0, "device_id": 1, "device_name": 1, "status": 1}
+    )
+    
+    return {
+        "vendeur": {
+            "user_id": vendeur_id,
+            "name": current_vendeur.get("name") or current_vendeur.get("full_name", "Vendeur"),
+            "email": current_vendeur.get("email"),
+            "telephone": current_vendeur.get("telephone"),
+            "photo_url": current_vendeur.get("photo_url"),
+            "status": current_vendeur.get("status"),
+            "commission_rate": commission_rate,
+            "created_at": current_vendeur.get("created_at")
+        },
+        "company": {
+            "company_id": company_id,
+            "name": company.get("name") if company else "N/A",
+            "logo_url": company.get("company_logo_url") if company else None
+        },
+        "succursale": {
+            "succursale_id": succursale_id,
+            "name": succursale.get("nom_succursale") if succursale else "N/A"
+        },
+        "supervisor": {
+            "name": supervisor.get("name") if supervisor else (succursale.get("supervisor_name") if succursale else "N/A"),
+            "telephone": supervisor.get("telephone") if supervisor else None
+        },
+        "device": {
+            "device_id": device.get("device_id") if device else "NON ASSIGNÉ",
+            "device_name": device.get("device_name") if device else None,
+            "status": device.get("status") if device else None
+        }
+    }
+
+
+@vendeur_router.post("/profile/photo")
+async def upload_vendeur_photo(
+    request: Request,
+    file: UploadFile = File(...),
+    current_vendeur: dict = Depends(get_current_vendeur)
+):
+    """
+    Upload vendeur profile photo
+    """
+    vendeur_id = current_vendeur.get("user_id")
+    
+    # Validate file type
+    allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Type de fichier non supporté")
+    
+    # Read and validate size
+    contents = await file.read()
+    if len(contents) > 2 * 1024 * 1024:  # 2MB max for profile photos
+        raise HTTPException(status_code=400, detail="L'image ne doit pas dépasser 2MB")
+    
+    # Save file
+    import os
+    PHOTO_DIR = "/app/backend/uploads/vendeur-photos"
+    os.makedirs(PHOTO_DIR, exist_ok=True)
+    
+    ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+    filename = f"vendeur-{vendeur_id}.{ext}"
+    filepath = os.path.join(PHOTO_DIR, filename)
+    
+    with open(filepath, "wb") as buffer:
+        buffer.write(contents)
+    
+    photo_url = f"/uploads/vendeur-photos/{filename}"
+    
+    # Update user with photo URL
+    await db.users.update_one(
+        {"user_id": vendeur_id},
+        {"$set": {"photo_url": photo_url, "updated_at": get_current_timestamp()}}
+    )
+    
+    return {"message": "Photo téléchargée avec succès", "photo_url": photo_url}
 
 
 # ============================================================================

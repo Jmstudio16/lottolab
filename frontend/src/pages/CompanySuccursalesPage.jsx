@@ -4,7 +4,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   Building2, Plus, Trash2, Save, Users, Eye, 
-  RefreshCw, UserPlus, Store, Mail, Phone, User, Lock, Edit, PlayCircle, StopCircle, Settings
+  RefreshCw, UserPlus, Store, Mail, Phone, User, Lock, Edit, PlayCircle, StopCircle, Settings, Percent
 } from 'lucide-react';
 import CompanyLayout from '@/components/CompanyLayout';
 import { useNavigate } from 'react-router-dom';
@@ -38,6 +38,7 @@ export const CompanySuccursalesPage = () => {
     supervisor_telephone: '',  // REQUIRED
     supervisor_password: '',
     supervisor_password_confirm: '',
+    supervisor_commission_percent: 10,  // Pourcentage superviseur sur ventes agents
     // Section 2 - Paramètres
     allow_sub_supervisor: false,
     superviseur_principal: true,
@@ -593,6 +594,30 @@ export const CompanySuccursalesPage = () => {
                       required
                       data-testid="supervisor-password-confirm"
                     />
+                  </div>
+                </div>
+
+                {/* Pourcentage Commission Superviseur */}
+                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <Label className="text-amber-300 flex items-center gap-2 mb-2">
+                    <Percent className="w-4 h-4" />
+                    Pourcentage Commission Superviseur
+                  </Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="number"
+                      value={formData.supervisor_commission_percent}
+                      onChange={(e) => setFormData({...formData, supervisor_commission_percent: parseFloat(e.target.value) || 0})}
+                      className="w-24 bg-slate-800 border-slate-700 text-white"
+                      min="0"
+                      max="100"
+                      step="0.5"
+                      data-testid="supervisor-commission-percent"
+                    />
+                    <span className="text-amber-300">%</span>
+                    <span className="text-xs text-slate-400">
+                      Le superviseur reçoit ce pourcentage sur toutes les ventes de ses agents
+                    </span>
                   </div>
                 </div>
               </div>

@@ -25,14 +25,16 @@ const VendeurLayout = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
         setCompanyInfo({
-          companyName: res.data.company_name || 'Compagnie',
-          succursaleName: res.data.succursale_name || '',
-          vendeurName: res.data.name || user?.full_name || 'Vendeur'
+          companyName: res.data.company?.name || 'Compagnie',
+          companyLogo: res.data.company?.logo_url,
+          succursaleName: res.data.succursale?.name || '',
+          vendeurName: res.data.vendeur?.name || user?.full_name || 'Vendeur'
         });
       } catch (e) {
         // Fallback to user data
         setCompanyInfo({
           companyName: user?.company_name || 'Compagnie',
+          companyLogo: null,
           succursaleName: user?.succursale_name || '',
           vendeurName: user?.full_name || 'Vendeur'
         });
@@ -59,13 +61,22 @@ const VendeurLayout = () => {
 
   const displayName = companyInfo?.companyName || 'Compagnie';
   const succursaleName = companyInfo?.succursaleName;
+  const companyLogo = companyInfo?.companyLogo;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Mobile Header */}
       <div className="lg:hidden flex items-center justify-between p-4 bg-slate-800 border-b border-slate-700">
         <div className="flex items-center gap-3">
-          <Store className="w-8 h-8 text-emerald-400" />
+          {companyLogo ? (
+            <img 
+              src={`${API_URL}${companyLogo}`} 
+              alt="Logo" 
+              className="w-10 h-10 object-contain rounded-lg bg-slate-700 p-1"
+            />
+          ) : (
+            <Store className="w-8 h-8 text-emerald-400" />
+          )}
           <div>
             <span className="text-lg font-bold text-white block">{displayName}</span>
             {succursaleName && (
@@ -92,9 +103,17 @@ const VendeurLayout = () => {
           {/* Logo / Company Info */}
           <div className="hidden lg:block p-5 border-b border-slate-700">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-emerald-500/20 rounded-xl">
-                <Building2 className="w-8 h-8 text-emerald-400" />
-              </div>
+              {companyLogo ? (
+                <img 
+                  src={`${API_URL}${companyLogo}`} 
+                  alt="Logo" 
+                  className="w-12 h-12 object-contain rounded-xl bg-slate-700 p-1"
+                />
+              ) : (
+                <div className="p-2 bg-emerald-500/20 rounded-xl">
+                  <Building2 className="w-8 h-8 text-emerald-400" />
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <h1 className="text-lg font-bold text-white truncate">{displayName}</h1>
                 {succursaleName && (

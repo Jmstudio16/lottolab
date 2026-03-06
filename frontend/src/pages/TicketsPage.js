@@ -74,7 +74,20 @@ export const TicketsPage = () => {
       case 'LOSER': return 'bg-slate-950/50 text-slate-400 border-slate-800';
       case 'VOID': return 'bg-red-950/50 text-red-400 border-red-800';
       case 'PAID': return 'bg-purple-950/50 text-purple-400 border-purple-800';
+      case 'PENDING_RESULT': return 'bg-yellow-950/50 text-yellow-400 border-yellow-800';
       default: return 'bg-yellow-950/50 text-yellow-400 border-yellow-800';
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'ACTIVE': return 'Actif';
+      case 'WINNER': return 'Gagnant';
+      case 'LOSER': return 'Perdant';
+      case 'VOID': return 'Annulé';
+      case 'PAID': return 'Payé';
+      case 'PENDING_RESULT': return 'En attente';
+      default: return status;
     }
   };
 
@@ -171,19 +184,19 @@ export const TicketsPage = () => {
             <p className="text-2xl font-bold text-white">{tickets.length}</p>
           </div>
           <div className="bg-card border border-slate-700/50 rounded-xl p-4">
-            <p className="text-slate-400 text-sm">Total Sales</p>
+            <p className="text-slate-400 text-sm">Total Ventes</p>
             <p className="text-2xl font-bold text-emerald-400">
               {formatCurrency(tickets.reduce((sum, t) => sum + t.total_amount, 0), 'HTG')}
             </p>
           </div>
           <div className="bg-card border border-slate-700/50 rounded-xl p-4">
-            <p className="text-slate-400 text-sm">Active</p>
+            <p className="text-slate-400 text-sm">En attente</p>
             <p className="text-2xl font-bold text-blue-400">
-              {tickets.filter(t => t.status === 'ACTIVE').length}
+              {tickets.filter(t => t.status === 'ACTIVE' || t.status === 'PENDING_RESULT').length}
             </p>
           </div>
           <div className="bg-card border border-slate-700/50 rounded-xl p-4">
-            <p className="text-slate-400 text-sm">Winners</p>
+            <p className="text-slate-400 text-sm">Gagnants</p>
             <p className="text-2xl font-bold text-yellow-400">
               {tickets.filter(t => t.status === 'WINNER').length}
             </p>
@@ -253,21 +266,22 @@ export const TicketsPage = () => {
             <table className="w-full">
               <thead className="bg-slate-900/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Ticket Code</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Lottery</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Code Ticket</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Loterie</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Agent</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Created</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">% Agent</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Montant</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Statut</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase">Créé</th>
                   <th className="px-6 py-3 text-right text-xs font-bold text-slate-400 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
                 {tickets.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="px-6 py-12 text-center text-slate-400">
+                    <td colSpan="8" className="px-6 py-12 text-center text-slate-400">
                       <Ticket className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p>No tickets found</p>
+                      <p>Aucun ticket trouvé</p>
                     </td>
                   </tr>
                 ) : (
@@ -275,13 +289,16 @@ export const TicketsPage = () => {
                     <tr key={ticket.ticket_id} className="hover:bg-slate-800/30 transition-colors">
                       <td className="px-6 py-4 text-sm font-mono text-white">{ticket.ticket_code}</td>
                       <td className="px-6 py-4 text-sm text-slate-300">{ticket.lottery_name}</td>
-                      <td className="px-6 py-4 text-sm text-slate-400">{getAgentName(ticket.agent_id)}</td>
+                      <td className="px-6 py-4 text-sm text-slate-400">{ticket.agent_name || getAgentName(ticket.agent_id)}</td>
+                      <td className="px-6 py-4 text-sm text-amber-400 font-medium">
+                        {ticket.agent_commission_percent || 10}%
+                      </td>
                       <td className="px-6 py-4 text-sm text-emerald-400 font-medium">
                         {formatCurrency(ticket.total_amount, ticket.currency)}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase border ${getStatusColor(ticket.status)}`}>
-                          {ticket.status}
+                          {getStatusLabel(ticket.status)}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-400">
