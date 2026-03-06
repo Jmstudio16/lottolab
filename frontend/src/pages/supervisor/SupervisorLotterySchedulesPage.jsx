@@ -101,13 +101,13 @@ export const SupervisorLotterySchedulesPage = () => {
         <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 sm:p-4">
           <p className="text-xs sm:text-sm text-emerald-400">Actives</p>
           <p className="text-xl sm:text-2xl font-bold text-emerald-400">
-            {lotteries.filter(l => l.is_enabled && !l.disabled_by_super_admin).length}
+            {lotteries.filter(l => !!l.is_enabled && l.disabled_by_super_admin !== true).length}
           </p>
         </div>
         <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 sm:p-4 col-span-2 sm:col-span-1">
           <p className="text-xs sm:text-sm text-blue-400">Ouvertes Maintenant</p>
           <p className="text-xl sm:text-2xl font-bold text-blue-400">
-            {lotteries.filter(l => l.is_enabled && isCurrentlyOpen(l)).length}
+            {lotteries.filter(l => !!l.is_enabled && isCurrentlyOpen(l)).length}
           </p>
         </div>
       </div>
@@ -153,7 +153,8 @@ export const SupervisorLotterySchedulesPage = () => {
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {stateLotteries.map((lottery, idx) => {
                     const isOpen = isCurrentlyOpen(lottery);
-                    const isActive = lottery.is_enabled && !lottery.disabled_by_super_admin;
+                    // Check if lottery is active - accept any truthy value for is_enabled
+                    const isActive = !!lottery.is_enabled && lottery.disabled_by_super_admin !== true;
 
                     return (
                       <div

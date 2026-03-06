@@ -488,40 +488,87 @@ async def get_supervisor_results(
 
 @supervisor_router.get("/lottery-schedules")
 async def get_supervisor_lottery_schedules(current_user: dict = Depends(get_current_user)):
-    """Get lottery schedules/hours (read-only for supervisors)"""
+    """Get lottery schedules/hours (read-only for supervisors) - synced with vendeur lotteries"""
     current_user = require_supervisor(current_user)
     
     company_id = current_user.get("company_id")
+    succursale_id = current_user.get("succursale_id")
     
-    # Get company lotteries with their schedules
+    # Get company lotteries (same as vendeur uses)
     company_lotteries = await db.company_lotteries.find(
-        {"company_id": company_id, "is_enabled": True},
+        {"company_id": company_id, "$or": [{"is_enabled": True}, {"enabled": True}]},
         {"_id": 0}
-    ).to_list(100)
+    ).to_list(300)
     
-    # Enrich with master lottery data for schedules
+    lottery_ids = [cl.get("lottery_id") for cl in company_lotteries if cl.get("lottery_id")]
+    
+    # Get master lottery data for schedules
+    master_lotteries = {}
+    if lottery_ids:
+        master_list = await db.master_lotteries.find(
+            {"lottery_id": {"$in": lottery_ids}},
+            {"_id": 0}
+        ).to_list(300)
+        master_lotteries = {ml.get("lottery_id"): ml for ml in master_list}
+    
+    # Also check global_lotteries as fallback
+    global_lotteries = {}
+    if lottery_ids:
+        global_list = await db.global_lotteries.find(
+            {"lottery_id": {"$in": lottery_ids}},
+            {"_id": 0}
+        ).to_list(300)
+        global_lotteries = {gl.get("lottery_id"): gl for gl in global_list}
+    
+    # Enrich company lotteries with master data
     enriched_lotteries = []
     for lottery in company_lotteries:
-        master_lottery = await db.master_lotteries.find_one(
-            {"lottery_id": lottery.get("lottery_id")},
-            {"_id": 0}
+        lottery_id = lottery.get("lottery_id")
+        master = master_lotteries.get(lottery_id, {})
+        global_lot = global_lotteries.get(lottery_id, {})
+        
+        # Get name from various sources
+        lottery_name = (
+            lottery.get("lottery_name") or 
+            lottery.get("name") or 
+            master.get("name") or 
+            master.get("lottery_name") or
+            global_lot.get("name") or
+            global_lot.get("lottery_name") or
+            f"Loterie {lottery_id[-6:]}" if lottery_id else "Loterie Inconnue"
+        )
+        
+        # Get state code
+        state_code = (
+            lottery.get("state_code") or 
+            master.get("state_code") or 
+            global_lot.get("state_code") or 
+            "AUTRE"
         )
         
         # Get draws/schedules
-        draws = lottery.get("draws", [])
-        if not draws and master_lottery:
-            draws = master_lottery.get("draws", [])
+        draws = (
+            lottery.get("draws") or 
+            master.get("draws") or 
+            global_lot.get("draws") or 
+            []
+        )
+        
+        # Get times
+        open_time = lottery.get("open_time") or master.get("open_time") or global_lot.get("open_time") or "09:00"
+        close_time = lottery.get("close_time") or master.get("close_time") or global_lot.get("close_time") or "20:00"
+        draw_times = lottery.get("draw_times") or master.get("draw_times") or global_lot.get("draw_times") or []
         
         enriched_lotteries.append({
-            "lottery_id": lottery.get("lottery_id"),
-            "lottery_name": lottery.get("lottery_name") or (master_lottery.get("name") if master_lottery else ""),
-            "state_code": lottery.get("state_code") or (master_lottery.get("state_code") if master_lottery else ""),
-            "is_enabled": lottery.get("is_enabled", True),
-            "disabled_by_super_admin": lottery.get("disabled_by_super_admin", False),
+            "lottery_id": lottery_id,
+            "lottery_name": lottery_name,
+            "state_code": state_code,
+            "is_enabled": lottery.get("is_enabled", True) or lottery.get("enabled", True),
+            "disabled_by_super_admin": lottery.get("disabled_by_super_admin") == True,  # Explicitly check for True
             "draws": draws,
-            "open_time": lottery.get("open_time") or (master_lottery.get("open_time") if master_lottery else "09:00"),
-            "close_time": lottery.get("close_time") or (master_lottery.get("close_time") if master_lottery else "20:00"),
-            "draw_times": lottery.get("draw_times") or (master_lottery.get("draw_times") if master_lottery else [])
+            "open_time": open_time,
+            "close_time": close_time,
+            "draw_times": draw_times
         })
     
     return enriched_lotteries
