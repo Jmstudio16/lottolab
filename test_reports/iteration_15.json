@@ -1,0 +1,99 @@
+{
+  "summary": "Agent New Sale Page Testing - Iteration 15 Complete. Complete rebuild of 'Nouvelle Vente' page verified. All features work: stable lottery display (220 lotteries), Haiti timezone (UTC-5), lottery status badges, ticket creation with validation, success modal with QR code. 19 backend API tests + 37 frontend E2E tests all passed.",
+  "mode": "generate",
+  "baseline_commit": "1ef7c28175390bd82d67a75a88e11ce5c8052c89",
+  "head_commit": "d1dcc6f500916719a659f326775b2cf54d1462a7",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "regression_results": {
+    "total_specs": 3,
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "specs_created": [
+    "/app/tests/e2e/agent-new-sale.spec.ts"
+  ],
+  "specs_updated": [
+    "/app/tests/e2e/agent-features.spec.ts",
+    "/app/tests/fixtures/helpers.ts"
+  ],
+  "quarantined_tests": [],
+  "test_report_links": [
+    "/app/backend/tests/test_agent_new_sale.py",
+    "/app/test_reports/pytest/iteration15_results.xml"
+  ],
+  "action_items": [],
+  "updated_files": [
+    "/app/backend/tests/test_agent_new_sale.py",
+    "/app/tests/e2e/agent-new-sale.spec.ts",
+    "/app/tests/e2e/agent-features.spec.ts",
+    "/app/tests/fixtures/helpers.ts"
+  ],
+  "success_rate": {
+    "backend": "100% (19/19 passed)",
+    "frontend": "100% (37/37 tests passed across 2 spec files)"
+  },
+  "seed_data_creation": "Created test tickets via API during testing",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Agent New Sale page (AgentNewSalePage.jsx) completely rebuilt. Uses data-testid='agent-new-sale-page'. Login password is 'password' not 'Agent123!'. Lottery selection grid replaces dropdown design. Plays form only visible after selecting an open lottery. Haiti timezone (UTC-5) used for all lottery status calculations.",
+  "features_tested": {
+    "agent_login": {
+      "successful_login": "PASS - Agent logs in with email/password, redirects to /agent/pos",
+      "invalid_credentials": "PASS - Wrong password stays on login page",
+      "token_structure": "PASS - Returns token, agent_id, company_id, device_session_id"
+    },
+    "lottery_list_display": {
+      "stable_display": "PASS - 220 lotteries displayed and remain stable over time",
+      "no_syncing_message": "PASS - No 'Syncing...' text shown",
+      "haiti_timezone": "PASS - '(Haiti)' timezone indicator displayed",
+      "status_badges": "PASS - Fermé/Ouvert/Ferme dans badges shown correctly",
+      "refresh_stability": "PASS - List maintains on page refresh"
+    },
+    "lottery_selection": {
+      "open_lottery_selectable": "PASS - Clicking open lottery shows selection indicator",
+      "plays_form_appears": "PASS - Numbers and amount inputs appear after selection",
+      "closed_lottery_prevented": "PASS - Closed lotteries have opacity-60 and don't select",
+      "bet_type_options": "PASS - Borlette, Loto 3, Loto 4, Loto 5, Mariage available"
+    },
+    "form_validation": {
+      "valid_play_badge": "PASS - Shows 'Valide' badge for correct number length + amount",
+      "invalid_play_badge": "PASS - Shows 'Invalide' for wrong number length",
+      "potential_win_calculation": "PASS - Updates in real-time (100 HTG × 50 = 5,000 HTG)",
+      "add_remove_plays": "PASS - Can add multiple plays, remove individual plays"
+    },
+    "ticket_creation": {
+      "create_ticket_api": "PASS - POST /api/lottery/sell returns ticket with QR code",
+      "success_modal": "PASS - Shows ticket code, lottery, total, potential win",
+      "print_button": "PASS - Print button visible in success modal",
+      "new_ticket_button": "PASS - 'Nouveau' button resets form",
+      "min_bet_validation": "PASS - Backend rejects amounts below minimum"
+    },
+    "responsive_design": {
+      "mobile_viewport": "PASS - Page displays correctly at 375x667",
+      "lottery_cards_visible": "PASS - Cards visible on mobile"
+    }
+  },
+  "backend_endpoints_tested": [
+    "POST /api/auth/agent/login - Agent authentication",
+    "GET /api/device/config - Lottery data and configuration",
+    "GET /api/device/sync - Background sync endpoint",
+    "POST /api/lottery/sell - Ticket creation",
+    "GET /api/agent/tickets - Agent ticket history"
+  ],
+  "frontend_pages_tested": [
+    "Login Page - Agent credentials",
+    "Agent New Sale Page (rebuilt) - /agent/pos",
+    "Mes Tickets - /agent/my-tickets",
+    "Rechercher Fiches - /agent/search-tickets",
+    "Tirages Disponibles - /agent/available-draws"
+  ]
+}

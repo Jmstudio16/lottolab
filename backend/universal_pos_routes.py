@@ -349,19 +349,28 @@ async def sell_lottery_ticket(
     agent_id = current_agent.get("user_id")
     device_session = current_agent.get("device_session", {})
     
-    # Get lottery info
-    lottery = await db.global_lotteries.find_one(
-        {"lottery_id": sale_data.lottery_id, "is_active": True},
+    # Get lottery info - check master_lotteries first, then global_lotteries
+    lottery = await db.master_lotteries.find_one(
+        {"lottery_id": sale_data.lottery_id, "is_active_global": True},
         {"_id": 0}
     )
     if not lottery:
+        lottery = await db.global_lotteries.find_one(
+            {"lottery_id": sale_data.lottery_id, "is_active": True},
+            {"_id": 0}
+        )
+    if not lottery:
         raise HTTPException(status_code=404, detail="Loterie non trouvée ou inactive")
     
-    # Check if lottery is enabled for company
+    # Check if lottery is enabled for company (check all possible field names)
     company_lottery = await db.company_lotteries.find_one({
         "company_id": company_id,
         "lottery_id": sale_data.lottery_id,
-        "enabled": True
+        "$or": [
+            {"enabled": True},
+            {"is_enabled": True},
+            {"is_enabled_for_company": True}
+        ]
     })
     if not company_lottery:
         raise HTTPException(status_code=403, detail="Cette loterie n'est pas activée pour votre entreprise")
@@ -370,6 +379,9 @@ async def sell_lottery_ticket(
     config = await db.company_configurations.find_one({"company_id": company_id}, {"_id": 0})
     min_bet = config.get("min_bet_amount", 10) if config else 10
     max_bet = config.get("max_bet_amount", 10000) if config else 10000
+    
+    # Get company info for timezone
+    company_info = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
     
     # Validate plays
     total_amount = 0.0
@@ -405,9 +417,17 @@ async def sell_lottery_ticket(
         close_hour, close_minute = map(int, closing_time_str.split(":"))
         open_hour, open_minute = map(int, opening_time_str.split(":"))
         
-        now = datetime.now(timezone.utc)
+        # Get company timezone (default to Haiti)
+        company_tz_str = company_info.get("timezone", "America/Port-au-Prince") if company_info else "America/Port-au-Prince"
+        try:
+            import pytz
+            company_tz = pytz.timezone(company_tz_str)
+            now = datetime.now(company_tz)
+        except Exception:
+            # Fallback to Haiti time (UTC-5)
+            now = datetime.now(timezone.utc) - timedelta(hours=5)
         
-        # Create datetime objects for today
+        # Create datetime objects for today using local time
         close_datetime = now.replace(hour=close_hour, minute=close_minute, second=0, microsecond=0)
         open_datetime = now.replace(hour=open_hour, minute=open_minute, second=0, microsecond=0)
         
@@ -481,12 +501,25 @@ async def sell_lottery_ticket(
     potential_win = 0.0
     prime_map = {p["bet_type"]: p for p in prime_configs}
     
+    # Default payouts if no prime configs defined
+    DEFAULT_PAYOUTS = {
+        "BORLETTE": 50,
+        "LOTO3": 500,
+        "LOTO4": 5000,
+        "LOTO5": 50000,
+        "MARIAGE": 1000
+    }
+    
     for play in validated_plays:
         bet_type = play["bet_type"]
         if bet_type in prime_map:
             formula = prime_map[bet_type].get("payout_formula", "50")
             first_payout = float(formula.split("|")[0]) if "|" in formula else float(formula)
             potential_win += play["amount"] * first_payout
+        else:
+            # Use default payout
+            default_payout = DEFAULT_PAYOUTS.get(bet_type, 50)
+            potential_win += play["amount"] * default_payout
     
     # Generate ticket
     now = get_current_timestamp()

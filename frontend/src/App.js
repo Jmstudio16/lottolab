@@ -46,7 +46,8 @@ import { AgentLayout } from '@/layouts/AgentLayout';
 import { 
   AgentLoginPage,
   AgentDashboardPage, 
-  AgentNewTicketPage, 
+  AgentNewTicketPage,
+  AgentNewSalePage,
   AgentTicketsPage, 
   AgentResultsPage, 
   AgentReportsPage 
@@ -483,9 +484,9 @@ const SaaSApp = () => {
                   }
                 >
                   <Route path="dashboard" element={<AgentDashboardPage />} />
-                  <Route path="pos" element={<AgentNewTicketPage />} />
+                  <Route path="pos" element={<AgentNewSalePage />} />
                   <Route path="lottery-selection" element={<AgentLotterySelectionPage />} />
-                  <Route path="new-ticket" element={<AgentNewTicketPage />} />
+                  <Route path="new-ticket" element={<AgentNewSalePage />} />
                   <Route path="tickets" element={<AgentTicketsPage />} />
                   <Route path="my-tickets" element={<AgentTicketsPage />} />
                   <Route path="search-tickets" element={<AgentSearchTicketsPage />} />

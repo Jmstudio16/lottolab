@@ -1,6 +1,6 @@
 import { Page, expect } from '@playwright/test';
 
-const BASE_URL = 'https://lottery-sync-fix.preview.emergentagent.com';
+const BASE_URL = 'https://stable-lottery-sales.preview.emergentagent.com';
 
 export async function waitForAppReady(page: Page) {
   await page.waitForLoadState('domcontentloaded');
@@ -70,7 +70,7 @@ export async function apiLogin(email: string, password: string): Promise<string>
 export async function loginAsAgent(page: Page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.fill('input[placeholder*="email"]', 'agent.marie@lotopam.com');
-  await page.fill('input[type="password"]', 'Agent123!');
+  await page.fill('input[type="password"]', 'password');
   await page.click('button:has-text("SIGN IN")');
   // Agent redirects to /agent/dashboard after login
   await page.waitForURL('**/agent/**', { timeout: 15000 });

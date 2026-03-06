@@ -2,16 +2,16 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: '/app/tests/e2e',
-  outputDir: '/root/.emergent/automation_output/20260228_061441/test-results',
+  outputDir: '/root/.emergent/automation_output/20260306_001643/test-results',
   timeout: 60000,
   retries: 0,
   workers: 1,
   reporter: [
     ['line'],
-    ['json', { outputFile: '/root/.emergent/automation_output/20260228_061441/results.json' }],
+    ['json', { outputFile: '/root/.emergent/automation_output/20260306_001643/results.json' }],
   ],
   use: {
-    baseURL: 'https://lottery-sync-fix.preview.emergentagent.com',
+    baseURL: 'https://stable-lottery-sales.preview.emergentagent.com',
     screenshot: 'only-on-failure',
     trace: 'off',
     headless: true,
