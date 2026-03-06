@@ -171,11 +171,23 @@ export const AgentLayout = () => {
   const [syncData, setSyncData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const { token } = useAuth();
 
   // Load config on mount - fast and immediate
-  const loadConfig = useCallback(async () => {
-    if (!token) return;
+  const loadConfig = useCallback(async (forceRefresh = false) => {
+    if (!token) {
+      console.error('[AgentLayout] No token available');
+      setLoadError('No authentication token');
+      setIsLoading(false);
+      return;
+    }
+    
+    // Clear cache if forcing refresh
+    if (forceRefresh) {
+      localStorage.removeItem('agent_config_cache');
+      console.log('[AgentLayout] Cache cleared, forcing fresh load');
+    }
     
     try {
       console.log('[AgentLayout] Loading config...');
@@ -194,6 +206,7 @@ export const AgentLayout = () => {
         });
         setSyncData(data);
         setIsConnected(true);
+        setLoadError(null);
         
         // Store in localStorage for instant load next time
         localStorage.setItem('agent_config_cache', JSON.stringify({
@@ -201,22 +214,35 @@ export const AgentLayout = () => {
           timestamp: Date.now()
         }));
       } else {
-        console.error('[AgentLayout] Config load failed:', response.status);
+        const errorText = await response.text();
+        console.error('[AgentLayout] Config load failed:', response.status, errorText);
+        setLoadError(`API Error: ${response.status}`);
         // Clear bad cache
         localStorage.removeItem('agent_config_cache');
       }
     } catch (error) {
       console.error('[AgentLayout] Config load error:', error);
+      setLoadError(`Network Error: ${error.message}`);
       // Try to use cached data
       const cached = localStorage.getItem('agent_config_cache');
       if (cached) {
-        const { data } = JSON.parse(cached);
-        setSyncData(data);
+        try {
+          const { data } = JSON.parse(cached);
+          setSyncData(data);
+        } catch (e) {
+          console.error('[AgentLayout] Cache parse error:', e);
+        }
       }
     } finally {
       setIsLoading(false);
     }
   }, [token]);
+
+  // Expose refresh function globally for debugging
+  useEffect(() => {
+    window.forceRefreshAgentConfig = () => loadConfig(true);
+    return () => { delete window.forceRefreshAgentConfig; };
+  }, [loadConfig]);
 
   // Initial load with cache fallback
   useEffect(() => {

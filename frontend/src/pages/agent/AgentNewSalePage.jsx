@@ -599,14 +599,24 @@ export const AgentNewSalePage = () => {
         <Loader2 className="w-12 h-12 text-emerald-500 animate-spin mb-4" />
         <p className="text-slate-400">Chargement des données...</p>
         <p className="text-xs text-slate-500 mt-2">Si ce message persiste, rafraîchissez la page</p>
+        <Button
+          onClick={() => window.location.reload()}
+          variant="outline"
+          className="mt-4 border-slate-600 text-white"
+        >
+          Rafraîchir
+        </Button>
       </div>
     );
   }
   
-  // No lotteries available - with reload button
+  // No lotteries available - with detailed debug and reload button
   if (lotteries.length === 0) {
-    const handleReload = () => {
+    const handleForceReload = () => {
+      // Clear all caches
       localStorage.removeItem('agent_config_cache');
+      sessionStorage.clear();
+      // Force reload
       window.location.reload();
     };
     
@@ -616,15 +626,25 @@ export const AgentNewSalePage = () => {
           <AlertTriangle className="w-10 h-10 text-amber-500" />
         </div>
         <h2 className="text-xl font-bold text-white mb-2">Aucune loterie disponible</h2>
-        <p className="text-slate-400 max-w-md mb-6">
-          Les données ne sont pas encore chargées. Cliquez sur le bouton ci-dessous pour recharger.
+        <p className="text-slate-400 max-w-md mb-2">
+          Les données n'ont pas été chargées correctement.
         </p>
+        
+        {/* Debug info */}
+        <div className="bg-slate-800/50 rounded-lg p-4 mb-6 text-left max-w-md w-full">
+          <p className="text-xs text-slate-500 mb-2">Informations de débogage:</p>
+          <p className="text-xs text-slate-400">syncData: {syncData ? 'présent' : 'null'}</p>
+          <p className="text-xs text-slate-400">enabled_lotteries: {syncData?.enabled_lotteries?.length || 0}</p>
+          <p className="text-xs text-slate-400">schedules: {syncData?.schedules?.length || 0}</p>
+          <p className="text-xs text-slate-400">company: {syncData?.company?.name || 'N/A'}</p>
+        </div>
+        
         <Button
-          onClick={handleReload}
+          onClick={handleForceReload}
           className="bg-emerald-600 hover:bg-emerald-700"
         >
           <Loader2 className="w-4 h-4 mr-2" />
-          Recharger les données
+          Forcer le rechargement
         </Button>
         <p className="text-xs text-slate-500 mt-4">
           Si le problème persiste, déconnectez-vous et reconnectez-vous.
