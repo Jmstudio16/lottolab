@@ -45,7 +45,7 @@ export const SuperGlobalSchedulesPage = () => {
       setLoading(true);
       const [schedulesRes, lotteriesRes] = await Promise.all([
         axios.get(`${API_URL}/api/saas/global-schedules`, { headers }),
-        axios.get(`${API_URL}/api/saas/lottery-catalog`, { headers })
+        axios.get(`${API_URL}/api/saas/master-lotteries`, { headers })
       ]);
       setSchedules(schedulesRes.data);
       setLotteries(lotteriesRes.data);

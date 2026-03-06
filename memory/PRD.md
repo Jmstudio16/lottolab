@@ -1,96 +1,101 @@
-# LOTTOLAB SaaS Enterprise - Version 3.6.0
+# LOTTOLAB SaaS Enterprise - Version 3.7.0
 
-## Release: VENDEUR SYNCHRONIZATION & UI IMPROVEMENTS
+## Release: DATA SYNCHRONIZATION FIX & BRANCH MANAGEMENT
 Date: 2026-03-06
 
 ---
 
 ## ACCOMPLISSEMENTS DE CETTE SESSION
 
-### 1. Synchronisation Vendeur ↔ Company Admin
-- **Horaires d'ouverture/fermeture**: Les loteries affichent maintenant leur heure de fermeture ("Ferme à 12:15")
-- **Chronomètre temps réel**: Horloge visible en haut à droite (07:19:44)
-- **Séparation Ouvertes/Fermées**: Les loteries sont groupées en deux sections:
-  - ✅ **Loteries Ouvertes (166)** - Sélectionnables pour vendre
-  - ❌ **Non disponibles (54)** - "Ouvre dans 4h41"
-- **Blocage des ventes hors horaires**: Impossible de sélectionner une loterie fermée
+### 1. ✅ SYNCHRONISATION TICKETS VENDEUR → COMPANY ADMIN (P0 - CORRIGÉ)
+**Problème**: Les tickets vendus par les vendeurs n'apparaissaient pas pour le Company Admin.
+**Cause racine**: Le fichier `company_routes.py` interrogeait la collection `db.tickets` (vide) au lieu de `db.lottery_transactions` (où les vendeurs créent leurs tickets).
+**Solution**: 
+- `GET /api/company/tickets` - Corrigé pour interroger `lottery_transactions`
+- `GET /api/company/tickets/{ticket_id}` - Corrigé également
+**Résultat**: 14 tickets maintenant visibles pour le Company Admin avec statuts WINNER/LOSER/PENDING_RESULT
 
-### 2. Affichage Compagnie/Succursale
-- Le layout Vendeur affiche maintenant:
-  - **Nom de la compagnie** (ex: "Test Loto") au lieu de "LOTO PAM"
-  - **Nom de la succursale** (ex: "BJ Bureau")
-  - **"Espace Vendeur"** en sous-titre
+### 2. ✅ GESTION DES SUCCURSALES - MODIFIER/SUSPENDRE (P0 - IMPLÉMENTÉ)
+**Nouveaux endpoints backend**:
+- `PUT /api/company/succursales/{id}/suspend` - Suspend la succursale + superviseur + tous les agents
+- `PUT /api/company/succursales/{id}/activate` - Réactive la succursale et ses utilisateurs
+- `PUT /api/company/succursales/{id}` - Modification (existait déjà)
 
-### 3. Bouton Supprimer Super Admin - CORRIGÉ
-- Bug: `handleDelete(company.company_id, false)` passait 2 arguments
-- Fix: `handleDelete(company.company_id)` - 1 seul argument
-- Le soft-delete fonctionne maintenant correctement
+**Frontend** (`CompanySuccursalesPage.jsx`):
+- Bouton **Modifier** (jaune) - Ouvre modal d'édition
+- Bouton **Suspendre** (orange) - Suspend toute la succursale
+- Bouton **Réactiver** (vert) - Réactive une succursale suspendue
 
-### 4. Menu "Loterie par agent" supprimé
-- Retiré du sidebar Company Admin comme demandé
-- La gestion des loteries se fait maintenant via Succursales > Paramètres
+**Vérification cascade**: Un vendeur d'une succursale suspendue reçoit "Votre succursale est suspendue. Contactez l'administrateur."
 
-### 5. API Profile Vendeur améliorée
-- Récupération correcte du nom de succursale (champs `nom_succursale`, `name`, `nom_bank`)
+### 3. ✅ PAGE GLOBAL SCHEDULES SUPER ADMIN (P1 - CORRIGÉ)
+**Problème**: Erreur de chargement sur `/super/global-schedules`
+**Cause**: Frontend appelait `/api/super/global-schedules` mais l'endpoint existe à `/api/saas/global-schedules`
+**Solution**: 
+- Corrigé toutes les URL dans `SuperGlobalSchedulesPage.js`:
+  - `/api/saas/global-schedules` (GET, POST, PUT, DELETE)
+  - `/api/saas/master-lotteries` (pour le dropdown loteries)
 
----
-
-## SYNCHRONISATION DES DONNÉES
-
-### Hiérarchie des permissions
-```
-Super Admin 
-    └─→ master_lotteries (220 loteries)
-    └─→ global_schedules (338 horaires)
-         │
-         ▼
-Company Admin 
-    └─→ company_lotteries (activation par compagnie)
-         │
-         ▼
-Company Admin (via Succursales)
-    └─→ branch_lotteries (activation par succursale)
-         │
-         ▼
-Vendeur
-    └─→ Voit UNIQUEMENT les loteries activées:
-        - company_lotteries.is_enabled = true
-        - branch_lotteries.enabled ≠ false
-        - Pendant les heures d'ouverture
-```
-
-### Tickets synchronisés
-- Un ticket créé par un Vendeur apparaît chez son Company Admin
-- Le ticket contient: `company_id`, `agent_id`, `succursale_id`
-- Visible dans: Dashboard > Recent Tickets, page Tickets
+### 4. ✅ VÉRIFICATION DÉSACTIVATION LOTERIE SUPER ADMIN
+- Le code vendeur vérifie maintenant `is_active_global` avant de permettre une vente
+- Message: "Cette loterie est désactivée par l'administrateur système"
 
 ---
 
-## TESTS EFFECTUÉS
+## TESTS EFFECTUÉS (Iteration 18)
 
-| Test | Résultat |
-|------|----------|
-| Login Vendeur | ✅ PASS |
-| Dashboard avec nom compagnie/succursale | ✅ PASS |
-| Chronomètre temps réel | ✅ PASS |
-| Séparation loteries ouvertes/fermées | ✅ PASS |
-| Blocage vente hors horaires | ✅ PASS |
-| Création ticket | ✅ PASS |
-| Bouton Supprimer Super Admin | ✅ CORRIGÉ |
-| Menu "Loterie par agent" supprimé | ✅ PASS |
+| Test | Endpoint/Page | Résultat |
+|------|---------------|----------|
+| Tickets sync | GET /api/company/tickets | ✅ PASS - 14 tickets |
+| Edit succursale | PUT /api/company/succursales/{id} | ✅ PASS |
+| Suspend succursale | PUT /api/company/succursales/{id}/suspend | ✅ PASS |
+| Activate succursale | PUT /api/company/succursales/{id}/activate | ✅ PASS |
+| Global Schedules | GET /api/saas/global-schedules | ✅ PASS - 338 schedules |
+| Master Lotteries | GET /api/saas/master-lotteries | ✅ PASS - 220 loteries |
+| UI Succursales | /company/succursales | ✅ PASS |
+| UI Tickets | /company/tickets | ✅ PASS |
+
+Backend: **100% (11/11 passed)**
+Frontend: **100% (10/10 passed)**
 
 ---
 
 ## FICHIERS MODIFIÉS
 
 ### Backend
-- `/app/backend/vendeur/vendeur_routes.py` - Amélioration API profile
+- `/app/backend/company_routes.py` - Fix sync tickets (lottery_transactions)
+- `/app/backend/succursale_routes.py` - Ajout suspend/activate endpoints
+- `/app/backend/vendeur/vendeur_routes.py` - Vérification succursale/company suspended + is_active_global
 
 ### Frontend
-- `/app/frontend/src/layouts/VendeurLayout.jsx` - Affichage compagnie/succursale
-- `/app/frontend/src/pages/vendeur/VendeurNouvelleVente.jsx` - Chronomètre et filtrage horaires
-- `/app/frontend/src/pages/SuperCompaniesPage.js` - Fix bouton supprimer
-- `/app/frontend/src/components/Sidebar.js` - Suppression menu "Loteries pour Agents"
+- `/app/frontend/src/pages/CompanySuccursalesPage.jsx` - Boutons Modifier/Suspendre/Réactiver
+- `/app/frontend/src/pages/SuperGlobalSchedulesPage.js` - Fix endpoint URLs
+
+---
+
+## SYNCHRONISATION DES DONNÉES
+
+### Hiérarchie des permissions (mise à jour)
+```
+Super Admin 
+    └─→ master_lotteries (is_active_global)
+    └─→ global_schedules
+         │ Désactive loterie → cascade vers toutes les compagnies
+         ▼
+Company Admin 
+    └─→ company_lotteries (is_enabled)
+    └─→ lottery_transactions (ventes de TOUS les vendeurs de la compagnie) ✅ CORRIGÉ
+         │
+         ▼
+Branch/Succursale
+    └─→ branch_lotteries
+    └─→ status: ACTIVE | SUSPENDED ✅ NOUVEAU
+         │
+         ▼
+Vendeur
+    └─→ Bloqué si: company.status=SUSPENDED OU succursale.status=SUSPENDED
+    └─→ Ventes enregistrées dans lottery_transactions avec company_id
+```
 
 ---
 
@@ -100,39 +105,50 @@ Vendeur
 |------|-------|----------|---------|
 | Super Admin | jefferson@jmstudio.com | JMStudio@2026! | - |
 | Company Admin | admin@lotopam.com | Admin123! | LotoPam Center |
-| Vendeur | jean@gmail.com | Jeff.1995 | Test Loto |
+| Supervisor | supervisor@lotopam.com | password | LotoPam Center |
+| Vendeur (test) | marie@test.com | Test123! | LotoPam Center |
 
 ---
 
-## ISSUES EN ATTENTE
+## TÂCHES RESTANTES
 
-### P1 - En attente
-1. **Page "Horaires Globaux" Super Admin** - Erreur de chargement possible
-2. **Finaliser boutons action Superviseur** - Vérification nécessaire
+### P0 (Priorité haute)
+- [x] ~~Synchronisation tickets Vendeur → Company Admin~~
+- [x] ~~Gestion succursales (Modifier/Suspendre)~~
+- [ ] Impression ticket thermique 80mm avec logo
+- [ ] Compteurs motivationnels "Ferme dans..."
 
-### P2 - Backlog
-- Mode hors-ligne pour vendeurs
-- Impression tickets 80mm thermique (intégration native)
-- Notifications temps réel (WebSocket)
-- Passe responsive UI complète
+### P1 (Priorité moyenne)  
+- [x] ~~Page Global Schedules Super Admin~~
+- [ ] Logo entreprise dans VendeurLayout
+- [ ] Notifications temps réel Vendeur
 
----
-
-## PROCHAINES TÂCHES SUGGÉRÉES
-
-1. **Tester et corriger la page "Horaires Globaux"** Super Admin
-2. **Améliorer la synchronisation temps réel** avec WebSockets pour les résultats
-3. **Ajouter le mode hors-ligne** pour les vendeurs (localStorage + sync)
-4. **Intégrer l'impression thermique 80mm** native
+### P2 (Backlog)
+- [ ] Responsive UI pass complet
+- [ ] Centralisation API calls
+- [ ] Refactoring winning_numbers formatter
+- [ ] i18n translations complètes
 
 ---
 
-## NOTE IMPORTANTE
+## ARCHITECTURE
 
-La synchronisation entre Vendeur et Company Admin est maintenant **FONCTIONNELLE**:
-- ✅ Les loteries respectent les horaires d'ouverture/fermeture
-- ✅ Le vendeur ne peut pas vendre une loterie fermée ou désactivée
-- ✅ Le nom de la compagnie et succursale s'affiche correctement
-- ✅ Les tickets créés sont liés à la bonne compagnie via `company_id`
+```
+/app
+├── backend/
+│   ├── company_routes.py       # FIX: lottery_transactions
+│   ├── succursale_routes.py    # NEW: suspend/activate
+│   ├── vendeur/
+│   │   └── vendeur_routes.py   # FIX: suspended checks
+│   └── saas_core.py            # global-schedules
+└── frontend/
+    └── src/
+        ├── pages/
+        │   ├── CompanySuccursalesPage.jsx  # NEW: Edit/Suspend buttons
+        │   └── SuperGlobalSchedulesPage.js  # FIX: API endpoints
+        └── ...
+```
 
-**Remarque**: Le vendeur `jean@gmail.com` appartient à la compagnie "Test Loto" tandis que `admin@lotopam.com` appartient à "LotoPam Center". Ils ne verront pas les mêmes tickets car ils sont dans des compagnies différentes.
+---
+
+*Document mis à jour le 2026-03-06*
