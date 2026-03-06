@@ -3,12 +3,14 @@ LOTTOLAB SaaS Enterprise Core System
 Multi-tenant isolation, centralized lottery catalog, global schedules
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel, EmailStr
 import asyncio
+import shutil
+import os
 
 from models import UserRole
 from auth import decode_token, get_password_hash
@@ -19,6 +21,10 @@ saas_core_router = APIRouter(prefix="/api/saas", tags=["SaaS Core"])
 security = HTTPBearer()
 
 db = None
+COMPANY_LOGO_DIR = "/app/backend/uploads/company-logos"
+
+# Ensure upload directory exists
+os.makedirs(COMPANY_LOGO_DIR, exist_ok=True)
 
 def set_saas_core_db(database):
     global db
@@ -882,6 +888,62 @@ async def create_company_full(
         "admin_email": data.contact_email,
         "lotteries_enabled": len(active_lotteries)
     }
+
+
+@saas_core_router.post("/companies/{company_id}/logo")
+async def upload_company_logo_superadmin(
+    company_id: str,
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(require_super_admin)
+):
+    """
+    Upload company logo - Super Admin only
+    Used during company creation or to update logo
+    """
+    # Verify company exists
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Entreprise non trouvée")
+    
+    # Validate file type
+    allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Type de fichier non supporté. Utilisez PNG, JPG ou WEBP")
+    
+    # Validate file size (5MB max)
+    contents = await file.read()
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Le fichier ne doit pas dépasser 5MB")
+    
+    # Generate unique filename
+    ext = file.filename.split(".")[-1] if "." in file.filename else "png"
+    filename = f"company-{company_id}-logo.{ext}"
+    filepath = os.path.join(COMPANY_LOGO_DIR, filename)
+    
+    # Save file
+    with open(filepath, "wb") as buffer:
+        buffer.write(contents)
+    
+    # Update company with logo URL
+    logo_url = f"/uploads/company-logos/{filename}"
+    await db.companies.update_one(
+        {"company_id": company_id},
+        {"$set": {"company_logo_url": logo_url, "updated_at": get_current_timestamp()}}
+    )
+    
+    await log_activity(
+        db=db,
+        action_type="COMPANY_LOGO_UPLOADED",
+        entity_type="company",
+        entity_id=company_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={"filename": filename, "logo_url": logo_url},
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {"message": "Logo téléchargé avec succès", "logo_url": logo_url}
 
 
 # ============================================================================

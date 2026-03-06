@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { AdminLayout } from '@/components/AdminLayout';
 import axios from 'axios';
 import { useAuth } from '@/api/auth';
@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { 
   Plus, Building2, Edit, Trash2, Users, DollarSign,
   Clock, CheckCircle, XCircle, AlertTriangle, RefreshCw,
-  Power, Calendar, Shield, Eye, Store, Ban, Play
+  Power, Calendar, Shield, Eye, Store, Ban, Play, Upload, Image
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -34,10 +34,14 @@ export const SuperCompaniesPage = () => {
     plan_id: 'Professional',
     timezone: 'America/Port-au-Prince',
     currency: 'HTG',
-    default_commission_rate: 10.0,
     max_agents: 50,
     max_daily_sales: 1000000.0
   });
+
+  // Logo upload state
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const logoInputRef = useRef(null);
 
   const [editData, setEditData] = useState({
     company_name: '',
@@ -46,7 +50,6 @@ export const SuperCompaniesPage = () => {
     plan: '',
     timezone: '',
     currency: '',
-    default_commission_rate: 0,
     subscription_end_date: '',
     status: ''
   });
@@ -90,6 +93,23 @@ export const SuperCompaniesPage = () => {
     try {
       setCreating(true);
       const response = await axios.post(`${API_URL}/api/saas/companies/full-create`, formData, { headers });
+      const newCompanyId = response.data.company_id;
+      
+      // Upload logo if selected
+      if (logoFile && newCompanyId) {
+        try {
+          const logoFormData = new FormData();
+          logoFormData.append('file', logoFile);
+          logoFormData.append('company_id', newCompanyId);
+          await axios.post(`${API_URL}/api/saas/companies/${newCompanyId}/logo`, logoFormData, {
+            headers: { ...headers, 'Content-Type': 'multipart/form-data' }
+          });
+        } catch (logoError) {
+          console.error('Logo upload failed:', logoError);
+          toast.warning('Entreprise créée mais le logo n\'a pas pu être téléchargé');
+        }
+      }
+      
       toast.success(`Entreprise créée! Admin: ${response.data.admin_email}`);
       setShowCreateModal(false);
       resetForm();
@@ -98,6 +118,30 @@ export const SuperCompaniesPage = () => {
       toast.error(error.response?.data?.detail || 'Erreur lors de la création');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleLogoSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Veuillez sélectionner une image (PNG, JPG, WEBP)');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('L\'image ne doit pas dépasser 5MB');
+        return;
+      }
+      setLogoFile(file);
+      setLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const clearLogo = () => {
+    setLogoFile(null);
+    setLogoPreview(null);
+    if (logoInputRef.current) {
+      logoInputRef.current.value = '';
     }
   };
 
@@ -118,7 +162,6 @@ export const SuperCompaniesPage = () => {
       plan: company.plan || 'Basic',
       timezone: company.timezone || 'America/Port-au-Prince',
       currency: company.currency || 'HTG',
-      default_commission_rate: company.default_commission_rate || 10,
       subscription_end_date: subscriptionEnd,
       status: company.status || 'ACTIVE'
     });
@@ -196,10 +239,11 @@ export const SuperCompaniesPage = () => {
       plan_id: 'Professional',
       timezone: 'America/Port-au-Prince',
       currency: 'HTG',
-      default_commission_rate: 10.0,
       max_agents: 50,
       max_daily_sales: 1000000.0
     });
+    // Reset logo
+    clearLogo();
   };
 
   const getStatusBadge = (status) => {
@@ -494,31 +538,65 @@ export const SuperCompaniesPage = () => {
 
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-emerald-400 uppercase">Plan & Configuration</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-slate-300">Plan</Label>
-                    <select
-                      value={formData.plan_id}
-                      onChange={(e) => setFormData({...formData, plan_id: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                <div>
+                  <Label className="text-slate-300">Plan</Label>
+                  <select
+                    value={formData.plan_id}
+                    onChange={(e) => setFormData({...formData, plan_id: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                  >
+                    <option value="Starter">Starter</option>
+                    <option value="Basic">Basic</option>
+                    <option value="Professional">Professional</option>
+                    <option value="Enterprise">Enterprise</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Logo Upload Section */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-yellow-400 uppercase flex items-center gap-2">
+                  <Image className="w-4 h-4" />
+                  Logo de l'Entreprise
+                </h3>
+                <div className="border-2 border-dashed border-slate-700 rounded-lg p-4">
+                  {logoPreview ? (
+                    <div className="flex items-center gap-4">
+                      <img 
+                        src={logoPreview} 
+                        alt="Logo preview" 
+                        className="w-20 h-20 object-contain bg-slate-800 rounded-lg p-2"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm text-slate-300 truncate">{logoFile?.name}</p>
+                        <p className="text-xs text-slate-500">{(logoFile?.size / 1024).toFixed(1)} KB</p>
+                        <button
+                          type="button"
+                          onClick={clearLogo}
+                          className="mt-2 text-xs text-red-400 hover:text-red-300"
+                        >
+                          Supprimer le logo
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div 
+                      className="text-center cursor-pointer py-4"
+                      onClick={() => logoInputRef.current?.click()}
                     >
-                      <option value="Starter">Starter</option>
-                      <option value="Basic">Basic</option>
-                      <option value="Professional">Professional</option>
-                      <option value="Enterprise">Enterprise</option>
-                    </select>
-                  </div>
-                  <div>
-                    <Label className="text-slate-300">Commission %</Label>
-                    <Input
-                      type="number"
-                      value={formData.default_commission_rate}
-                      onChange={(e) => setFormData({...formData, default_commission_rate: parseFloat(e.target.value) || 0})}
-                      className="bg-slate-800 border-slate-700 text-white"
-                      min="0"
-                      max="100"
-                    />
-                  </div>
+                      <Upload className="w-8 h-8 mx-auto text-slate-500 mb-2" />
+                      <p className="text-sm text-slate-400">Cliquez pour télécharger</p>
+                      <p className="text-xs text-slate-500 mt-1">PNG, JPG, WEBP (max 5MB)</p>
+                    </div>
+                  )}
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                    onChange={handleLogoSelect}
+                    className="hidden"
+                    data-testid="company-logo-input"
+                  />
                 </div>
               </div>
 
