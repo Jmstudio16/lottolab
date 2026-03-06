@@ -1,13 +1,42 @@
-# LOTTOLAB SaaS Enterprise - Version 4.2.0
+# LOTTOLAB SaaS Enterprise - Version 4.3.0
 
-## Release: COMMISSION SYNC + RESPONSIVE DESIGN
+## Release: SUPERVISOR RESULTS & SCHEDULES PAGES
 Date: 2026-03-06
 
 ---
 
 ## ACCOMPLISSEMENTS DE CETTE SESSION
 
-### Bug Fix: Synchronisation des Commissions (P0)
+### Nouvelles Pages Superviseur (P0)
+
+#### 1. Page Résultats des Tirages (`/supervisor/results`)
+- **Lecture seule** - Le superviseur peut seulement voir les résultats
+- Affichage des numéros gagnants par date
+- Groupés par jour avec nombre de résultats
+- Recherche par nom de loterie
+- Bannière d'information "Seul le Super Admin peut modifier"
+
+#### 2. Page Horaires des Loteries (`/supervisor/lottery-schedules`)
+- **Lecture seule** - Le superviseur peut seulement voir les horaires
+- Statistiques: Total loteries, Actives, Ouvertes maintenant
+- Groupées par état (DR, FL, NY, etc.)
+- Affichage: Heures d'ouverture/fermeture, statut (Ouvert/Fermé)
+- Indicateur visuel vert = Ouvert, gris = Fermé, rouge = Désactivé
+- Recherche par nom de loterie
+
+#### Nouveaux Endpoints Backend
+- `GET /api/supervisor/results` - Résultats des tirages (lecture seule)
+- `GET /api/supervisor/lottery-schedules` - Horaires des loteries actives
+
+#### Menu Superviseur Mis à Jour
+- Tableau de bord
+- Mes Agents
+- Tickets
+- Rapports
+- **Résultats** (NOUVEAU)
+- **Horaires Loteries** (NOUVEAU)
+
+### Bug Fix: Commissions Synchronisées
 
 #### Problème Résolu
 Les commissions définies lors de la création (ex: 13%) n'étaient pas synchronisées - affichaient toujours 10% par défaut.
