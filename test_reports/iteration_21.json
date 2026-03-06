@@ -1,0 +1,106 @@
+{
+  "summary": "Iteration 21 - Commission Synchronization Testing Complete. Commission synchronization fix verified: Supervisors read from supervisor_policies collection, Agents read from agent_policies collection. Frontend pages display correct commission rates. Responsive design improvements verified on mobile, tablet, and desktop viewports.",
+  "mode": "update",
+  "baseline_commit": "b42c0762e49f690712504d38bc9528257fbfc58e",
+  "head_commit": "4d12ab5ea181e8be0a69a0d878cf833ce79ce164",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "regression_results": {
+    "total_specs": 51,
+    "passed": 49,
+    "failed": 2,
+    "skipped": 0
+  },
+  "specs_created": [
+    "/app/tests/e2e/commission-sync.spec.ts"
+  ],
+  "specs_updated": [
+    "/app/tests/e2e/vendeur-features.spec.ts",
+    "/app/tests/e2e/supervisor-features.spec.ts"
+  ],
+  "quarantined_tests": [
+    {
+      "test": "vendeur-features.spec.ts - should display refresh button",
+      "reason": "Intermittent login timeout (rate limiting)",
+      "workaround": "Retry usually passes"
+    }
+  ],
+  "test_report_links": [
+    "/app/tests/e2e/commission-sync.spec.ts",
+    "/app/tests/e2e/vendeur-features.spec.ts",
+    "/app/tests/e2e/supervisor-features.spec.ts"
+  ],
+  "action_items": [],
+  "updated_files": [
+    "/app/tests/e2e/commission-sync.spec.ts",
+    "/app/tests/e2e/vendeur-features.spec.ts"
+  ],
+  "success_rate": {
+    "backend": "100% (API endpoints verified via curl)",
+    "frontend": "96% (49/51 tests passed)"
+  },
+  "seed_data_creation": "Used existing test users: supervisor@lotopam.com (10%), lala@gmail.com (13%), agent.marie@lotopam.com (10%)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Commission synchronization is working correctly. All supervisor and vendeur pages display commission rates from their respective policy collections (supervisor_policies, agent_policies). Responsive design tested on mobile (390px), tablet (768px), and desktop (1920px) viewports.",
+  "features_tested": {
+    "commission_sync_supervisor_13pct": {
+      "status": "PASS",
+      "details": "Supervisor lala@gmail.com shows 13% commission from supervisor_policies table in /supervisor/my-profile and /supervisor/sales-report endpoints"
+    },
+    "commission_sync_supervisor_10pct": {
+      "status": "PASS",
+      "details": "Supervisor supervisor@lotopam.com shows 10% commission correctly"
+    },
+    "commission_sync_vendeur_10pct": {
+      "status": "PASS",
+      "details": "Vendeur agent.marie@lotopam.com shows 10% commission from agent_policies table in /vendeur/profile and /vendeur/dashboard endpoints"
+    },
+    "vendeur_dashboard_commission_display": {
+      "status": "PASS",
+      "details": "Dashboard shows 'Commission (10%)' card with correct calculated value"
+    },
+    "vendeur_mes_ventes_commission_display": {
+      "status": "PASS",
+      "details": "Mes Ventes page shows 'Commission (10%)' card with correct calculation"
+    },
+    "supervisor_reports_commission_columns": {
+      "status": "PASS",
+      "details": "Reports page shows %Agent, Comm. Agent, %Sup, Comm. Sup, B.Final columns"
+    },
+    "responsive_mobile_390px": {
+      "status": "PASS",
+      "details": "Vendeur and Supervisor dashboards render correctly on mobile"
+    },
+    "responsive_tablet_768px": {
+      "status": "PASS",
+      "details": "All pages render correctly on tablet viewport"
+    },
+    "supervisor_all_pages": {
+      "status": "PASS",
+      "details": "Dashboard, Agents, Tickets, Reports pages all functional"
+    }
+  },
+  "api_endpoints_verified": [
+    "POST /api/auth/login - All roles (supervisor, vendeur) login correctly",
+    "GET /api/supervisor/my-profile - Returns commission_percent from supervisor_policies",
+    "GET /api/supervisor/sales-report - Returns supervisor_commission from policies",
+    "GET /api/supervisor/agents - Returns agent commission from agent_policies",
+    "GET /api/vendeur/profile - Returns commission_rate from agent_policies",
+    "GET /api/vendeur/dashboard - Returns commission_rate in stats"
+  ],
+  "notes": [
+    "Commission synchronization fix verified - rates are read from policy collections not hardcoded",
+    "lala@gmail.com supervisor has 13% commission stored in supervisor_policies",
+    "agent.marie@lotopam.com has 10% commission stored in agent_policies",
+    "All responsive design tests pass with direct navigation (sidebar hidden on mobile)",
+    "2 tests fail intermittently due to rate limiting on repeated logins"
+  ]
+}

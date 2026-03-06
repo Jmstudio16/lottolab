@@ -2,9 +2,9 @@ import { test, expect, Page } from '@playwright/test';
 
 const BASE_URL = process.env.REACT_APP_BACKEND_URL || 'https://vendeur-dashboard.preview.emergentagent.com';
 
-// Vendeur credentials
-const VENDEUR_EMAIL = 'jean@gmail.com';
-const VENDEUR_PASSWORD = 'Jeff.1995';
+// Vendeur credentials - use agent.marie@lotopam.com
+const VENDEUR_EMAIL = 'agent.marie@lotopam.com';
+const VENDEUR_PASSWORD = 'Agent123!';
 
 // Helper to login as vendeur
 async function loginAsVendeur(page: Page) {
@@ -12,8 +12,8 @@ async function loginAsVendeur(page: Page) {
   await page.fill('input[placeholder*="email"]', VENDEUR_EMAIL);
   await page.fill('input[type="password"]', VENDEUR_PASSWORD);
   await page.click('button:has-text("SIGN IN")');
-  // Wait for dashboard with longer timeout and use contains pattern
-  await expect(page).toHaveURL(/\/vendeur\//, { timeout: 20000 });
+  // Wait for vendeur dashboard (agent goes through /agent/pos then redirects to /vendeur/dashboard)
+  await page.waitForURL('**/vendeur/**', { timeout: 25000 });
 }
 
 // Helper to remove Emergent badge overlay
@@ -39,10 +39,10 @@ test.describe('Vendeur Login and Authentication', () => {
     await page.click('button:has-text("SIGN IN")');
     
     // Wait for redirect to vendeur area (can be dashboard or other page)
-    await expect(page).toHaveURL(/\/vendeur\//, { timeout: 20000 });
+    await page.waitForURL('**/vendeur/**', { timeout: 25000 });
     
-    // Verify vendeur layout is visible - use first() for strict mode
-    await expect(page.locator('text=LOTO PAM').first()).toBeVisible();
+    // Verify vendeur dashboard is visible by checking for the dashboard content
+    await expect(page.getByTestId('vendeur-dashboard')).toBeVisible({ timeout: 10000 });
   });
 
   test('should show vendeur dashboard with stats cards', async ({ page }) => {
@@ -55,10 +55,10 @@ test.describe('Vendeur Login and Authentication', () => {
     // Verify dashboard header using more specific selector
     await expect(page.getByRole('heading', { name: 'Tableau de Bord' })).toBeVisible();
     
-    // Verify stats cards
+    // Verify stats cards (Commission now shows "Commission (X%)" format)
     await expect(page.locator('text=Ventes Jour')).toBeVisible();
     await expect(page.locator('text=Ventes Mois')).toBeVisible();
-    await expect(page.locator('text=Commissions')).toBeVisible();
+    await expect(page.locator('text=/Commission \\(\\d+%\\)/')).toBeVisible();
     await expect(page.locator('text=Tickets Jour')).toBeVisible();
   });
 
@@ -122,13 +122,13 @@ test.describe('Vendeur Nouvelle Vente (New Sale)', () => {
   });
 
   test('should display lottery selection header', async ({ page }) => {
-    // Verify lottery section
-    await expect(page.locator('text=Loteries Disponibles')).toBeVisible();
+    // Verify lottery section (now shows "Loteries Ouvertes")
+    await expect(page.locator('text=/Loteries Ouvertes/')).toBeVisible();
   });
 
-  test('should display 220 lotteries count', async ({ page }) => {
-    // Verify 220 lotteries
-    await expect(page.locator('text=Loteries Disponibles (220)')).toBeVisible({ timeout: 15000 });
+  test('should display open lotteries count', async ({ page }) => {
+    // Verify lotteries count (number varies)
+    await expect(page.locator('text=/Loteries Ouvertes \\(\\d+\\)/')).toBeVisible({ timeout: 15000 });
   });
 
   test('should display category filter buttons', async ({ page }) => {
@@ -144,7 +144,7 @@ test.describe('Vendeur Nouvelle Vente (New Sale)', () => {
 
   test('should show prompt to select lottery when none selected', async ({ page }) => {
     // Check for the prompt message in the right panel
-    await expect(page.getByText('Sélectionnez une loterie pour commencer')).toBeVisible();
+    await expect(page.getByText('Sélectionnez une loterie ouverte pour commencer')).toBeVisible();
   });
 });
 
