@@ -21,7 +21,6 @@ import { SuperGlobalSchedulesPage } from '@/pages/SuperGlobalSchedulesPage';
 import { SuperGlobalResultsPage } from '@/pages/SuperGlobalResultsPage';
 import { SuperResultManagementPage } from '@/pages/SuperResultManagementPage';
 import { SuperCreateCompanyPage } from '@/pages/SuperCreateCompanyPage';
-import { AgentResultsViewPage } from '@/pages/agent/AgentResultsViewPage';
 
 // Company Admin Pages
 import { CompanyDashboardPage } from '@/pages/CompanyDashboardPage';
@@ -41,21 +40,6 @@ import { CompanyDailyReportsPage } from '@/pages/CompanyDailyReportsPage';
 import CompanyProfileSettingsPage from '@/pages/company/CompanySettingsPage';
 import { CompanyWinningTicketsPage } from '@/pages/CompanyWinningTicketsPage';
 import { BranchLotteriesPage } from '@/pages/BranchLotteriesPage';
-
-// Agent Universal Terminal Pages
-import { AgentLayout } from '@/layouts/AgentLayout';
-import { 
-  AgentLoginPage,
-  AgentDashboardPage, 
-  AgentNewTicketPage,
-  AgentNewSalePage,
-  AgentTicketsPage, 
-  AgentResultsPage, 
-  AgentReportsPage 
-} from '@/pages/agent';
-import { AgentLotterySelectionPage } from '@/pages/agent/AgentLotterySelectionPage';
-import { AgentSearchTicketsPage } from '@/pages/agent/AgentSearchTicketsPage';
-import { AgentAvailableDrawsPage } from '@/pages/agent/AgentAvailableDrawsPage';
 
 // Supervisor Pages
 import { SupervisorLayout } from '@/layouts/SupervisorLayout';
@@ -101,7 +85,6 @@ const RoleBasedRedirect = () => {
     SUPER_ADMIN: '/super/dashboard',
     COMPANY_ADMIN: '/company/dashboard',
     COMPANY_MANAGER: '/company/dashboard',
-    AGENT_POS: '/agent/dashboard',
     AUDITOR_READONLY: '/company/dashboard'
   };
 
@@ -179,7 +162,6 @@ const SaaSApp = () => {
               <Routes>
                 {/* Public Routes */}
                 <Route path="/login" element={<LoginPage />} />
-                <Route path="/agent/login" element={<AgentLoginPage />} />
                 
                 {/* Root redirect */}
                 <Route path="/" element={<RoleBasedRedirect />} />
@@ -483,29 +465,6 @@ const SaaSApp = () => {
                   }
                 />
 
-                {/* ================== UNIVERSAL AGENT TERMINAL ROUTES ================== */}
-                <Route
-                  path="/agent"
-                  element={
-                    <ProtectedRoute allowedRoles={['AGENT_POS']}>
-                      <AgentLayout />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route path="dashboard" element={<AgentDashboardPage />} />
-                  <Route path="pos" element={<AgentNewSalePage />} />
-                  <Route path="lottery-selection" element={<AgentLotterySelectionPage />} />
-                  <Route path="new-ticket" element={<AgentNewSalePage />} />
-                  <Route path="tickets" element={<AgentTicketsPage />} />
-                  <Route path="my-tickets" element={<AgentTicketsPage />} />
-                  <Route path="search-tickets" element={<AgentSearchTicketsPage />} />
-                  <Route path="available-draws" element={<AgentAvailableDrawsPage />} />
-                  <Route path="results" element={<AgentResultsPage />} />
-                  <Route path="my-sales" element={<AgentReportsPage />} />
-                  <Route path="reports" element={<AgentReportsPage />} />
-                  <Route index element={<Navigate to="/agent/dashboard" replace />} />
-                </Route>
-
                 {/* ================== SUPERVISOR ROUTES ================== */}
                 <Route
                   path="/supervisor"
@@ -521,22 +480,6 @@ const SaaSApp = () => {
                   <Route path="reports" element={<SupervisorDashboardPage />} />
                   <Route index element={<Navigate to="/supervisor/dashboard" replace />} />
                 </Route>
-
-                {/* POS Routes - Same as Agent */}
-                <Route
-                  path="/pos/new-ticket"
-                  element={
-                    <ProtectedRoute allowedRoles={['AGENT_POS']}>
-                      <AgentLotterySelectionPage />
-                    </ProtectedRoute>
-                  }
-                />
-
-                {/* Legacy POS route redirect */}
-                <Route
-                  path="/pos"
-                  element={<Navigate to="/agent/pos" replace />}
-                />
 
                 {/* Catch all - redirect to role-based home */}
                 <Route path="*" element={<Navigate to="/" replace />} />
