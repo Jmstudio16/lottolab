@@ -41,7 +41,7 @@ from staff_permissions import staff_router, set_staff_db, create_staff_endpoints
 from ticket_print_routes import ticket_print_router, set_ticket_print_db
 from supervisor_routes import supervisor_router
 from results_routes import results_router, set_results_db
-from validation_routes import validation_router, set_validation_db
+from validation_routes import validation_router, set_validation_db, activate_all_lotteries_for_company
 from branch_lottery_routes import branch_lottery_router, set_branch_lottery_db
 
 ROOT_DIR = Path(__file__).parent
@@ -224,13 +224,16 @@ async def create_company(company_data: CompanyCreate, current_user: dict = Depen
     
     await db.companies.insert_one(company.model_dump())
     
+    # Auto-activate all lotteries for the new company
+    lotteries_activated = await activate_all_lotteries_for_company(company_id)
+    
     await db.activity_logs.insert_one({
         "log_id": generate_id("log_"),
         "action_type": "COMPANY_CREATED",
         "entity_type": "company",
         "entity_id": company_id,
         "performed_by": current_user["user_id"],
-        "metadata": {"company_name": company.name},
+        "metadata": {"company_name": company.name, "lotteries_activated": lotteries_activated},
         "created_at": now
     })
     

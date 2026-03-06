@@ -16,6 +16,46 @@ def set_validation_db(database):
     db = database
 
 
+
+async def activate_all_lotteries_for_company(company_id: str):
+    """
+    Activate all master_lotteries for a company.
+    Called when a new company is created to ensure they have access to all lotteries by default.
+    """
+    if not db:
+        return 0
+    
+    master_lotteries = await db.master_lotteries.find({}).to_list(500)
+    now = datetime.now(timezone.utc).isoformat()
+    inserted = 0
+    
+    for ml in master_lotteries:
+        lottery_id = ml.get("lottery_id")
+        
+        # Check if already exists
+        existing = await db.company_lotteries.find_one({
+            "company_id": company_id,
+            "lottery_id": lottery_id
+        })
+        
+        if not existing:
+            await db.company_lotteries.insert_one({
+                "company_id": company_id,
+                "lottery_id": lottery_id,
+                "lottery_name": ml.get("lottery_name"),
+                "state_code": ml.get("state_code"),
+                "enabled": True,
+                "is_enabled": True,
+                "is_enabled_for_company": True,
+                "created_at": now,
+                "updated_at": now
+            })
+            inserted += 1
+    
+    return inserted
+
+
+
 async def validate_and_repair_database():
     """
     Comprehensive database validation and repair.

@@ -13,9 +13,15 @@ security = HTTPBearer()
 # Will be set from server.py
 db = None
 
+# Import will be done after db is set
+activate_lotteries_func = None
+
 def set_db(database):
-    global db
+    global db, activate_lotteries_func
     db = database
+    # Import here to avoid circular imports
+    from validation_routes import activate_all_lotteries_for_company
+    activate_lotteries_func = activate_all_lotteries_for_company
 
 # Auth dependency for super admin routes
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
@@ -495,6 +501,11 @@ async def create_company_with_admin(
         "last_changed": now
     })
     
+    # Auto-activate all lotteries for the new company
+    lotteries_activated = 0
+    if activate_lotteries_func:
+        lotteries_activated = await activate_lotteries_func(company_id)
+    
     # Log activity
     await log_activity(
         db=db,
@@ -506,7 +517,8 @@ async def create_company_with_admin(
         metadata={
             "company_name": data["name"],
             "admin_email": data["admin_email"],
-            "plan": data.get("plan", "Basic")
+            "plan": data.get("plan", "Basic"),
+            "lotteries_activated": lotteries_activated
         },
         ip_address=request.client.host if request.client else None
     )

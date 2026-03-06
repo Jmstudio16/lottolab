@@ -843,7 +843,9 @@ async def create_company_full(
             "lottery_id": lottery["lottery_id"],
             "lottery_name": lottery.get("lottery_name"),
             "state_code": lottery.get("state_code"),
+            "enabled": True,
             "is_enabled": True,
+            "is_enabled_for_company": True,
             "disabled_by_super_admin": False,
             "created_at": now,
             "updated_at": now
