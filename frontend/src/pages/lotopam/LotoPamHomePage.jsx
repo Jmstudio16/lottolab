@@ -242,6 +242,11 @@ const LotoPamHomePage = () => {
               let numbers = [];
               if (Array.isArray(result.winning_numbers)) {
                 numbers = result.winning_numbers;
+              } else if (typeof result.winning_numbers === 'object' && result.winning_numbers) {
+                const wn = result.winning_numbers;
+                if (wn.first) numbers.push(wn.first);
+                if (wn.second) numbers.push(wn.second);
+                if (wn.third) numbers.push(wn.third);
               } else if (typeof result.winning_numbers === 'string') {
                 numbers = result.winning_numbers.split(/[-,\s]+/).filter(n => n.trim());
               } else if (result.winning_numbers_parsed) {

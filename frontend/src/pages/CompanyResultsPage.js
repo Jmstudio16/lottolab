@@ -126,18 +126,30 @@ export const CompanyResultsPage = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          {result.winning_numbers?.split(/[-,\s]+/).filter(n => n).map((num, idx) => (
-                            <span
-                              key={idx}
-                              className={`w-10 h-10 flex items-center justify-center rounded-full font-bold text-lg ${
-                                idx === 0 ? 'bg-amber-500 text-black' :
-                                idx === 1 ? 'bg-slate-400 text-black' :
-                                'bg-amber-700 text-white'
-                              }`}
-                            >
-                              {num}
-                            </span>
-                          ))}
+                          {(() => {
+                            const wn = result.winning_numbers;
+                            if (!wn) return null;
+                            let nums = [];
+                            if (typeof wn === 'object') {
+                              if (wn.first) nums.push(wn.first);
+                              if (wn.second) nums.push(wn.second);
+                              if (wn.third) nums.push(wn.third);
+                            } else if (typeof wn === 'string') {
+                              nums = wn.split(/[-,\s]+/).filter(n => n);
+                            }
+                            return nums.map((num, idx) => (
+                              <span
+                                key={idx}
+                                className={`w-10 h-10 flex items-center justify-center rounded-full font-bold text-lg ${
+                                  idx === 0 ? 'bg-amber-500 text-black' :
+                                  idx === 1 ? 'bg-slate-400 text-black' :
+                                  'bg-amber-700 text-white'
+                                }`}
+                              >
+                                {num}
+                              </span>
+                            ));
+                          })()}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-cyan-400 font-mono">
