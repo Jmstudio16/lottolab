@@ -1,6 +1,6 @@
-# LOTTOLAB SaaS Enterprise - Version 4.1.0
+# LOTTOLAB SaaS Enterprise - Version 4.1.1
 
-## Release: SUPERVISOR ROLE COMPLETE
+## Release: SUPERVISOR ROLE COMPLETE + COMMISSION SYNC FIX
 Date: 2026-03-06
 
 ---
@@ -15,6 +15,7 @@ Date: 2026-03-06
 
 2. ✅ **Page Mes Agents** (`/supervisor/agents`)
    - Tableau complet des agents avec: Nom, Email, Téléphone, Commission %, Statut
+   - **Commission synchronisée depuis `agent_policies`**
    - Actions: Suspendre, Réactiver, Supprimer
    - Statistiques récapitulatives
 
@@ -26,13 +27,23 @@ Date: 2026-03-06
 
 4. ✅ **Rapport de Ventes** (`/supervisor/reports`)
    - Filtre par période (Date Début / Date Fin)
-   - Affichage de la commission superviseur
+   - **Commission superviseur synchronisée depuis `supervisor_policies`**
+   - **Commission agent synchronisée depuis `agent_policies`**
    - Colonnes complètes comme demandé:
      - No, Agent, Tfiche, Gagnants, Vente, A Payé
      - **%Agent**, Comm. Agent, P/P sans %, P/P avec %
      - **%Sup**, Comm. Sup, **B.Final**
    - Ligne de totaux
    - Bouton Exporter en Excel
+
+### P0 - Bug Fix: Synchronisation des Commissions
+5. ✅ **Commission Superviseur** - Récupérée depuis:
+   - `supervisor_policies.commission_percent` (priorité 1)
+   - `succursales.supervisor_commission_percent` (fallback)
+   
+6. ✅ **Commission Vendeur/Agent** - Récupérée depuis:
+   - `agent_policies.commission_percent` (priorité 1)
+   - `users.commission_percent` (fallback)
 
 ### API Endpoints Créés
 - `GET /api/supervisor/my-profile` - Profil du superviseur avec commission

@@ -61,15 +61,35 @@ async def get_supervisor_agents(current_user: dict = Depends(get_current_user)):
     
     agents = await db.users.find(query, {"_id": 0, "password_hash": 0}).to_list(100)
     
-    # Get sales for today
+    # Get sales for today and enrich with commission from agent_policies
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     for agent in agents:
-        tickets_today = await db.tickets.count_documents({
-            "agent_id": agent.get("user_id"),
+        agent_id = agent.get("user_id")
+        
+        # Get commission from agent_policies
+        agent_policy = await db.agent_policies.find_one(
+            {"agent_id": agent_id},
+            {"_id": 0}
+        )
+        if agent_policy and agent_policy.get("commission_percent") is not None:
+            agent["commission_percent"] = agent_policy.get("commission_percent")
+        elif agent.get("commission_percent") is None:
+            agent["commission_percent"] = 10  # Default
+        
+        # Get tickets today from lottery_transactions
+        tickets_today = await db.lottery_transactions.count_documents({
+            "agent_id": agent_id,
             "created_at": {"$regex": f"^{today}"}
         })
         agent["tickets_today"] = tickets_today
-        agent["sales_today"] = 0
+        
+        # Get sales today
+        sales_pipeline = [
+            {"$match": {"agent_id": agent_id, "created_at": {"$regex": f"^{today}"}}},
+            {"$group": {"_id": None, "total": {"$sum": "$total_amount"}}}
+        ]
+        sales_result = await db.lottery_transactions.aggregate(sales_pipeline).to_list(1)
+        agent["sales_today"] = sales_result[0]["total"] if sales_result else 0
     
     return agents
 
@@ -269,19 +289,30 @@ async def get_supervisor_profile(current_user: dict = Depends(get_current_user))
     """Get supervisor profile with commission info"""
     current_user = require_supervisor(current_user)
     
-    # Get supervisor's commission percentage
+    supervisor_id = current_user.get("user_id")
+    
+    # Get supervisor's commission percentage from multiple sources
     commission_percent = current_user.get("commission_percent", 10)
     
-    # Also check agent_policies for supervisor commission
-    policy = await db.agent_policies.find_one(
-        {"user_id": current_user.get("user_id")},
+    # Check supervisor_policies first (this is where it's stored on creation)
+    supervisor_policy = await db.supervisor_policies.find_one(
+        {"supervisor_id": supervisor_id},
         {"_id": 0}
     )
-    if policy and policy.get("commission_percent"):
-        commission_percent = policy.get("commission_percent")
+    if supervisor_policy and supervisor_policy.get("commission_percent") is not None:
+        commission_percent = supervisor_policy.get("commission_percent")
+    
+    # Also check succursales table (backup source)
+    if commission_percent == 10:  # Still default
+        succursale = await db.succursales.find_one(
+            {"supervisor_id": supervisor_id},
+            {"_id": 0, "supervisor_commission_percent": 1}
+        )
+        if succursale and succursale.get("supervisor_commission_percent") is not None:
+            commission_percent = succursale.get("supervisor_commission_percent")
     
     return {
-        "user_id": current_user.get("user_id"),
+        "user_id": supervisor_id,
         "name": current_user.get("name") or current_user.get("full_name"),
         "email": current_user.get("email"),
         "role": current_user.get("role"),
@@ -305,11 +336,25 @@ async def get_supervisor_sales_report(
     succursale_id = current_user.get("succursale_id")
     supervisor_id = current_user.get("user_id")
     
-    # Get supervisor's commission percentage
+    # Get supervisor's commission percentage from supervisor_policies or succursales
     supervisor_commission = current_user.get("commission_percent", 10)
-    policy = await db.agent_policies.find_one({"user_id": supervisor_id}, {"_id": 0})
-    if policy and policy.get("commission_percent"):
-        supervisor_commission = policy.get("commission_percent")
+    
+    # Check supervisor_policies first
+    supervisor_policy = await db.supervisor_policies.find_one(
+        {"supervisor_id": supervisor_id},
+        {"_id": 0}
+    )
+    if supervisor_policy and supervisor_policy.get("commission_percent") is not None:
+        supervisor_commission = supervisor_policy.get("commission_percent")
+    
+    # Also check succursales table
+    if supervisor_commission == 10:  # Still default
+        succursale = await db.succursales.find_one(
+            {"supervisor_id": supervisor_id},
+            {"_id": 0, "supervisor_commission_percent": 1}
+        )
+        if succursale and succursale.get("supervisor_commission_percent") is not None:
+            supervisor_commission = succursale.get("supervisor_commission_percent")
     
     # Get agents under this supervisor
     agents_query = {
@@ -344,7 +389,15 @@ async def get_supervisor_sales_report(
     
     for agent in agents:
         agent_id = agent.get("user_id")
+        
+        # Get agent's commission from agent_policies or users document
         agent_commission = agent.get("commission_percent", 10)
+        agent_policy = await db.agent_policies.find_one(
+            {"agent_id": agent_id},
+            {"_id": 0}
+        )
+        if agent_policy and agent_policy.get("commission_percent") is not None:
+            agent_commission = agent_policy.get("commission_percent")
         
         # Build ticket query
         ticket_query = {"agent_id": agent_id, "company_id": company_id}
