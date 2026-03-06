@@ -3,7 +3,8 @@ import { useAuth } from '@/api/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { 
-  Calendar, Clock, RefreshCw, ShoppingCart, Filter
+  Calendar, Clock, RefreshCw, ShoppingCart, Filter, Timer, AlertTriangle,
+  CheckCircle, XCircle, Bell
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -17,8 +18,17 @@ const VendeurTirages = () => {
   const [lotteries, setLotteries] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [filterStatus, setFilterStatus] = useState('all');
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const headers = { Authorization: `Bearer ${token}` };
+
+  // Update time every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -37,34 +47,102 @@ const VendeurTirages = () => {
     fetchData();
   }, [fetchData]);
 
-  // Get draw status
+  // Get draw status with countdown
   const getDrawStatus = (schedule) => {
-    const now = new Date();
+    const now = currentTime;
+    const currentHour = now.getHours();
+    const currentMin = now.getMinutes();
+    const currentSec = now.getSeconds();
+    const currentTimeMinutes = currentHour * 60 + currentMin;
+
+    // Parse open time
+    let openTimeMinutes = 7 * 60;
+    if (schedule.open_time) {
+      const [openHour, openMin] = schedule.open_time.split(':').map(Number);
+      openTimeMinutes = openHour * 60 + openMin;
+    }
+
+    // Parse close time
     if (schedule.close_time) {
       const [closeHour, closeMin] = schedule.close_time.split(':').map(Number);
-      const closeTime = new Date();
-      closeTime.setHours(closeHour, closeMin, 0, 0);
+      const closeTimeMinutes = closeHour * 60 + closeMin;
       
-      if (now < closeTime) {
-        const diffMs = closeTime - now;
-        const diffMins = Math.floor(diffMs / 60000);
+      // Before opening
+      if (currentTimeMinutes < openTimeMinutes) {
+        const diffMins = openTimeMinutes - currentTimeMinutes;
         const hours = Math.floor(diffMins / 60);
         const mins = diffMins % 60;
+        const timeStr = hours > 0 ? `${hours}h${mins.toString().padStart(2, '0')}` : `${mins}min`;
+        return { 
+          status: 'not_open', 
+          text: `Ouvre dans ${timeStr}`, 
+          color: 'text-blue-400',
+          bgColor: 'bg-blue-500/10 border-blue-500/30',
+          canSell: false,
+          countdown: diffMins * 60
+        };
+      }
+      
+      // Within open hours
+      if (currentTimeMinutes >= openTimeMinutes && currentTimeMinutes < closeTimeMinutes) {
+        const diffMins = closeTimeMinutes - currentTimeMinutes;
+        const hours = Math.floor(diffMins / 60);
+        const mins = diffMins % 60;
+        const secs = 59 - currentSec;
         
+        if (diffMins <= 5) {
+          // Less than 5 minutes - show seconds
+          const totalSecs = (diffMins - 1) * 60 + secs;
+          const displayMins = Math.floor(totalSecs / 60);
+          const displaySecs = totalSecs % 60;
+          return { 
+            status: 'closing_soon', 
+            text: `Ferme dans ${displayMins}:${displaySecs.toString().padStart(2, '0')}`, 
+            color: 'text-red-400 animate-pulse',
+            bgColor: 'bg-red-500/20 border-red-500/50',
+            canSell: true,
+            urgent: true,
+            countdown: totalSecs
+          };
+        } else if (diffMins <= 30) {
+          const timeStr = hours > 0 ? `${hours}h${mins.toString().padStart(2, '0')}` : `${mins}min`;
+          return { 
+            status: 'closing', 
+            text: `Ferme dans ${timeStr}`, 
+            color: 'text-amber-400',
+            bgColor: 'bg-amber-500/10 border-amber-500/30',
+            canSell: true,
+            countdown: diffMins * 60
+          };
+        }
+        
+        const timeStr = hours > 0 ? `${hours}h${mins.toString().padStart(2, '0')}` : `${mins}min`;
         return { 
           status: 'open', 
-          text: hours > 0 ? `Ferme dans ${hours}h${mins}m` : `Ferme dans ${mins}min`,
-          color: diffMins <= 30 ? 'text-amber-400' : 'text-emerald-400',
-          bgColor: diffMins <= 30 ? 'bg-amber-500/10 border-amber-500/30' : 'bg-emerald-500/10 border-emerald-500/30'
+          text: `Ouvert (ferme dans ${timeStr})`, 
+          color: 'text-emerald-400',
+          bgColor: 'bg-emerald-500/10 border-emerald-500/30',
+          canSell: true,
+          countdown: diffMins * 60
         };
       }
     }
-    return { status: 'closed', text: 'Fermé', color: 'text-red-400', bgColor: 'bg-red-500/10 border-red-500/30' };
+    
+    return { 
+      status: 'closed', 
+      text: 'Fermé', 
+      color: 'text-red-400',
+      bgColor: 'bg-red-500/10 border-red-500/30',
+      canSell: false,
+      countdown: 0
+    };
   };
 
-  // Build draws list
+  // Build draws list - only for lotteries that are enabled
   const draws = schedules.map(schedule => {
     const lottery = lotteries.find(l => l.lottery_id === schedule.lottery_id);
+    if (!lottery) return null; // Skip if lottery not in enabled list
+    
     const status = getDrawStatus(schedule);
     return {
       ...schedule,
@@ -72,17 +150,20 @@ const VendeurTirages = () => {
       state_code: lottery?.state_code || '',
       ...status
     };
-  }).sort((a, b) => {
-    if (a.status === 'open' && b.status !== 'open') return -1;
-    if (a.status !== 'open' && b.status === 'open') return 1;
-    return 0;
+  }).filter(Boolean).sort((a, b) => {
+    // Sort: urgent first, then open, then not_open, then closed
+    const order = { 'closing_soon': 0, 'closing': 1, 'open': 2, 'not_open': 3, 'closed': 4 };
+    return (order[a.status] || 5) - (order[b.status] || 5);
   });
 
   const filteredDraws = draws.filter(draw => {
-    if (filterStatus === 'open') return draw.status === 'open';
-    if (filterStatus === 'closed') return draw.status === 'closed';
+    if (filterStatus === 'open') return draw.canSell;
+    if (filterStatus === 'closed') return !draw.canSell;
     return true;
   });
+
+  const openCount = draws.filter(d => d.canSell).length;
+  const closedCount = draws.filter(d => !d.canSell).length;
 
   const goToSell = (lotteryId) => {
     navigate('/vendeur/nouvelle-vente');
@@ -90,39 +171,74 @@ const VendeurTirages = () => {
 
   return (
     <div className="p-6 pb-24 lg:pb-6 space-y-6">
-      {/* Header */}
+      {/* Header with time */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
             <Calendar className="w-7 h-7 text-blue-400" />
             Tirages Disponibles
           </h1>
-          <p className="text-slate-400">{draws.filter(d => d.status === 'open').length} tirage(s) ouvert(s)</p>
+          <p className="text-slate-400">
+            {openCount} ouvert(s) • {closedCount} fermé(s)
+          </p>
         </div>
-        <Button onClick={fetchData} variant="outline" className="border-slate-700">
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Actualiser
+        <div className="flex items-center gap-4">
+          {/* Current Time */}
+          <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-xl border border-slate-700">
+            <Clock className="w-4 h-4 text-blue-400" />
+            <span className="text-white font-mono text-lg">
+              {currentTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </span>
+          </div>
+          <Button onClick={fetchData} variant="outline" className="border-slate-700">
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </Button>
+        </div>
+      </div>
+
+      {/* Filter Buttons */}
+      <div className="flex gap-2">
+        <Button
+          onClick={() => setFilterStatus('all')}
+          variant={filterStatus === 'all' ? 'default' : 'outline'}
+          size="sm"
+          className={filterStatus === 'all' ? 'bg-blue-600' : 'border-slate-700'}
+        >
+          Tous ({draws.length})
+        </Button>
+        <Button
+          onClick={() => setFilterStatus('open')}
+          variant={filterStatus === 'open' ? 'default' : 'outline'}
+          size="sm"
+          className={filterStatus === 'open' ? 'bg-emerald-600' : 'border-slate-700'}
+        >
+          <CheckCircle className="w-4 h-4 mr-1" />
+          Ouverts ({openCount})
+        </Button>
+        <Button
+          onClick={() => setFilterStatus('closed')}
+          variant={filterStatus === 'closed' ? 'default' : 'outline'}
+          size="sm"
+          className={filterStatus === 'closed' ? 'bg-red-600' : 'border-slate-700'}
+        >
+          <XCircle className="w-4 h-4 mr-1" />
+          Fermés ({closedCount})
         </Button>
       </div>
 
-      {/* Filter */}
-      <div className="flex gap-2">
-        {[
-          { value: 'all', label: 'Tous' },
-          { value: 'open', label: 'Ouverts' },
-          { value: 'closed', label: 'Fermés' }
-        ].map(opt => (
-          <Button
-            key={opt.value}
-            onClick={() => setFilterStatus(opt.value)}
-            variant={filterStatus === opt.value ? 'default' : 'outline'}
-            size="sm"
-            className={filterStatus === opt.value ? 'bg-blue-600' : 'border-slate-700'}
-          >
-            {opt.label}
-          </Button>
-        ))}
-      </div>
+      {/* Urgent Alert */}
+      {draws.some(d => d.urgent) && (
+        <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 flex items-center gap-3 animate-pulse">
+          <AlertTriangle className="w-6 h-6 text-red-400" />
+          <div>
+            <p className="text-red-400 font-semibold">Tirages qui ferment bientôt!</p>
+            <p className="text-red-300 text-sm">
+              {draws.filter(d => d.urgent).map(d => d.lottery_name).join(', ')}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Draws List */}
       {loading ? (
@@ -132,41 +248,54 @@ const VendeurTirages = () => {
       ) : filteredDraws.length === 0 ? (
         <div className="text-center py-12 bg-slate-800/50 rounded-xl border border-slate-700">
           <Calendar className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-          <p className="text-slate-400">Aucun tirage disponible</p>
+          <p className="text-slate-400">
+            {filterStatus === 'open' ? 'Aucun tirage ouvert actuellement' :
+             filterStatus === 'closed' ? 'Aucun tirage fermé' :
+             'Aucun tirage disponible'}
+          </p>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredDraws.slice(0, 50).map((draw, idx) => (
+          {filteredDraws.map((draw, idx) => (
             <div
-              key={`${draw.schedule_id || idx}`}
+              key={`${draw.schedule_id || draw.lottery_id}_${idx}`}
               className={`border rounded-xl p-4 transition-all ${draw.bgColor}`}
             >
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <p className="font-semibold text-white">{draw.lottery_name}</p>
-                  <p className="text-xs text-slate-400">{draw.state_code} • {draw.draw_type}</p>
+                  <p className="text-xs text-slate-400">{draw.state_code} • {draw.draw_type || draw.draw_name}</p>
                 </div>
-                <span className={`text-sm font-medium ${draw.color}`}>
-                  {draw.text}
-                </span>
+                {draw.urgent && <Timer className="w-5 h-5 text-red-400 animate-pulse" />}
               </div>
 
+              {/* Status Badge */}
+              <div className={`text-sm font-medium mb-3 ${draw.color}`}>
+                {draw.text}
+              </div>
+
+              {/* Schedule Times */}
               <div className="flex items-center gap-4 text-sm text-slate-400 mb-4">
                 <span className="flex items-center gap-1">
                   <Clock className="w-4 h-4" />
-                  {draw.open_time} - {draw.close_time}
+                  {draw.open_time || '07:00'} - {draw.close_time || '22:00'}
                 </span>
               </div>
 
-              {draw.status === 'open' && (
+              {/* Sell Button */}
+              {draw.canSell ? (
                 <Button
                   onClick={() => goToSell(draw.lottery_id)}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700"
+                  className={`w-full ${draw.urgent ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                   size="sm"
                 >
                   <ShoppingCart className="w-4 h-4 mr-2" />
-                  Vendre
+                  {draw.urgent ? 'Vendre Maintenant!' : 'Vendre'}
                 </Button>
+              ) : (
+                <div className="w-full py-2 text-center text-slate-500 text-sm bg-slate-800/50 rounded-lg">
+                  {draw.status === 'not_open' ? 'Pas encore ouvert' : 'Ventes fermées'}
+                </div>
               )}
             </div>
           ))}

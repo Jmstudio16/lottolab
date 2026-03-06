@@ -45,7 +45,25 @@ async def get_current_vendeur(
     
     # Check user status
     if user.get("status") != "ACTIVE":
-        raise HTTPException(status_code=403, detail="Compte suspendu")
+        raise HTTPException(status_code=403, detail="Compte suspendu. Contactez votre superviseur.")
+    
+    # Check if succursale/branch is suspended
+    if user.get("succursale_id"):
+        succursale = await db.succursales.find_one(
+            {"succursale_id": user["succursale_id"]},
+            {"_id": 0, "status": 1}
+        )
+        if succursale and succursale.get("status") == "SUSPENDED":
+            raise HTTPException(status_code=403, detail="Votre succursale est suspendue. Contactez l'administrateur.")
+    
+    # Check if company is suspended
+    if user.get("company_id"):
+        company = await db.companies.find_one(
+            {"company_id": user["company_id"]},
+            {"_id": 0, "status": 1}
+        )
+        if company and company.get("status") in ["SUSPENDED", "EXPIRED"]:
+            raise HTTPException(status_code=403, detail="Entreprise suspendue. Contactez l'administrateur.")
     
     return user
 
@@ -252,7 +270,7 @@ async def sell_ticket(
     company_id = current_vendeur.get("company_id")
     succursale_id = current_vendeur.get("succursale_id")
     
-    # Validate lottery exists and is enabled
+    # Validate lottery exists and is enabled GLOBALLY by Super Admin
     lottery = await db.master_lotteries.find_one(
         {"lottery_id": sell_data.lottery_id},
         {"_id": 0}
@@ -265,6 +283,10 @@ async def sell_ticket(
     if not lottery:
         raise HTTPException(status_code=404, detail="Loterie non trouvée")
     
+    # CRITICAL: Check if lottery is globally active (Super Admin control)
+    if not lottery.get("is_active_global", True) and not lottery.get("is_active", True):
+        raise HTTPException(status_code=403, detail="Cette loterie est désactivée par l'administrateur système")
+    
     # Check if lottery is enabled for company
     company_lottery = await db.company_lotteries.find_one({
         "company_id": company_id,
@@ -273,6 +295,10 @@ async def sell_ticket(
     })
     if not company_lottery:
         raise HTTPException(status_code=403, detail="Loterie non activée pour votre compagnie")
+    
+    # Check if lottery was disabled by Super Admin for this company specifically
+    if company_lottery.get("disabled_by_super_admin"):
+        raise HTTPException(status_code=403, detail="Cette loterie a été désactivée par Super Admin pour votre compagnie")
     
     # Check branch-level permissions
     if succursale_id:

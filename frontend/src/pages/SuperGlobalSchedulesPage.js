@@ -44,8 +44,8 @@ export const SuperGlobalSchedulesPage = () => {
     try {
       setLoading(true);
       const [schedulesRes, lotteriesRes] = await Promise.all([
-        axios.get(`${API_URL}/api/super/global-schedules`, { headers }),
-        axios.get(`${API_URL}/api/super/lottery-catalog`, { headers })
+        axios.get(`${API_URL}/api/saas/global-schedules`, { headers }),
+        axios.get(`${API_URL}/api/saas/lottery-catalog`, { headers })
       ]);
       setSchedules(schedulesRes.data);
       setLotteries(lotteriesRes.data);
@@ -65,13 +65,13 @@ export const SuperGlobalSchedulesPage = () => {
     try {
       if (editingSchedule) {
         await axios.put(
-          `${API_URL}/api/super/global-schedules/${editingSchedule.schedule_id}`,
+          `${API_URL}/api/saas/global-schedules/${editingSchedule.schedule_id}`,
           formData,
           { headers }
         );
         toast.success('Schedule mis à jour');
       } else {
-        await axios.post(`${API_URL}/api/super/global-schedules`, formData, { headers });
+        await axios.post(`${API_URL}/api/saas/global-schedules`, formData, { headers });
         toast.success('Schedule créé');
       }
       setShowAddModal(false);
@@ -86,7 +86,7 @@ export const SuperGlobalSchedulesPage = () => {
   const handleDelete = async (scheduleId) => {
     if (!window.confirm('Supprimer ce schedule?')) return;
     try {
-      await axios.delete(`${API_URL}/api/super/global-schedules/${scheduleId}`, { headers });
+      await axios.delete(`${API_URL}/api/saas/global-schedules/${scheduleId}`, { headers });
       toast.success('Schedule supprimé');
       fetchData();
     } catch (error) {

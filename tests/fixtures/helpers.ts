@@ -1,6 +1,6 @@
 import { Page, expect } from '@playwright/test';
 
-const BASE_URL = 'https://vendeur-stable.preview.emergentagent.com';
+const BASE_URL = 'https://lottery-sync-hub.preview.emergentagent.com';
 
 export async function waitForAppReady(page: Page) {
   await page.waitForLoadState('domcontentloaded');

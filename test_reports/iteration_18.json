@@ -1,0 +1,100 @@
+{
+  "summary": "Iteration 18 - Bug Fixes Testing. Tested: 1) Company Admin tickets sync from vendeurs (lottery_transactions), 2) Succursale Modifier/Suspendre buttons, 3) Super Admin Global Schedules page. Found 1 bug: SuperGlobalSchedulesPage.js calls /api/saas/lottery-catalog which returns 404 (should be /api/saas/master-lotteries).",
+  "mode": "generate",
+  "baseline_commit": "b4263c77545c83a23cb3552e549506afc61fa162",
+  "head_commit": "a1687816092768ab5958ca6a647170a0a3ef5ee3",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "SuperGlobalSchedulesPage.js",
+        "issue": "Frontend calls /api/saas/lottery-catalog which returns 404. Should be /api/saas/master-lotteries",
+        "selector": "fetchData function line 48",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "regression_results": {
+    "total_specs": 2,
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  "specs_created": [
+    "/app/tests/e2e/iteration18-features.spec.ts",
+    "/app/backend/tests/test_iteration18_fixes.py"
+  ],
+  "specs_updated": [],
+  "quarantined_tests": [],
+  "test_report_links": [
+    "/app/backend/tests/test_iteration18_fixes.py",
+    "/app/test_reports/pytest/iteration18.xml",
+    "/app/tests/e2e/iteration18-features.spec.ts"
+  ],
+  "action_items": [
+    "FIX SuperGlobalSchedulesPage.js: Change line 48 from '/api/saas/lottery-catalog' to '/api/saas/master-lotteries'"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration18_fixes.py",
+    "/app/tests/e2e/iteration18-features.spec.ts"
+  ],
+  "success_rate": {
+    "backend": "100% (11/11 passed)",
+    "frontend": "100% (10/10 passed)"
+  },
+  "seed_data_creation": "None - used existing data",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Iteration 18 bug fixes verified. Company tickets sync working - 14 tickets visible with statuses. Succursale Edit/Suspend/Activate buttons all functional. Global Schedules page loads but lottery dropdown fails due to wrong API endpoint call.",
+  "features_tested": {
+    "company_tickets_sync": {
+      "endpoint": "GET /api/company/tickets",
+      "status": "PASS",
+      "details": "Now correctly queries lottery_transactions collection. 14 tickets visible with WINNER/LOSER/PENDING_RESULT statuses."
+    },
+    "succursale_edit": {
+      "endpoint": "PUT /api/company/succursales/{id}",
+      "status": "PASS",
+      "details": "Edit modal opens, fields populate correctly, update saves successfully"
+    },
+    "succursale_suspend": {
+      "endpoint": "PUT /api/company/succursales/{id}/suspend",
+      "status": "PASS",
+      "details": "Endpoint exists and functional"
+    },
+    "succursale_activate": {
+      "endpoint": "PUT /api/company/succursales/{id}/activate",
+      "status": "PASS",
+      "details": "Endpoint exists and functional"
+    },
+    "global_schedules_page": {
+      "status": "PARTIAL",
+      "details": "Page loads, table displays, but lottery dropdown fails because frontend calls wrong endpoint (/api/saas/lottery-catalog instead of /api/saas/master-lotteries)"
+    },
+    "vendeur_suspended_check": {
+      "status": "PASS",
+      "details": "Vendeur jean@gmail.com can login when succursale is active"
+    }
+  },
+  "backend_endpoints_tested": [
+    "GET /api/company/tickets - Company Admin tickets list (lottery_transactions)",
+    "GET /api/company/tickets?status=ACTIVE - Filtered tickets",
+    "GET /api/company/tickets/{ticket_id} - Single ticket (404 for non-existent)",
+    "GET /api/company/succursales - List all succursales",
+    "PUT /api/company/succursales/{id} - Update succursale",
+    "PUT /api/company/succursales/{id}/suspend - Suspend succursale",
+    "PUT /api/company/succursales/{id}/activate - Activate succursale",
+    "GET /api/saas/global-schedules - Super Admin global schedules",
+    "GET /api/saas/master-lotteries - Super Admin lottery catalog"
+  ],
+  "frontend_pages_tested": [
+    "/company/succursales - Succursales management (Edit, Suspend, Activate)",
+    "/company/tickets - Tickets view (14 tickets synchronized)",
+    "/super/global-schedules - Global Schedules (PARTIAL - lottery dropdown broken)"
+  ]
+}

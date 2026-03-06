@@ -278,6 +278,79 @@ export const CompanySuccursalesPage = () => {
     });
   };
 
+  // Suspend entire succursale
+  const handleSuspendSuccursale = async (succursaleId) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir suspendre cette succursale? Tous les superviseurs et agents seront bloqués.')) return;
+    try {
+      const res = await axios.put(
+        `${API_URL}/api/company/succursales/${succursaleId}/suspend`,
+        {},
+        { headers }
+      );
+      toast.success(`Succursale suspendue. ${res.data.agents_suspended || 0} agent(s) affectés.`);
+      fetchSuccursales();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la suspension');
+    }
+  };
+
+  // Reactivate succursale
+  const handleActivateSuccursale = async (succursaleId) => {
+    if (!window.confirm('Réactiver cette succursale et tous ses utilisateurs?')) return;
+    try {
+      const res = await axios.put(
+        `${API_URL}/api/company/succursales/${succursaleId}/activate`,
+        {},
+        { headers }
+      );
+      toast.success(`Succursale réactivée. ${res.data.agents_activated || 0} agent(s) réactivés.`);
+      fetchSuccursales();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la réactivation');
+    }
+  };
+
+  // Edit Succursale state
+  const [showEditSuccursaleModal, setShowEditSuccursaleModal] = useState(false);
+  const [editSuccursaleForm, setEditSuccursaleForm] = useState({
+    nom_succursale: '',
+    nom_bank: '',
+    message: ''
+  });
+  const [editingSuccursaleId, setEditingSuccursaleId] = useState(null);
+
+  const openEditSuccursaleModal = (succ) => {
+    setEditingSuccursaleId(succ.succursale_id);
+    setEditSuccursaleForm({
+      nom_succursale: succ.nom_succursale || '',
+      nom_bank: succ.nom_bank || '',
+      message: succ.message || ''
+    });
+    setShowEditSuccursaleModal(true);
+  };
+
+  const handleUpdateSuccursale = async (e) => {
+    e.preventDefault();
+    if (!editingSuccursaleId) return;
+    
+    try {
+      setCreating(true);
+      await axios.put(
+        `${API_URL}/api/company/succursales/${editingSuccursaleId}`,
+        editSuccursaleForm,
+        { headers }
+      );
+      toast.success('Succursale mise à jour');
+      setShowEditSuccursaleModal(false);
+      setEditingSuccursaleId(null);
+      fetchSuccursales();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la mise à jour');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <CompanyLayout>
       <div className="p-6">
@@ -361,7 +434,7 @@ export const CompanySuccursalesPage = () => {
                   )}
                 </div>
 
-                <div className="flex gap-2 pt-4 border-t border-slate-800">
+                <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-800">
                   <button
                     onClick={() => fetchSuccursaleDetail(succ.succursale_id)}
                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition-colors text-sm"
@@ -371,6 +444,14 @@ export const CompanySuccursalesPage = () => {
                     Détails
                   </button>
                   <button
+                    onClick={() => openEditSuccursaleModal(succ)}
+                    className="px-3 py-2 bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-400 rounded-lg transition-colors"
+                    title="Modifier la succursale"
+                    data-testid={`edit-succursale-${succ.succursale_id}`}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
                     onClick={() => navigate(`/company/branches/${succ.succursale_id}/lotteries`)}
                     className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 rounded-lg transition-colors"
                     title="Gérer les loteries"
@@ -378,6 +459,25 @@ export const CompanySuccursalesPage = () => {
                   >
                     <Settings className="w-4 h-4" />
                   </button>
+                  {succ.status === 'ACTIVE' ? (
+                    <button
+                      onClick={() => handleSuspendSuccursale(succ.succursale_id)}
+                      className="px-3 py-2 bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 rounded-lg transition-colors"
+                      title="Suspendre la succursale"
+                      data-testid={`suspend-succursale-${succ.succursale_id}`}
+                    >
+                      <StopCircle className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleActivateSuccursale(succ.succursale_id)}
+                      className="px-3 py-2 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded-lg transition-colors"
+                      title="Réactiver la succursale"
+                      data-testid={`activate-succursale-${succ.succursale_id}`}
+                    >
+                      <PlayCircle className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     onClick={() => handleDeleteSuccursale(succ.succursale_id)}
                     className="px-3 py-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
@@ -588,6 +688,76 @@ export const CompanySuccursalesPage = () => {
                     <>
                       <Save className="w-4 h-4 mr-2" />
                       Créer Succursale
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Succursale Modal */}
+        <Dialog open={showEditSuccursaleModal} onOpenChange={setShowEditSuccursaleModal}>
+          <DialogContent className="bg-slate-900 border-slate-800 max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl text-white flex items-center gap-2">
+                <Edit className="w-5 h-5 text-yellow-400" />
+                Modifier Succursale
+              </DialogTitle>
+            </DialogHeader>
+
+            <form onSubmit={handleUpdateSuccursale} className="space-y-4">
+              <div>
+                <Label className="text-slate-300">Nom de la Succursale *</Label>
+                <Input
+                  value={editSuccursaleForm.nom_succursale}
+                  onChange={(e) => setEditSuccursaleForm({...editSuccursaleForm, nom_succursale: e.target.value})}
+                  className="bg-slate-800 border-slate-700 text-white mt-1"
+                  required
+                  data-testid="edit-nom-succursale"
+                />
+              </div>
+
+              <div>
+                <Label className="text-slate-300">Nom de la Banque</Label>
+                <Input
+                  value={editSuccursaleForm.nom_bank}
+                  onChange={(e) => setEditSuccursaleForm({...editSuccursaleForm, nom_bank: e.target.value})}
+                  className="bg-slate-800 border-slate-700 text-white mt-1"
+                  data-testid="edit-nom-bank"
+                />
+              </div>
+
+              <div>
+                <Label className="text-slate-300">Message</Label>
+                <Input
+                  value={editSuccursaleForm.message}
+                  onChange={(e) => setEditSuccursaleForm({...editSuccursaleForm, message: e.target.value})}
+                  className="bg-slate-800 border-slate-700 text-white mt-1"
+                  placeholder="Message personnalisé (optionnel)"
+                  data-testid="edit-message"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowEditSuccursaleModal(false)}
+                  className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 bg-yellow-600 hover:bg-yellow-700"
+                  disabled={creating}
+                  data-testid="update-succursale-btn"
+                >
+                  {creating ? 'Mise à jour...' : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Enregistrer
                     </>
                   )}
                 </Button>

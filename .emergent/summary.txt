@@ -1,100 +1,105 @@
 <analysis>**original_problem_statement:**
-The user's primary goal is to create a complete, stable, and production-ready Vendeur (Seller) page and associated backend logic for the lottery system. This request came after a series of critical stability issues, including recurring React rendering errors and data synchronization failures, which led to extreme user frustration.
+The user wants to build a complete, stable, and production-ready lottery management system with a primary focus on the Vendeur (Seller) role. The core requirement is to ensure strict, real-time data synchronization across all user tiers: Super Admin -> Company Admin -> Branch (Succursale) -> Vendeur.
 
-The user has provided a detailed MÉGA-PROMPT that serves as the definitive Product Requirements Document for this new Vendeur role, which completely replaces the old Agent role.
+**PRODUCT REQUIREMENTS (Consolidated from MÉGA-PROMPT and recent user messages):**
 
-**PRODUCT REQUIREMENTS (from the MÉGA-PROMPT):**
+1.  **Full Data Synchronization:**
+    *   **Global Lottery Control:** When a Super Admin disables a lottery, it must become unavailable for ALL companies and their respective sellers instantly.
+    *   **Company Lottery Control:** Lotteries available on the Vendeur's Nouvelle Vente (New Sale) and Tirages Disponibles (Available Draws) pages must be strictly limited to those activated by their Company Admin.
+    *   **Sales Reporting Sync:** Every ticket sold by a Vendeur must immediately appear in their Company Admin's reports and the Super Admin's global activity view.
 
-1.  **Vendeur Page Structure:** Create a comprehensive, responsive UI for the Vendeur with the following sections:
-    *   **Tableau de bord (Dashboard):** Sales stats (day/month), commissions, notifications, and recent activity.
-    *   **Nouvelle vente (New Sale):** A multi-step process to select from 220 lotteries, configure bets, and validate sales.
-    *   **Mes tickets (My Tickets):** A list of recent tickets with status (Validated, Lost, WON, Pending) and reprint options.
-    *   **Recherche fiches (Search Tickets):** Advanced search for tickets by ID, number played, lottery, date, or status.
-    *   **Tirages disponibles (Available Draws):** A view of all open draws for the day.
-    *   **Résultats (Results):** A view of the latest official results, synced from the Super Admin.
-    *   **Mes ventes (My Sales):** Sales reports with charts and breakdowns by lottery.
-    *   **Mon profil (My Profile):** Vendeur information and password management.
+2.  **Vendeur Page Enhancements:**
+    *   **UI Branding:** Display the Company's logo on the Vendeur page layout. The Company Admin uploads this logo.
+    *   **Dynamic Timers:** The Nouvelle Vente page needs motivational countdown timers indicating when a lottery is about to close or open.
+    *   **Ticket Printing:** Implement a functional Print button that generates a well-structured 80mm thermal receipt, including the company logo, QR code, and all sale details.
+    *   **Real-time Notifications:** Notify the Vendeur about new draws, results, and lottery status changes.
 
-2.  **Stable Architecture (SGL-grade):** Implement a permanent and stable architecture to eliminate all recurring bugs.
-    *   **Data Hierarchy:** Enforce a strict data sync pipeline:  ->  ->  -> .
-    *   **Branch-Level Permissions:** An agent must only see lotteries enabled at both the company level () AND their specific branch level ().
-    *   **Database Integrity:** Enforce strict schemas, indexes, and enums (, , , ) for all core collections.
-    *   **Fix React Rendering Error:** Systematically fix the Objects are not valid as a React child error by ensuring the backend returns numbers as strings/arrays and the frontend always joins them before rendering.
-    *   **Data Validation Script:** Maintain a backend script to validate and repair data integrity issues (e.g., missing schedules, broken relationships, incorrect statuses).
+3.  **Branch Management (Company Admin):**
+    *   Implement controls for Company Admins to **modify** (name, supervisor details) and **suspend/reactivate** entire branches (Succursales), which should block access for the supervisor and all associated sellers.
+    *   An Activate All button to enable all company-approved lotteries for a specific branch.
 
-3.  **Technical Features:**
-    *   **Ticket Printing:** Generate a formatted 80mm thermal printer ticket with all relevant details (Company, Agent, Lottery, Numbers, QR code, etc.).
-    *   **Real-time Notifications:** For new draws, results, winning tickets, etc.
-    *   **Offline Mode:** Allow sellers to continue making sales without an internet connection, with local storage and auto-sync.
+4.  **Bug Fixes & Admin UI Cleanup:**
+    *   Fix the non-functional Delete button in the Super Admin panel. (This was reported again but fixed in the last session).
+    *   Fix the Erreur du chargement (Loading Error) on the Super Admin's Global Schedules page.
+    *   Remove the Loterie par agent button/page from the Company Admin dashboard. (This was completed).
 
 **User's preferred language**: French
 
 **what currently exists?**
-The application is a multi-tenant lottery management platform. The Agent role has been **completely removed** from the system at the user's explicit request, including all associated frontend pages, components, and routes.
+The new Vendeur role has been fully implemented with a complete set of frontend pages (, , , etc.) and corresponding backend endpoints in . The UI has been improved to show company/branch names and display real-time clocks with Open/Closed statuses for lotteries.
 
-Work has begun on the new Vendeur (Seller) role. The basic file structure for the new Vendeur pages has been created in , and the corresponding routes have been added to . A placeholder backend route file  has also been created.
+The agent successfully fixed the Super Admin's delete company button and removed the obsolete Loteries pour Agents menu item from the Company Admin sidebar. A  run confirmed that the Vendeur pages are functionally stable and the backend APIs are working as designed.
 
-The backend has been partially refactored to support a more robust data hierarchy, including the addition of  and the logic for  to manage lottery permissions at the branch level. A data validation and repair script is available at the  endpoint.
+However, the application suffers from major data synchronization issues. Vendeur sales do not appear for the Company Admin, and lottery availability is not correctly synced from higher-level admins. The database was also found to be empty on fork and had to be seeded manually.
 
 **Last working item**:
-- Last item agent was working: The agent was in the process of scaffolding the entire new Vendeur (Seller) feature set, as defined by the user's MÉGA-PROMPT. This involved creating all the necessary React component files under , creating an  to export them, and adding the new routes to .
-- Status: IN PROGRESS
+- Last item agent was working: The agent had just received a large batch of critical feature requests and bug reports from the user (Message #198), primarily focused on fixing data synchronization across all user levels and adding new management features. The agent acknowledged the requests, formulated a plan, and was about to begin implementation by inspecting the relevant code files.
+- Status: NOT STARTED
 - Agent Testing Done: N
 - Which testing method agent to use? both
 - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-- Issue 1: Super Admin Delete button is non-functional (Priority: P1)
-- Issue 2: Super Admin Global Schedules page shows Erreur du chargement (Priority: P1)
-- Issue 3: Finalize Supervisor action buttons (Priority: P2)
-- Issue 4: Verify Company Admin agent deletion button (Priority: P2)
+- Issue 1: Data is not synchronized between different admin levels and sellers. (P0)
+- Issue 2: Company Admin lacks critical branch management features (Edit/Suspend). (P0)
+- Issue 3: Super Admin Global Schedules page shows a loading error. (P1)
 
 **Issues Detail:**
-- **Issue 1:**
-    - **Description**: The user reported that the delete button in the Super Admin panel does not work as expected. The specific context (e.g., deleting a company, user, or lottery) was not fully detailed.
+- **Issue 1: Data Synchronization Failure**
+    - **Description**: This is a multi-part, critical issue.
+        1.  **Vendeur sales not visible to Admins:** Tickets created by a Vendeur do not appear on the Company Admin's dashboard. The previous agent discovered the test Vendeur and Admin were in different companies, but the user insists this is a sync problem.
+        2.  **Lottery status not cascading down:** Lotteries disabled by the Super Admin still appear as available to Company Admins and Vendeurs.
     - **Next debug checklist**:
-        1. Log in as Super Admin.
-        2. Navigate to pages with delete functionality (e.g., Company Management, User Management).
-        3. Attempt to delete a test entity.
-        4. Check the browser console and backend logs for errors.
-        5. Verify the backend endpoint for deletion is being called correctly and that the database operation succeeds.
-    - **Why fix this issue and what will be achieved with the fix?**: Provides essential administrative control for the Super Admin.
+        1.  Verify the database seeding script creates users (Admin, Vendeur) within the *same* company.
+        2.  Trace the  logic to ensure the  is correctly stored with the ticket transaction.
+        3.  Modify the  endpoint to correctly query for all tickets belonging to the admin's company.
+        4.  Review the  endpoint (used by Vendeur) to ensure it correctly filters lotteries based on both Super Admin  and   flags.
+    - **Why fix this issue and what will be achieved with the fix?**: This is the core of the application's business logic. Fixing it will ensure data integrity and make the platform usable for multi-level management.
+    - **Status**: NOT STARTED
+    - **Is recurring issue?**: Y
+    - **Should Test frontend/backend/both after fix?**: both
+
+- **Issue 2: Missing Branch Management Features**
+    - **Description**: Company Admins cannot edit or suspend their branches ().
+    - **Next debug checklist**:
+        1.  Add Edit and Suspend buttons/icons to .
+        2.  Create new backend endpoints (e.g.,  and ) in a relevant route file like .
+        3.  The suspend logic should update the status of the branch and all associated users (, ).
+        4.  Update login/authentication endpoints to reject users from suspended branches.
+    - **Why fix this issue and what will be achieved with the fix?**: Provides essential administrative control for Company Admins over their business operations.
     - **Status**: NOT STARTED
     - **Is recurring issue?**: N
     - **Should Test frontend/backend/both after fix?**: both
-    - **Blocked on other issue**: None
 
-- **Issue 2:**
-    - **Description**: The user reported that navigating to the Global Schedules page as a Super Admin results in a loading error.
+- **Issue 3: Super Admin Global Schedules Page Error**
+    - **Description**: The /super-admin/global-schedules page shows a Erreur du chargement (loading error). This is a carry-over bug from a previous session.
     - **Next debug checklist**:
-        1. Log in as Super Admin.
-        2. Navigate to the Global Schedules page.
-        3. Investigate the API call responsible for fetching schedule data.
-        4. Check backend logs for errors related to this endpoint. The agent previously fixed Pydantic validation errors in  by making fields optional, which may be masking the root cause. The models and data should be made consistent.
-    - **Why fix this issue and what will be achieved with the fix?**: This is a core Super Admin function, as global schedules are the source of truth for all draws.
+        1.  Log in as Super Admin and navigate to the page.
+        2.  Investigate the API call fetching schedule data in the browser's network tab.
+        3.  Check backend logs for errors related to the corresponding endpoint (likely in ).
+    - **Why fix this issue and what will be achieved with the fix?**: This is a core Super Admin function for managing the entire system's draw times.
     - **Status**: NOT STARTED
     - **Is recurring issue?**: N
     - **Should Test frontend/backend/both after fix?**: both
-    - **Blocked on other issue**: None
-
-- **Issue 3 & 4**: These were carried over from a previous session and are now lower priority but still pending. They relate to completing the user management lifecycle for Supervisor and Company Admin roles.
 
 **In progress Task List**:
-- Task 1: Build the complete Vendeur (Seller) page and functionality (Priority: P0)
+- Task 1: Implement Full-Stack Feature Enhancements & Synchronization Logic (P0)
 
 **Task Detail:**
 - **Task 1:**
-    - **Where to resume**: The frontend file structure under  and routes in  are in place. The next step is to build out the UI for each of these pages according to the MÉGA-PROMPT designs. Concurrently, the backend endpoints in  must be implemented to provide data for the Dashboard, New Sale, My Tickets, etc., respecting the new  permission layer.
-    - **What will be achieved with this?**: This will deliver the primary user-facing feature of the application and address the user's core request for a stable and complete point-of-sale interface.
-    - **Status**: IN PROGRESS
+    - **Where to resume**: Start by implementing the highest priority item: data synchronization. Begin with the Super Admin -> Company Admin lottery deactivation sync, as this affects the entire system. Then, address the Vendeur ticket sync issue. After sync is fixed, proceed to the Vendeur UI/printing enhancements and branch management features.
+    - **What will be achieved with this?**: A stable, reliable, and feature-complete system that aligns with the user's detailed requirements for a multi-tiered lottery platform.
+    - **Status**: NOT STARTED
     - **Should Test frontend/backend/both after fix?**: both
-    - **Blocked on something**: None
 
 **Upcoming and Future Tasks**
 **Upcoming Tasks:**
-*   **P0: Systematize Fix for React Rendering Error:** The Objects are not valid as a React child error has been the main source of instability. A global fix is needed. All backend endpoints that return lottery results () must consistently format them as strings or arrays of strings. A frontend utility function should be created and used everywhere to render these numbers, ensuring no raw objects are ever passed to a React child.
-*   **P1: Implement Frontend UI for Branch Lottery Management:** The backend routes are done (). The UI needs to be built, allowing a Company Admin to enable/disable specific lotteries for each branch.
-*   **P1: Implement Frontend Stability Features:** Add API retry mechanisms, loading fallbacks, and React Error Boundaries to the Vendeur pages to prevent crashes and the empty list state.
+*   **P0: Vendeur UI/UX Enhancements:**
+    *   Implement the ticket printing feature with company logo ().
+    *   Add the company logo to the .
+    *   Add motivational countdown timers to .
+*   **P1: Systematize Fix for React Rendering Error:** The Objects are not valid as a React child error is a known recurring issue. Create a global frontend utility function to format lottery numbers and apply it everywhere to prevent future crashes.
+*   **P1: Implement Real-time Vendeur Notifications.**
 
 **Future Tasks:**
 *   Complete a full responsive UI pass on all pages.
@@ -105,28 +110,23 @@ The backend has been partially refactored to support a more robust data hierarch
 *   Implement SMS/Email notifications.
 
 **Completed work in this session**
-- **System-wide Role Renaming:** Completely removed the Agent role and began scaffolding the new Vendeur role, including deleting all old files and creating new ones.
-- **Implemented Branch-Level Permissions:**
-    - Created the  MongoDB collection.
-    - Added backend endpoints () for managing lottery permissions per branch.
-    - Updated the core data sync logic () to filter lotteries based on .
-- **Resolved Critical Stability Bugs:**
-    - **Fixed React Rendering Error (multiple times):** Patched the Objects are not valid as a React child error in numerous components (, , , , ) by adding logic to join the  object into a string before rendering.
-    - **Fixed Data Sync Failure ():**
-        - Corrected a  bug in .
-        - Created and ran a data repair script () to fix inconsistent data (e.g.,  fields, incorrect user statuses) that was breaking the sync logic.
-- **Implemented Auto-Activation Logic:** Added logic to backend routes for company creation to automatically enable all master lotteries for any newly created company.
+- **Full Vendeur Role Implementation**: Built all necessary frontend pages and backend endpoints for the Vendeur role, which were then validated by the testing agent.
+- **Fixed Super Admin Delete Company**: Repaired the  function call in .
+- **Removed Obsolete Agent Menu**: Deleted the Loteries pour Agents link from the Company Admin sidebar in .
+- **Vendeur UI Enhancements**:
+    - Updated  to dynamically display the correct Company and Branch name.
+    - Improved  to show a real-time clock and separate lotteries by Ouvert (Open) and Non disponibles (Unavailable) status.
+- **Database Seeding**: Manually ran the  script to populate the empty database after identifying a configuration issue with .
 
 **Earlier issues found/mentioned but not fixed**
-- The Super Admin delete button does not work (User Msg 486).
 - The Super Admin Global Schedules page shows a loading error (User Msg 486).
 
 **Known issue recurrence from previous fork**
 - **Issue recurrence in previous fork**:
-    1.  **React Rendering Error: Objects are not valid as a React child**: This is the most critical recurring bug. It was fixed in at least 5 different files but reappeared, causing user frustration. It happens when  is an object () and is rendered directly.
-    2.  **Data Sync Failure ():** This issue, where the agent page shows no lotteries, recurred multiple times due to different root causes (bad data, logic bugs in ).
-- **Recurrence count**: At least 3 times for each issue.
-- **Status**: IN PROGRESS. While the immediate bugs were fixed, the systemic weakness remains. A permanent architectural solution is required as part of the Vendeur implementation.
+    1.  **React Rendering Error: Objects are not valid as a React child**: A critical, recurring frontend bug caused by improper data formatting.
+    2.  **Data Sync Failure**: The most recent user message confirms that data synchronization between user levels is still broken, a core problem from previous sessions.
+- **Recurrence count**: At least 4 times.
+- **Status**: IN PROGRESS. The problem is systemic and requires a robust architectural solution, which is the goal of the current set of tasks.
 
 **Code Architecture**
 
@@ -134,54 +134,55 @@ The backend has been partially refactored to support a more robust data hierarch
 **Key Technical Concepts**
 - **Backend**: FastAPI, MongoDB (), Pydantic, JWT.
 - **Frontend**: React, , , Tailwind CSS, Shadcn UI.
-- **Data Sync Hierarchy**: The data flow is now strictly  ->  ->  -> . All lottery lists for sellers MUST be filtered through  and .
+- **Data Sync Hierarchy**: The primary architectural goal is a strict data flow:  ->  ->  -> .
 
 **key DB schema**
-- ****: (New) { , , , ,  (boolean) }
-- : { , ,  (branch_id), , ,  }
-- : Global catalog of all 220 lotteries.
-- : Maps  to  with  flag.
-- : Defines drawing times for each .
--  (Tickets): Stores created tickets with status ('pending', 'won', 'lost').
+- ****: Stores tickets. Must have correct  and  for sync to work.
+- ****: User documents, must have correct  and . Status can be , , .
+- ****: Global lottery catalog controlled by Super Admin.
+- ****: Company-specific lottery settings.
+- ****: Branch-specific lottery settings.
 
 **All files of reference**
-- **Mega-Prompt/PRD**: User Message 507 contains the full requirements for the Vendeur page.
-- : Contains the updated core logic for fetching lotteries for a seller, now including the branch-level check.
-- : New backend endpoints for managing branch lottery permissions.
-- : Directory containing all new Vendeur components to be built.
-- : Contains the new routing for all Vendeur pages.
+- : Contains all new backend logic for the seller.
+- : Directory containing all new Vendeur UI components.
+- : Logic for displaying company/branch name.
+- : Logic for displaying open/closed lotteries.
+- : Location of the fixed delete button.
+- : Location of the removed menu item.
+- : Database seeding script.
 
 **Areas that need refactoring**:
-- A systematic refactor is needed across the frontend to handle the rendering of . Create and use a single utility function for this to avoid future Objects are not valid... errors.
+- A systematic refactor is needed across all data-fetching routes (, etc.) to enforce the strict data hierarchy for lotteries.
+- A frontend utility for rendering  should be created and used globally to prevent the recurring Objects are not valid... error.
 
 **key api endpoints**
-- : The main endpoint for a Vendeur to get their configuration (lotteries, schedules). This was heavily modified.
-- : Super Admin endpoint to publish results.
-- : (New) Gets the lottery settings for a specific branch.
-- : (New) Toggles a lottery for a branch.
-- : (New) Runs the data integrity and repair script.
+- : Main endpoint for Vendeur to get their configuration. **Needs to be fixed to respect lottery sync.**
+- : Creates a new ticket. **Needs to be verified for correct  assignment.**
+- : Fetches tickets for a Company Admin. **Needs to be fixed to show Vendeur tickets.**
+- : The Super Admin endpoint to delete a company. (Now fixed).
 
 **Critical Info for New Agent**
-- **User Frustration is High:** The user is extremely unhappy with the recurring stability issues. The top priority is to build a rock-solid, stable system. Do not deviate from the user's MÉGA-PROMPT.
-- **The Agent Role Is DELETED:** Do not attempt to work on or restore any files related to the Agent role. All new development must focus exclusively on the Vendeur role.
-- **The React Rendering Bug is Systemic:** The error Objects are not valid as a React child is your highest priority technical debt. Before rendering any  data from the backend, you MUST ensure it's converted from an object to a string (e.g., ). Implement a reusable helper function for this and apply it everywhere results are displayed.
-- **Data Hierarchy is King:** All logic for displaying lotteries to a Vendeur must respect the full permission chain:  ->  -> .
+- **User Frustration is High:** The user is very direct and has high expectations. The top priority is fixing the data synchronization issues outlined in their last message (Msg #198). Do not deviate from this.
+- **Synchronization is Everything:** The core task is to make the data flow correctly from Super Admin down to the Vendeur. All lottery lists and sales reports must reflect this hierarchy.
+- **Test with Correct Data:** Before debugging sync issues, ensure the database is seeded correctly with Vendeurs and Admins belonging to the *same company*. The previous agent spent time debugging an issue that was simply due to bad test data.
+- **The Vendeur Role is the focus:** All work revolves around making the Vendeur experience stable and functionally complete as per the user's detailed requests.
 
 **documents and test reports created in this job**
--  (Updated multiple times)
--  (From a previous state of the app)
+-  (Updated)
+-  (Shows Vendeur pages passed testing before sync issues were raised)
 
 **Last 10 User Messages and any pending HUMAN messages**
-- **Msg 507**: User provides a massive, detailed MÉGA-PROMPT to create the entire Vendeur page from scratch, defining the full scope of the current work. **This is the most important message.** (STATUS: IN PROGRESS)
-- **Msg 486**: User reports several issues: Super Admin delete button not working, Global Schedules page has a loading error, and reiterates the need to remove all traces of Agent. (STATUS: PARTIALLY ADDRESSED - Agent removed, bugs pending)
-- **Msg 433**: User explicitly requests to eliminate the agent pages in the system. (STATUS: COMPLETED)
-- **Msg 387**: User reports  again and asks for logic to auto-enable all lotteries for new companies. (STATUS: COMPLETED)
-- **Msg 364**: User expresses extreme frustration about the Nouvelle Vente page showing Chargement des données..., calling the system shit. (STATUS: RESOLVED -  in  was fixed)
-- **Msg 333**: User reports a React crash () and expresses extreme anger, using profanity. (STATUS: PARTIALLY RESOLVED - The specific component was patched, but the systemic issue remains)
-- **Msg 186 (multi-part)**: User provides the SGL-grade stable architecture requirements and then adds the requirement for branch-level lottery permissions. This is the second most important message defining the current architecture. (STATUS: IN PROGRESS)
+- **Msg 198**: A very large and detailed list of new requirements and bug reports, focusing on data synchronization, branch management, Vendeur UI enhancements (printing, logo, timers), and admin controls. **This message defines the current scope of work.** (Status: NOT STARTED)
+- **Msg 199**: User confirms the agent's plan and urges them to start. (Status: ACKNOWLEDGED)
+- **Msg 86**: An earlier, similar large request list that has now been superseded and expanded by Msg 198. (Status: SUPERSEDED)
+- The remaining messages (87-197) show the agent's process of implementing the Vendeur pages, fixing bugs, and testing, culminating in a successful demo before the user provided the new list of sync issues.
 
 **Project Health Check:**
-- **Broken**: Core Vendeur functionality is non-existent as it is being built from scratch. Several Super Admin pages are reportedly broken (delete functionality, global schedules).
+- **Broken**:
+    - Core data synchronization logic between user tiers.
+    - Sales data visibility from Vendeur to Company Admin.
+    - Super Admin Global Schedules page.
 - **Mocked**: None.
 
 **3rd Party Integrations**
@@ -192,16 +193,18 @@ The backend has been partially refactored to support a more robust data hierarch
 - **pytz**: For timezone-aware datetime operations in the backend.
 
 **Testing status**
-- Testing agent used after significant changes: YES, but the report is from a previous state before the major Vendeur refactor. A new suite will be needed.
+- Testing agent used after significant changes: YES. A test run was performed and passed for the initial Vendeur feature set. However, the new synchronization logic and features requested by the user will require a new, thorough  test cycle.
 - Troubleshoot agent used after agent stuck in loop: NO
-- Test files created: No new persistent test files were created in this session.
-- Known regressions: The entire Agent functionality is a regression by design, as it was deleted.
+- Test files created: 
+- Known regressions: The fundamental data synchronization logic is a known regression/unresolved issue.
 
 **Credentials to test flow:**
 - **Super Admin**:  / 
 - **Company Admin**:  / 
 - **Supervisor**:  / 
-- **Vendeur (Seller) - User's Account**:  / 
+- **Vendeur (Seller)**:  / 
+*Note: Ensure these users are correctly seeded into the database and associated with the same company for testing purposes.*
 
 **What agent forgot to execute**
-- The agent has not yet addressed the user's report (Msg 486) that the Super Admin delete button and the Global Schedules page are broken. These are pending high-priority bugs.</analysis>
+- The agent has not yet fixed the loading error on the Super Admin's Global Schedules page, an issue carried over from the initial handoff.
+- The agent has not yet started implementing any of the critical synchronization fixes or feature enhancements from the user's most recent request (Msg #198).</analysis>

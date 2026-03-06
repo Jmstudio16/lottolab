@@ -490,6 +490,138 @@ async def delete_succursale(
     return {"message": "Succursale supprimée"}
 
 
+@succursale_router.put("/{succursale_id}/suspend")
+async def suspend_succursale(
+    succursale_id: str,
+    request: Request,
+    current_user: dict = Depends(get_company_admin)
+):
+    """
+    Suspend entire succursale - blocks access for supervisor and all agents
+    """
+    company_id = require_admin(current_user)
+    
+    succursale = await db.succursales.find_one(
+        {"succursale_id": succursale_id, "company_id": company_id},
+        {"_id": 0}
+    )
+    if not succursale:
+        raise HTTPException(status_code=404, detail="Succursale non trouvée")
+    
+    if succursale.get("status") == "SUSPENDED":
+        raise HTTPException(status_code=400, detail="Succursale déjà suspendue")
+    
+    now = get_current_timestamp()
+    
+    # 1. Suspend succursale
+    await db.succursales.update_one(
+        {"succursale_id": succursale_id},
+        {"$set": {"status": "SUSPENDED", "suspended_at": now, "updated_at": now}}
+    )
+    
+    # 2. Suspend supervisor
+    supervisor_suspended = 0
+    if succursale.get("supervisor_id"):
+        result = await db.users.update_one(
+            {"user_id": succursale["supervisor_id"], "status": "ACTIVE"},
+            {"$set": {"status": "SUSPENDED", "suspended_reason": "Succursale suspendue", "updated_at": now}}
+        )
+        supervisor_suspended = result.modified_count
+    
+    # 3. Suspend all agents in this succursale
+    agents_result = await db.users.update_many(
+        {"succursale_id": succursale_id, "role": UserRole.AGENT_POS, "status": "ACTIVE"},
+        {"$set": {"status": "SUSPENDED", "suspended_reason": "Succursale suspendue", "updated_at": now}}
+    )
+    
+    await log_activity(
+        db=db,
+        action_type="SUCCURSALE_SUSPENDED",
+        entity_type="succursale",
+        entity_id=succursale_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={
+            "nom_succursale": succursale.get("nom_succursale"),
+            "supervisor_suspended": supervisor_suspended,
+            "agents_suspended": agents_result.modified_count
+        },
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {
+        "message": "Succursale suspendue avec succès",
+        "supervisor_suspended": supervisor_suspended,
+        "agents_suspended": agents_result.modified_count
+    }
+
+
+@succursale_router.put("/{succursale_id}/activate")
+async def activate_succursale(
+    succursale_id: str,
+    request: Request,
+    current_user: dict = Depends(get_company_admin)
+):
+    """
+    Reactivate suspended succursale - restores access for supervisor and agents
+    """
+    company_id = require_admin(current_user)
+    
+    succursale = await db.succursales.find_one(
+        {"succursale_id": succursale_id, "company_id": company_id},
+        {"_id": 0}
+    )
+    if not succursale:
+        raise HTTPException(status_code=404, detail="Succursale non trouvée")
+    
+    if succursale.get("status") not in ["SUSPENDED"]:
+        raise HTTPException(status_code=400, detail="Succursale n'est pas suspendue")
+    
+    now = get_current_timestamp()
+    
+    # 1. Activate succursale
+    await db.succursales.update_one(
+        {"succursale_id": succursale_id},
+        {"$set": {"status": "ACTIVE", "activated_at": now, "updated_at": now}, "$unset": {"suspended_at": ""}}
+    )
+    
+    # 2. Reactivate supervisor
+    supervisor_activated = 0
+    if succursale.get("supervisor_id"):
+        result = await db.users.update_one(
+            {"user_id": succursale["supervisor_id"], "status": "SUSPENDED", "suspended_reason": "Succursale suspendue"},
+            {"$set": {"status": "ACTIVE", "updated_at": now}, "$unset": {"suspended_reason": ""}}
+        )
+        supervisor_activated = result.modified_count
+    
+    # 3. Reactivate all agents suspended due to succursale suspension
+    agents_result = await db.users.update_many(
+        {"succursale_id": succursale_id, "role": UserRole.AGENT_POS, "status": "SUSPENDED", "suspended_reason": "Succursale suspendue"},
+        {"$set": {"status": "ACTIVE", "updated_at": now}, "$unset": {"suspended_reason": ""}}
+    )
+    
+    await log_activity(
+        db=db,
+        action_type="SUCCURSALE_ACTIVATED",
+        entity_type="succursale",
+        entity_id=succursale_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={
+            "nom_succursale": succursale.get("nom_succursale"),
+            "supervisor_activated": supervisor_activated,
+            "agents_activated": agents_result.modified_count
+        },
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {
+        "message": "Succursale réactivée avec succès",
+        "supervisor_activated": supervisor_activated,
+        "agents_activated": agents_result.modified_count
+    }
+
+
 # ============================================================================
 # AGENT MANAGEMENT WITHIN SUCCURSALE - EMAIL BASED
 # ============================================================================

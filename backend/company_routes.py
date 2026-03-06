@@ -490,7 +490,7 @@ async def get_schedules(current_user: dict = Depends(get_current_user)):
 # Schedules are now managed globally by Super Admin only
 
 # ============ TICKETS ============
-@company_router.get("/tickets", response_model=List[Ticket])
+@company_router.get("/tickets")
 async def get_tickets(
     current_user: dict = Depends(get_current_user),
     agent_id: Optional[str] = None,
@@ -517,18 +517,20 @@ async def get_tickets(
         else:
             query["created_at"] = {"$lte": date_to}
     
-    tickets = await db.tickets.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
-    return [Ticket(**t) for t in tickets]
+    # Use lottery_transactions collection (where vendeur tickets are stored)
+    tickets = await db.lottery_transactions.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    return tickets
 
-@company_router.get("/tickets/{ticket_id}", response_model=Ticket)
+@company_router.get("/tickets/{ticket_id}")
 async def get_ticket(ticket_id: str, current_user: dict = Depends(get_current_user)):
     company_id = require_company_access(current_user)
     
-    ticket = await db.tickets.find_one({"ticket_id": ticket_id, "company_id": company_id}, {"_id": 0})
+    # Use lottery_transactions collection (where vendeur tickets are stored)
+    ticket = await db.lottery_transactions.find_one({"ticket_id": ticket_id, "company_id": company_id}, {"_id": 0})
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     
-    return Ticket(**ticket)
+    return ticket
 
 # ============ RESULTS (READ-ONLY - Global results managed by Super Admin) ============
 @company_router.get("/results")
