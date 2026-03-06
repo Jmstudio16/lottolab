@@ -1683,3 +1683,110 @@ async def get_config_version(current_user: dict = Depends(get_company_admin)):
         return {"version": 1, "company_id": company_id}
     
     return version
+
+
+# ============================================================================
+# RAPPORT DE VENTES DETAILLE - Avec pourcentages agents et superviseurs
+# ============================================================================
+
+@company_admin_router.get("/reports/ventes-detaillees")
+async def get_rapport_ventes_detaillees(
+    current_user: dict = Depends(get_company_admin),
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None
+):
+    """
+    Get detailed sales report with agent and supervisor percentages
+    Columns: No, Agent, Tfiche, Tfiche gagnant, Vente, A payé, %Agent, P/P sans %agent, P/P avec %agent, %Sup, B.Final
+    """
+    company_id = current_user["company_id"]
+    
+    # Build date filter
+    query = {"company_id": company_id}
+    if date_from or date_to:
+        date_query = {}
+        if date_from:
+            date_query["$gte"] = date_from + "T00:00:00"
+        if date_to:
+            date_query["$lte"] = date_to + "T23:59:59"
+        if date_query:
+            query["created_at"] = date_query
+    
+    # Get all tickets for this company in the date range
+    tickets = await db.lottery_transactions.find(query, {"_id": 0}).to_list(10000)
+    
+    # Group by agent
+    agents_data = {}
+    for ticket in tickets:
+        agent_id = ticket.get("agent_id") or ticket.get("vendeur_id") or "unknown"
+        if agent_id not in agents_data:
+            agents_data[agent_id] = {
+                "agent_id": agent_id,
+                "agent_name": ticket.get("agent_name") or "Agent",
+                "total_tickets": 0,
+                "tickets_gagnants": 0,
+                "total_ventes": 0,
+                "total_paye": 0,
+                "pourcentage_agent": 10,  # Default, will be updated
+                "pourcentage_superviseur": 10  # Default, will be updated
+            }
+        
+        agents_data[agent_id]["total_tickets"] += 1
+        agents_data[agent_id]["total_ventes"] += ticket.get("total_amount", 0)
+        
+        if ticket.get("status") == "WINNER":
+            agents_data[agent_id]["tickets_gagnants"] += 1
+            agents_data[agent_id]["total_paye"] += ticket.get("winnings", 0) or ticket.get("payout_amount", 0) or 0
+    
+    # Get agent policies for percentages
+    for agent_id in agents_data:
+        policy = await db.agent_policies.find_one(
+            {"agent_id": agent_id},
+            {"_id": 0, "commission_percent": 1}
+        )
+        if policy:
+            agents_data[agent_id]["pourcentage_agent"] = policy.get("commission_percent", 10)
+        
+        # Get agent's succursale to find supervisor percentage
+        agent = await db.users.find_one(
+            {"user_id": agent_id},
+            {"_id": 0, "succursale_id": 1}
+        )
+        if agent and agent.get("succursale_id"):
+            succursale = await db.succursales.find_one(
+                {"succursale_id": agent["succursale_id"]},
+                {"_id": 0, "supervisor_commission_percent": 1}
+            )
+            if succursale:
+                agents_data[agent_id]["pourcentage_superviseur"] = succursale.get("supervisor_commission_percent", 10)
+    
+    # Calculate totals
+    agents_list = list(agents_data.values())
+    totals = {
+        "total_tickets": sum(a["total_tickets"] for a in agents_list),
+        "total_gagnants": sum(a["tickets_gagnants"] for a in agents_list),
+        "total_ventes": sum(a["total_ventes"] for a in agents_list),
+        "total_paye": sum(a["total_paye"] for a in agents_list),
+        "total_apres_commission": 0,
+        "balance_final": 0
+    }
+    
+    # Calculate total after commissions
+    for agent in agents_list:
+        vente = agent["total_ventes"]
+        pct_agent = agent["pourcentage_agent"]
+        pct_sup = agent["pourcentage_superviseur"]
+        comm_agent = (vente * pct_agent) / 100
+        comm_sup = (vente * pct_sup) / 100
+        totals["total_apres_commission"] += (vente - comm_agent)
+        totals["balance_final"] += (vente - comm_agent - comm_sup)
+    
+    return {
+        "agents": agents_list,
+        "totals": totals,
+        "period": {
+            "from": date_from,
+            "to": date_to
+        }
+    }
+

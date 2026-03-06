@@ -262,7 +262,7 @@ const VendeurNouvelleVente = () => {
 
   const printTicket = () => {
     if (ticketResult?.ticket_id) {
-      window.open(`${API_URL}/api/ticket/print/${ticketResult.ticket_id}?auto=true`, '_blank');
+      window.open(`${API_URL}/api/ticket/print/${ticketResult.ticket_id}?token=${token}&format=thermal`, '_blank');
     }
   };
 

@@ -74,7 +74,8 @@ const VendeurMesTickets = () => {
   });
 
   const printTicket = (ticketId) => {
-    window.open(`${API_URL}/api/ticket/print/${ticketId}?auto=true`, '_blank');
+    // Pass token as query param for authentication
+    window.open(`${API_URL}/api/ticket/print/${ticketId}?token=${token}&format=thermal`, '_blank');
   };
 
   return (

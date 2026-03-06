@@ -1,83 +1,65 @@
-# LOTTOLAB SaaS Enterprise - Version 3.9.0
+# LOTTOLAB SaaS Enterprise - Version 4.0.0
 
-## Release: VENDEUR PROFILE & COMMISSION SYSTEM
+## Release: RAPPORT DE VENTES & RESPONSIVE MOBILE
 Date: 2026-03-06
 
 ---
 
 ## ACCOMPLISSEMENTS DE CETTE SESSION
 
-### Bugs Corrigés (P0)
-1. ✅ **Page "Mes Ventes" Vendeur** - Fonctionne correctement (940 HTG, 14 tickets)
-2. ✅ **Page "Mes Tickets" Vendeur** - Affiche tous les tickets avec statuts
+### P0 - Bug Critique Corrigé
+1. ✅ **Impression ticket** - Erreur "Not authenticated" corrigée
+   - L'endpoint `/api/ticket/print/{ticket_id}` accepte maintenant le token via query param
+   - Le frontend envoie `?token=${token}` pour l'impression
 
-### Profil Vendeur Complet (P1)
-3. ✅ **Page Profil** avec toutes les informations:
-   - Photo de profil (avec upload)
-   - Nom du vendeur
-   - Compagnie (sync depuis `companies`)
-   - Succursale (sync depuis `succursales`)
-   - Superviseur (nom + téléphone)
-   - ID Vendeur
-   - ID Appareil (Device)
-   - Taux de commission (%)
+### P1 - Rapport de Ventes
+2. ✅ **Nouvelle page "Rapport de Ventes"** (`/company/rapport-ventes`)
+   - Filtre par dates (Date Début / Date Fin)
+   - Toutes les colonnes comme sur l'image:
+     - No, Agent, Tfiche, Tfiche Gagnant, Vente, A Payé
+     - **%Agent**, P/P sans %agent, P/P avec %agent
+     - **%Sup** (Superviseur), **B.Final** (Balance Finale)
+   - Calcul automatique des pourcentages
+   - Ligne de totaux
+   - Bouton "Exporter en Excel"
 
-4. ✅ **Nouveau endpoint** `GET /api/vendeur/profile`:
-   - Retourne company, succursale, supervisor, device, commission
+3. ✅ **Endpoint API** `GET /api/company/reports/ventes-detaillees`
+   - Agrège les données par agent
+   - Récupère les pourcentages depuis `agent_policies` et `supervisor_policies`
+   - Calcule P/P et Balance Final
 
-5. ✅ **Upload photo** `POST /api/vendeur/profile/photo`
+### P2 - Responsive Mobile
+4. ✅ **Interface Mobile 100% Fonctionnelle**
+   - ✅ Menu hamburger en haut
+   - ✅ Barre de navigation en bas (Vente, Tickets, Résultats, Profil)
+   - ✅ Grilles adaptatives (2 colonnes sur mobile)
+   - ✅ Tableaux avec scroll horizontal
+   - ✅ Formulaires adaptés au tactile
+   - ✅ Les vendeurs peuvent vendre depuis leur téléphone
 
-6. ✅ **Header Vendeur** avec logo compagnie (VendeurLayout.jsx)
-
-### Système de Commissions (P2)
-7. ✅ **Formulaire Création Succursale**:
-   - Nouveau champ "Pourcentage Commission Superviseur" (10% par défaut)
-   - Sauvegardé dans `supervisor_policies` collection
-   - Également stocké dans document `succursales`
-
-8. ✅ **Page Tickets Company Admin**:
-   - Nouvelle colonne "% AGENT" affichant le pourcentage de commission
-   - Statuts traduits en français (Gagnant, Perdant, En attente)
-   - Stats en français
-
-### Traductions Françaises (P3)
-9. ✅ **i18n configuré** avec français par défaut (`lng: 'fr'`)
-10. ✅ **Page Tickets** entièrement en français
-11. ✅ **Formulaire Succursale** en français
+### P3 - Traductions Françaises
+5. ✅ **Page Tickets** entièrement en français
+6. ✅ **Page Rapport de Ventes** en français
+7. ✅ **Menus** traduits
+8. ✅ **Statuts** traduits (Gagnant, Perdant, En attente, Annulé, Payé)
 
 ---
 
-## ENDPOINTS CRÉÉS
+## COLONNES RAPPORT DE VENTES
 
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | /api/vendeur/profile | Profil complet vendeur |
-| POST | /api/vendeur/profile/photo | Upload photo profil |
-| POST | /api/saas/companies/{id}/logo | Upload logo entreprise (Super Admin) |
-| PUT | /api/company/succursales/{id}/suspend | Suspendre succursale |
-| PUT | /api/company/succursales/{id}/activate | Réactiver succursale |
-
----
-
-## COLLECTIONS MONGODB
-
-### `supervisor_policies` (NOUVELLE)
-```json
-{
-  "id": "policy_xxx",
-  "supervisor_id": "user_xxx",
-  "company_id": "comp_xxx",
-  "succursale_id": "succ_xxx",
-  "commission_percent": 10.0,
-  "created_at": "ISO date",
-  "updated_at": "ISO date"
-}
-```
-
-### Champs ajoutés
-- `succursales.supervisor_commission_percent` - Pourcentage superviseur
-- `users.photo_url` - Photo de profil vendeur
-- `companies.company_logo_url` - Logo entreprise
+| Colonne | Description | Calcul |
+|---------|-------------|--------|
+| No | Numéro de ligne | Index |
+| Agent | Nom de l'agent | - |
+| Tfiche | Nombre total de tickets | Count |
+| Tfiche Gagnant | Tickets gagnants | Count(status=WINNER) |
+| Vente | Montant total des ventes | Sum(total_amount) |
+| A Payé | Montant payé aux gagnants | Sum(winnings) |
+| %Agent | Pourcentage de l'agent | agent_policies.commission_percent |
+| P/P sans %agent | Profit/Perte brut | = Vente |
+| P/P avec %agent | Après commission agent | = Vente × (1 - %Agent/100) |
+| %Sup | Pourcentage superviseur | supervisor_policies.commission_percent |
+| B.Final | Balance Finale | = Vente - comm_agent - comm_sup |
 
 ---
 
@@ -85,14 +67,46 @@ Date: 2026-03-06
 
 | Feature | Status |
 |---------|--------|
-| Page Mes Ventes | ✅ PASS |
-| Page Mes Tickets | ✅ PASS |
-| Profil Vendeur complet | ✅ PASS |
-| Upload photo vendeur | ✅ PASS |
-| Logo compagnie header | ✅ PASS |
-| Commission superviseur form | ✅ PASS |
-| Page Tickets % Agent | ✅ PASS |
-| Français par défaut | ✅ PASS |
+| Impression ticket avec token | ✅ PASS |
+| API rapport ventes | ✅ PASS |
+| Page rapport ventes | ✅ PASS |
+| Calculs pourcentages | ✅ PASS |
+| Mobile responsive | ✅ PASS |
+| Navigation mobile | ✅ PASS |
+| Grille mobile | ✅ PASS |
+
+---
+
+## FICHIERS MODIFIÉS/CRÉÉS
+
+### Backend
+- `/app/backend/sync_routes.py` - Fix print token auth
+- `/app/backend/company_admin_routes.py` - Ajout endpoint ventes-detaillees
+
+### Frontend
+- `/app/frontend/src/pages/CompanyRapportVentes.jsx` - NOUVEAU
+- `/app/frontend/src/pages/TicketsPage.js` - Traduction FR + colonne %Agent
+- `/app/frontend/src/pages/vendeur/VendeurMesTickets.jsx` - Fix print URL
+- `/app/frontend/src/pages/vendeur/VendeurNouvelleVente.jsx` - Fix print URL
+- `/app/frontend/src/components/Sidebar.js` - Ajout menu "Rapport de Ventes"
+- `/app/frontend/src/App.js` - Ajout route rapport-ventes
+
+---
+
+## RESPONSIVE BREAKPOINTS
+
+| Breakpoint | Taille | Description |
+|------------|--------|-------------|
+| sm | 640px+ | Petit écran (téléphone grand) |
+| md | 768px+ | Tablette |
+| lg | 1024px+ | Ordinateur |
+
+### Composants Responsive
+- `grid-cols-2 md:grid-cols-4` - Cartes stats
+- `flex-col sm:flex-row` - Layouts verticaux→horizontaux
+- `hidden lg:block` - Sidebar desktop only
+- `lg:hidden` - Barre nav mobile only
+- `pb-24 lg:pb-6` - Padding pour barre nav mobile
 
 ---
 
@@ -109,40 +123,15 @@ Date: 2026-03-06
 ## TÂCHES RESTANTES
 
 ### P1 (Prochaine priorité)
-- [ ] Page Statistiques Company Admin complète (Blocage boules, Limites, Lots)
-- [ ] Configuration Company Admin (Tables primes, Limites mise, Mariage)
+- [ ] Page Superviseur fonctionnelle avec rapport
+- [ ] Configuration Company Admin (Tables primes, Limites)
 - [ ] Ticket thermique 80mm avec logo
 
 ### P2 (Backlog)
-- [ ] Traduction complète de toutes les pages
-- [ ] Page Superviseur fonctionnelle
-- [ ] Notifications temps réel (cloche)
-- [ ] Dashboard Company Admin (agents actifs, loteries ouvertes)
-- [ ] Rapports avec pourcentages (superviseur/agent)
-
----
-
-## ARCHITECTURE
-
-```
-/app
-├── backend/
-│   ├── vendeur/vendeur_routes.py  # +profile, +photo upload
-│   ├── succursale_routes.py       # +supervisor_commission_percent
-│   ├── saas_core.py               # +company logo upload
-│   └── server.py                  # +static files mount
-└── frontend/
-    └── src/
-        ├── pages/
-        │   ├── vendeur/
-        │   │   └── VendeurProfil.jsx  # Refait complètement
-        │   ├── TicketsPage.js         # +% Agent column, French
-        │   └── CompanySuccursalesPage.jsx  # +supervisor commission
-        ├── layouts/
-        │   └── VendeurLayout.jsx      # +company logo
-        └── i18n/
-            └── index.js               # lng: 'fr' default
-```
+- [ ] Traduction complète de toutes les pages restantes
+- [ ] Notifications (cloche)
+- [ ] Export Excel fonctionnel
+- [ ] Sync commission vendeur dans Mes Ventes
 
 ---
 

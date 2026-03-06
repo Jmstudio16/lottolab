@@ -464,14 +464,36 @@ async def sync_device(
 @sync_router.get("/ticket/print/{ticket_id}", response_class=HTMLResponse)
 async def print_ticket_universal(
     ticket_id: str,
+    request: Request,
     format: str = "thermal",  # thermal (80mm) or standard (A4)
-    current_agent: dict = Depends(get_current_agent)
+    token: Optional[str] = None  # Allow token via query param for window.open()
 ):
     """
     Generate printable ticket HTML.
     Supports thermal (80mm) and standard (A4) formats.
+    Accepts token via query param or Authorization header.
     """
-    company_id = current_agent.get("company_id")
+    # Get token from query param or header
+    auth_token = token
+    if not auth_token:
+        # Try to get from Authorization header
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            auth_token = auth_header.replace("Bearer ", "")
+    
+    if not auth_token:
+        raise HTTPException(status_code=401, detail="Token requis pour l'impression")
+    
+    payload = decode_token(auth_token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token invalide ou expiré")
+    
+    user_id = payload.get("user_id")
+    user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=401, detail="Utilisateur non trouvé")
+    
+    company_id = user.get("company_id")
     
     # Find the ticket
     ticket = await db.lottery_transactions.find_one({

@@ -40,6 +40,7 @@ import { CompanyDailyReportsPage } from '@/pages/CompanyDailyReportsPage';
 import CompanyProfileSettingsPage from '@/pages/company/CompanySettingsPage';
 import { CompanyWinningTicketsPage } from '@/pages/CompanyWinningTicketsPage';
 import { BranchLotteriesPage } from '@/pages/BranchLotteriesPage';
+import CompanyRapportVentes from '@/pages/CompanyRapportVentes';
 
 // Supervisor Pages
 import { SupervisorLayout } from '@/layouts/SupervisorLayout';
@@ -460,6 +461,14 @@ const SaaSApp = () => {
                   element={
                     <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER', 'AUDITOR_READONLY']}>
                       <CompanyDailyReportsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/company/rapport-ventes"
+                  element={
+                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER', 'AUDITOR_READONLY']}>
+                      <CompanyRapportVentes />
                     </ProtectedRoute>
                   }
                 />
