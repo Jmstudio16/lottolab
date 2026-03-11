@@ -24,7 +24,8 @@ import {
   ShoppingBag,
   Image,
   Wallet,
-  Banknote
+  Banknote,
+  Flag
 } from 'lucide-react';
 import { useAuth } from '@/api/auth';
 import Logo from './Logo';
@@ -53,6 +54,7 @@ const CompanyAdminMenu = [
   { path: '/company/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/company/succursales', label: 'Succursales', icon: Store },
   { path: '/company/lotteries', label: 'Catalogue Loteries', icon: Ticket },
+  { path: '/company/lottery-flags', label: 'Config Drapeaux', icon: Flag },
   { path: '/company/schedules', label: 'Horaires (Vue)', icon: CalendarClock },
   { path: '/company/results', label: 'Résultats (Vue)', icon: Trophy },
   { path: '/company/tickets', label: 'Tickets', icon: FileText },

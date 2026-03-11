@@ -79,6 +79,7 @@ class LotterySaleRequest(BaseModel):
     lottery_id: str
     draw_date: str
     draw_name: str
+    draw_time: Optional[str] = None  # Draw time e.g. "10:15"
     plays: List[dict]  # [{"numbers": "123", "bet_type": "BORLETTE", "amount": 100}]
 
 class LotterySaleResponse(BaseModel):
@@ -88,9 +89,10 @@ class LotterySaleResponse(BaseModel):
     lottery_name: str
     draw_date: str
     draw_name: str
+    draw_time: Optional[str] = None
     plays: List[dict]
     total_amount: float
-    potential_win: float
+    potential_win: Optional[float] = None  # Made optional - not shown on ticket
     currency: str
     agent_name: str
     company_name: str
@@ -548,6 +550,7 @@ async def sell_lottery_ticket(
         "lottery_name": lottery["lottery_name"],
         "draw_date": sale_data.draw_date,
         "draw_name": sale_data.draw_name,
+        "draw_time": sale_data.draw_time or "",
         "plays": validated_plays,
         "total_amount": total_amount,
         "potential_win": potential_win,
@@ -599,9 +602,10 @@ async def sell_lottery_ticket(
         lottery_name=lottery["lottery_name"],
         draw_date=sale_data.draw_date,
         draw_name=sale_data.draw_name,
+        draw_time=sale_data.draw_time,
         plays=validated_plays,
         total_amount=total_amount,
-        potential_win=potential_win,
+        potential_win=None,  # Don't return potential_win on ticket
         currency=company.get("currency", "HTG"),
         agent_name=current_agent["name"],
         company_name=company["name"],

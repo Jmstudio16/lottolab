@@ -38,6 +38,7 @@ const VendeurNouvelleVente = () => {
     { value: 'LOTO4', label: 'Loto 4', digits: '4' },
     { value: 'LOTO5', label: 'Loto 5', digits: '5' },
     { value: 'MARIAGE', label: 'Mariage', digits: '4' },
+    { value: 'MARIAGE_GRATIS', label: 'Mariage Gratis', digits: '4', free: true },
   ];
 
   // Update time every second for countdown
@@ -153,19 +154,37 @@ const VendeurNouvelleVente = () => {
     return { status: 'closed', text: 'Fermé', color: 'text-red-400', canSell: false };
   };
 
-  // Filter lotteries - only show those that can sell or are opening soon
+  // Filter lotteries by search and flag_type
   const filteredLotteries = lotteries.filter(lot => {
     const matchesSearch = lot.lottery_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          lot.state_code?.toLowerCase().includes(searchTerm.toLowerCase());
+    // Use flag_type from backend (HAITI or USA), fallback to state_code check
+    const flagType = lot.flag_type || (lot.state_code?.includes('-HT') ? 'HAITI' : 'USA');
     const matchesCategory = selectedCategory === 'all' || 
-                           (selectedCategory === 'haiti' && lot.state_code === 'HT') ||
-                           (selectedCategory === 'usa' && lot.state_code !== 'HT');
+                           (selectedCategory === 'haiti' && flagType === 'HAITI') ||
+                           (selectedCategory === 'usa' && flagType !== 'HAITI');
     return matchesSearch && matchesCategory;
   });
 
   // Separate open and closed lotteries
   const openLotteries = filteredLotteries.filter(lot => getLotteryStatus(lot).canSell);
   const closedLotteries = filteredLotteries.filter(lot => !getLotteryStatus(lot).canSell);
+
+  // Get available draws for selected lottery
+  const getAvailableDraws = (lottery) => {
+    if (!lottery) return [];
+    // First check lottery.draws
+    if (lottery.draws && lottery.draws.length > 0) {
+      return lottery.draws;
+    }
+    // Fallback to schedules
+    const lotterySchedules = schedules.filter(s => s.lottery_id === lottery.lottery_id);
+    return lotterySchedules.map(s => ({
+      name: s.draw_name,
+      time: s.draw_time,
+      close_time: s.close_time
+    }));
+  };
 
   const selectLottery = (lottery) => {
     const status = getLotteryStatus(lottery);
@@ -174,9 +193,17 @@ const VendeurNouvelleVente = () => {
       return;
     }
     setSelectedLottery(lottery);
-    const lotterySchedules = schedules.filter(s => s.lottery_id === lottery.lottery_id);
-    if (lotterySchedules.length > 0) {
-      setSelectedDraw(lotterySchedules[0]);
+    
+    // Get available draws
+    const draws = getAvailableDraws(lottery);
+    if (draws.length > 0) {
+      // Auto-select first open draw
+      const now = new Date();
+      const currentTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+      const openDraw = draws.find(d => d.close_time > currentTime) || draws[0];
+      setSelectedDraw(openDraw);
+    } else {
+      setSelectedDraw(null);
     }
   };
 
@@ -240,11 +267,12 @@ const VendeurNouvelleVente = () => {
       const payload = {
         lottery_id: cart[0].lottery_id,
         draw_date: today,
-        draw_name: selectedDraw?.draw_type || 'Midday',
+        draw_name: selectedDraw?.name || 'Midi',
+        draw_time: selectedDraw?.time || '',
         plays: cart.map(item => ({
           numbers: item.numbers,
           bet_type: item.bet_type,
-          amount: item.amount
+          amount: item.bet_type === 'MARIAGE_GRATIS' ? 0 : item.amount
         }))
       };
 
@@ -273,7 +301,7 @@ const VendeurNouvelleVente = () => {
     setCart([]);
   };
 
-  // Success Modal
+  // Success Modal - Clean display without "En attente" and "Gains potentiels"
   if (ticketResult) {
     return (
       <div className="p-6 pb-24 lg:pb-6">
@@ -287,13 +315,23 @@ const VendeurNouvelleVente = () => {
           <div className="bg-slate-700/50 rounded-xl p-4 mb-6 text-left">
             <p className="text-sm text-slate-400">Numéro de ticket</p>
             <p className="text-xl font-mono font-bold text-emerald-400">{ticketResult.ticket_code}</p>
+            
+            {/* Lottery & Draw info */}
+            <div className="mt-3 pt-3 border-t border-slate-600">
+              <p className="text-sm text-slate-400">Loterie</p>
+              <p className="text-lg font-semibold text-white">{selectedLottery?.lottery_name}</p>
+            </div>
+            
+            {selectedDraw && (
+              <div className="mt-2">
+                <p className="text-sm text-slate-400">Tirage</p>
+                <p className="text-lg font-semibold text-amber-400">{selectedDraw.name} - {selectedDraw.time}</p>
+              </div>
+            )}
+            
             <div className="mt-3 pt-3 border-t border-slate-600">
               <p className="text-sm text-slate-400">Montant total</p>
-              <p className="text-lg font-bold text-white">{ticketResult.total_amount} HTG</p>
-            </div>
-            <div className="mt-3 pt-3 border-t border-slate-600">
-              <p className="text-sm text-slate-400">Gain potentiel</p>
-              <p className="text-lg font-bold text-amber-400">{ticketResult.potential_win?.toLocaleString()} HTG</p>
+              <p className="text-xl font-bold text-white">{ticketResult.total_amount} HTG</p>
             </div>
           </div>
 
@@ -464,6 +502,45 @@ const VendeurNouvelleVente = () => {
                   })()}
                 </div>
                 
+                {/* Draw Selection - REQUIRED */}
+                {getAvailableDraws(selectedLottery).length > 0 && (
+                  <div className="mb-4">
+                    <label className="text-sm text-slate-400 mb-2 block">Sélectionnez le Tirage *</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {getAvailableDraws(selectedLottery).map((draw, idx) => {
+                        const isSelected = selectedDraw?.name === draw.name;
+                        const now = new Date();
+                        const currentTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+                        const isOpen = draw.close_time ? currentTime < draw.close_time : true;
+                        
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => isOpen && setSelectedDraw(draw)}
+                            disabled={!isOpen}
+                            className={`p-3 rounded-lg text-center transition-all ${
+                              isSelected
+                                ? 'bg-amber-500/30 border-2 border-amber-500 text-amber-400'
+                                : isOpen
+                                  ? 'bg-slate-700 border border-slate-600 text-slate-300 hover:border-amber-500/50'
+                                  : 'bg-slate-800 border border-slate-700 text-slate-500 opacity-50 cursor-not-allowed'
+                            }`}
+                          >
+                            <p className="font-semibold text-sm">{draw.name}</p>
+                            <p className="text-xs">{draw.time}</p>
+                            {!isOpen && <p className="text-xs text-red-400">Fermé</p>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {selectedDraw && (
+                      <p className="text-xs text-amber-400 mt-2">
+                        Tirage sélectionné: {selectedDraw.name} à {selectedDraw.time}
+                      </p>
+                    )}
+                  </div>
+                )}
+                
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm text-slate-400 mb-1 block">Numéro</label>
@@ -497,21 +574,28 @@ const VendeurNouvelleVente = () => {
 
                   <div>
                     <label className="text-sm text-slate-400 mb-1 block">Montant (HTG)</label>
-                    <div className="flex gap-2">
-                      {[25, 50, 100, 200, 500].map(amount => (
-                        <button
-                          key={amount}
-                          onClick={() => setCurrentPlay({...currentPlay, amount})}
-                          className={`flex-1 py-2 rounded-lg text-sm transition-all ${
-                            currentPlay.amount === amount
-                              ? 'bg-emerald-500 text-white'
-                              : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                          }`}
-                        >
-                          {amount}
-                        </button>
-                      ))}
-                    </div>
+                    {currentPlay.betType === 'MARIAGE_GRATIS' ? (
+                      <div className="p-3 bg-amber-500/20 border border-amber-500/30 rounded-lg text-center">
+                        <p className="text-amber-400 font-semibold">Mariage Gratis - 0 HTG</p>
+                        <p className="text-xs text-amber-300/70">Combinaison offerte au client</p>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        {[25, 50, 100, 200, 500].map(amount => (
+                          <button
+                            key={amount}
+                            onClick={() => setCurrentPlay({...currentPlay, amount})}
+                            className={`flex-1 py-2 rounded-lg text-sm transition-all ${
+                              currentPlay.amount === amount
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                            }`}
+                          >
+                            {amount}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <Button onClick={addToCart} className="w-full bg-emerald-600 hover:bg-emerald-700">

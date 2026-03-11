@@ -1790,3 +1790,231 @@ async def get_rapport_ventes_detaillees(
         }
     }
 
+
+
+# ==================== FLAG-BASED LOTTERY MANAGEMENT ====================
+
+class LotteryFlagAssignment(BaseModel):
+    lottery_id: str
+    flag_type: str  # "HAITI" or "USA"
+
+class BulkFlagAssignment(BaseModel):
+    assignments: List[LotteryFlagAssignment]
+
+
+@company_admin_router.get("/available-lotteries")
+async def get_available_lotteries(current_user: dict = Depends(get_company_admin)):
+    """Get all available lotteries from master catalog with their flag assignments"""
+    company_id = current_user.get("company_id")
+    
+    # Get all master lotteries
+    master_lotteries = await db.master_lotteries.find(
+        {"$or": [{"is_active": True}, {"is_active_global": True}, {"status": "ACTIVE"}]},
+        {"_id": 0}
+    ).to_list(500)
+    
+    # Get company lottery assignments
+    company_lotteries = await db.company_lotteries.find(
+        {"company_id": company_id},
+        {"_id": 0, "lottery_id": 1, "flag_type": 1, "is_enabled": 1, "enabled": 1}
+    ).to_list(500)
+    
+    # Create lookup
+    company_lottery_map = {cl.get("lottery_id"): cl for cl in company_lotteries}
+    
+    # Enrich master lotteries with company assignments
+    result = []
+    for master in master_lotteries:
+        lottery_id = master.get("lottery_id")
+        company_data = company_lottery_map.get(lottery_id, {})
+        
+        result.append({
+            "lottery_id": lottery_id,
+            "lottery_name": master.get("lottery_name") or master.get("name"),
+            "state_code": master.get("state_code"),
+            "state_name": master.get("state_name"),
+            "country": master.get("country"),
+            "flag_type": company_data.get("flag_type") or master.get("flag_type") or "USA",
+            "draws": master.get("draws", []),
+            "open_time": master.get("open_time"),
+            "close_time": master.get("close_time"),
+            "is_enabled": company_data.get("is_enabled", False) or company_data.get("enabled", False),
+            "is_assigned": lottery_id in company_lottery_map
+        })
+    
+    # Sort: Haiti first, then by name
+    result.sort(key=lambda x: (0 if x.get("flag_type") == "HAITI" else 1, x.get("lottery_name", "")))
+    
+    return result
+
+
+@company_admin_router.get("/flag-lotteries/{flag_type}")
+async def get_flag_lotteries(flag_type: str, current_user: dict = Depends(get_company_admin)):
+    """Get lotteries assigned to a specific flag (HAITI or USA)"""
+    company_id = current_user.get("company_id")
+    
+    # Get company lotteries with this flag
+    company_lotteries = await db.company_lotteries.find(
+        {"company_id": company_id, "flag_type": flag_type.upper()},
+        {"_id": 0}
+    ).to_list(200)
+    
+    lottery_ids = [cl.get("lottery_id") for cl in company_lotteries]
+    
+    # Enrich with master data
+    result = []
+    for cl in company_lotteries:
+        lottery_id = cl.get("lottery_id")
+        master = await db.master_lotteries.find_one(
+            {"lottery_id": lottery_id},
+            {"_id": 0}
+        )
+        
+        if master:
+            result.append({
+                "lottery_id": lottery_id,
+                "lottery_name": cl.get("lottery_name") or master.get("lottery_name") or master.get("name"),
+                "state_code": master.get("state_code"),
+                "draws": master.get("draws", []),
+                "open_time": master.get("open_time"),
+                "close_time": master.get("close_time"),
+                "is_enabled": cl.get("is_enabled", True) or cl.get("enabled", True),
+                "flag_type": flag_type.upper()
+            })
+    
+    return result
+
+
+@company_admin_router.post("/assign-lottery-flag")
+async def assign_lottery_to_flag(
+    assignment: LotteryFlagAssignment,
+    current_user: dict = Depends(get_company_admin)
+):
+    """Assign a lottery to a specific flag (HAITI or USA)"""
+    company_id = current_user.get("company_id")
+    now = get_current_timestamp()
+    
+    flag_type = assignment.flag_type.upper()
+    if flag_type not in ["HAITI", "USA"]:
+        raise HTTPException(status_code=400, detail="Flag type must be HAITI or USA")
+    
+    # Check if lottery exists in master
+    master = await db.master_lotteries.find_one(
+        {"lottery_id": assignment.lottery_id},
+        {"_id": 0}
+    )
+    if not master:
+        raise HTTPException(status_code=404, detail="Lottery not found in master catalog")
+    
+    # Check if company lottery entry exists
+    existing = await db.company_lotteries.find_one({
+        "company_id": company_id,
+        "lottery_id": assignment.lottery_id
+    })
+    
+    if existing:
+        # Update flag
+        await db.company_lotteries.update_one(
+            {"company_id": company_id, "lottery_id": assignment.lottery_id},
+            {"$set": {
+                "flag_type": flag_type,
+                "is_enabled": True,
+                "enabled": True,
+                "updated_at": now
+            }}
+        )
+    else:
+        # Create new entry
+        new_lottery = {
+            "company_lottery_id": generate_id("cl"),
+            "company_id": company_id,
+            "lottery_id": assignment.lottery_id,
+            "lottery_name": master.get("lottery_name") or master.get("name"),
+            "state_code": master.get("state_code"),
+            "flag_type": flag_type,
+            "is_enabled": True,
+            "enabled": True,
+            "disabled_by_super_admin": False,
+            "created_at": now,
+            "updated_at": now
+        }
+        await db.company_lotteries.insert_one(new_lottery)
+    
+    await log_activity(
+        db, company_id, current_user.get("user_id"),
+        "LOTTERY_FLAG_ASSIGNED",
+        f"Lottery {master.get('lottery_name')} assigned to {flag_type} flag"
+    )
+    
+    return {"message": f"Lottery assigned to {flag_type} flag", "lottery_id": assignment.lottery_id}
+
+
+@company_admin_router.post("/bulk-assign-flags")
+async def bulk_assign_lottery_flags(
+    data: BulkFlagAssignment,
+    current_user: dict = Depends(get_company_admin)
+):
+    """Bulk assign multiple lotteries to flags"""
+    company_id = current_user.get("company_id")
+    now = get_current_timestamp()
+    
+    assigned_count = 0
+    for assignment in data.assignments:
+        flag_type = assignment.flag_type.upper()
+        if flag_type not in ["HAITI", "USA"]:
+            continue
+        
+        master = await db.master_lotteries.find_one(
+            {"lottery_id": assignment.lottery_id},
+            {"_id": 0}
+        )
+        if not master:
+            continue
+        
+        existing = await db.company_lotteries.find_one({
+            "company_id": company_id,
+            "lottery_id": assignment.lottery_id
+        })
+        
+        if existing:
+            await db.company_lotteries.update_one(
+                {"company_id": company_id, "lottery_id": assignment.lottery_id},
+                {"$set": {"flag_type": flag_type, "is_enabled": True, "enabled": True, "updated_at": now}}
+            )
+        else:
+            await db.company_lotteries.insert_one({
+                "company_lottery_id": generate_id("cl"),
+                "company_id": company_id,
+                "lottery_id": assignment.lottery_id,
+                "lottery_name": master.get("lottery_name") or master.get("name"),
+                "state_code": master.get("state_code"),
+                "flag_type": flag_type,
+                "is_enabled": True,
+                "enabled": True,
+                "disabled_by_super_admin": False,
+                "created_at": now,
+                "updated_at": now
+            })
+        assigned_count += 1
+    
+    return {"message": f"{assigned_count} lotteries assigned", "count": assigned_count}
+
+
+@company_admin_router.delete("/remove-lottery-flag/{lottery_id}")
+async def remove_lottery_from_flags(
+    lottery_id: str,
+    current_user: dict = Depends(get_company_admin)
+):
+    """Remove a lottery from company (disable it)"""
+    company_id = current_user.get("company_id")
+    now = get_current_timestamp()
+    
+    result = await db.company_lotteries.update_one(
+        {"company_id": company_id, "lottery_id": lottery_id},
+        {"$set": {"is_enabled": False, "enabled": False, "updated_at": now}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Lottery not found")
+    
+    return {"message": "Lottery disabled", "lottery_id": lottery_id}

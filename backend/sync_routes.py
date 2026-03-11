@@ -198,6 +198,8 @@ async def get_full_device_config(current_agent: dict = Depends(get_current_agent
                 **gl,
                 "lottery_name": gl.get("lottery_name") or cl.get("lottery_name"),
                 "state_code": gl.get("state_code") or cl.get("state_code"),
+                "flag_type": cl.get("flag_type") or gl.get("flag_type") or "USA",
+                "draws": gl.get("draws", []),
                 "max_bet_per_ticket": cl.get("max_bet_per_ticket", config.get("max_bet_amount", 10000.0)),
                 "max_bet_per_number": cl.get("max_bet_per_number", config.get("max_bet_per_number", 5000.0))
             })
@@ -533,22 +535,29 @@ async def print_ticket_universal(
     receipt_header = config.get("receipt_header", "") if config else ""
     receipt_footer = config.get("receipt_footer", "Merci et bonne chance!") if config else "Merci et bonne chance!"
     
-    # Status badge
+    # Status badge - Don't show for PENDING_RESULT
     status = ticket.get("status", "PENDING_RESULT")
     status_class = "pending"
-    status_text = "En attente"
+    status_text = ""  # Empty by default
+    show_status = False
+    
     if status == "WINNER":
         status_class = "winner"
         status_text = "GAGNANT"
+        show_status = True
     elif status == "LOSER":
         status_class = "loser"
         status_text = "Perdant"
+        show_status = True
     elif status == "VOID":
         status_class = "void"
         status_text = "ANNULÉ"
+        show_status = True
     elif status == "PAID":
         status_class = "paid"
         status_text = "PAYÉ"
+        show_status = True
+    # Don't show status for PENDING_RESULT
     
     # Format-specific styling
     if format == "thermal":
@@ -709,7 +718,7 @@ async def print_ticket_universal(
     
     <div class="ticket-code">{ticket.get('ticket_code', '')}</div>
     
-    <div class="status {status_class}">{status_text}</div>
+    {f'<div class="status {status_class}">{status_text}</div>' if show_status else ''}
     
     <div class="info-row">
         <span class="info-label">Loterie:</span>
@@ -743,9 +752,6 @@ async def print_ticket_universal(
     
     <div class="total">
         TOTAL: {ticket.get('total_amount', 0):.0f} {ticket.get('currency', 'HTG')}
-    </div>
-    <div class="potential">
-        Gain potentiel: {ticket.get('potential_win', 0):.0f} {ticket.get('currency', 'HTG')}
     </div>
     
     <div class="qr-section">

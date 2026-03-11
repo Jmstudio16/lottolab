@@ -41,6 +41,7 @@ import CompanyProfileSettingsPage from '@/pages/company/CompanySettingsPage';
 import { CompanyWinningTicketsPage } from '@/pages/CompanyWinningTicketsPage';
 import { BranchLotteriesPage } from '@/pages/BranchLotteriesPage';
 import CompanyRapportVentes from '@/pages/CompanyRapportVentes';
+import CompanyLotteryFlagsPage from '@/pages/CompanyLotteryFlagsPage';
 
 // Supervisor Pages
 import { SupervisorLayout } from '@/layouts/SupervisorLayout';
@@ -378,6 +379,14 @@ const SaaSApp = () => {
                   element={
                     <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
                       <CompanyLotteriesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/company/lottery-flags"
+                  element={
+                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
+                      <CompanyLotteryFlagsPage />
                     </ProtectedRoute>
                   }
                 />

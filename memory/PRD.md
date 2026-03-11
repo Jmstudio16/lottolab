@@ -1,186 +1,160 @@
-# LOTTOLAB SaaS Enterprise - Version 4.3.0
+# LOTTOLAB SaaS Enterprise - Version 5.0.0
 
-## Release: SUPERVISOR RESULTS & SCHEDULES PAGES
-Date: 2026-03-06
+## Release: FLAG-BASED LOTTERY SYSTEM + DRAW SELECTION
+Date: 2026-03-11
 
 ---
 
 ## ACCOMPLISSEMENTS DE CETTE SESSION
 
-### Nouvelles Pages Superviseur (P0)
+### P0 - Configuration des Loteries par Drapeau
 
-#### 1. Page Résultats des Tirages (`/supervisor/results`)
-- **Lecture seule** - Le superviseur peut seulement voir les résultats
-- Affichage des numéros gagnants par date
-- Groupés par jour avec nombre de résultats
-- Recherche par nom de loterie
-- Bannière d'information "Seul le Super Admin peut modifier"
+#### 1. Super Admin - Nouvelles Loteries Haïtiennes Créées
+Les loteries suivantes ont été ajoutées au catalogue global avec leurs tirages:
 
-#### 2. Page Horaires des Loteries (`/supervisor/lottery-schedules`)
-- **Lecture seule** - Le superviseur peut seulement voir les horaires
-- Statistiques: Total loteries, Actives, Ouvertes maintenant
-- Groupées par état (DR, FL, NY, etc.)
-- Affichage: Heures d'ouverture/fermeture, statut (Ouvert/Fermé)
-- Indicateur visuel vert = Ouvert, gris = Fermé, rouge = Désactivé
-- Recherche par nom de loterie
+| Loterie | Tirages |
+|---------|---------|
+| **Tennessee** | Matin 10:15, Midi 13:15, Soir 19:15 |
+| **Texas** | Matin 10:55, Midi 13:24, Soir 18:55, Nuit 23:00 |
+| **Georgia** | Midi 12:25, Soir 18:55, Nuit 23:20 |
+| **Florida** | Midi 13:25, Soir 21:40 |
+| **New York** | Midi 14:25, Soir 22:25 |
+
+Stockées dans:
+- `master_lotteries` avec `flag_type: "HAITI"`
+- `global_schedules` avec horaires de chaque tirage
+
+#### 2. Company Admin - Page Configuration des Drapeaux
+Nouvelle page `/company/lottery-flags`:
+- Vue de toutes les loteries (225 total)
+- Section 🇭🇹 Haïti (5 loteries) et 🇺🇸 USA (220 loteries)
+- Boutons pour assigner une loterie à un drapeau
+- Affichage des tirages de chaque loterie
+- Sauvegarde en lot
 
 #### Nouveaux Endpoints Backend
-- `GET /api/supervisor/results` - Résultats des tirages (lecture seule)
-- `GET /api/supervisor/lottery-schedules` - Horaires des loteries actives
-
-#### Menu Superviseur Mis à Jour
-- Tableau de bord
-- Mes Agents
-- Tickets
-- Rapports
-- **Résultats** (NOUVEAU)
-- **Horaires Loteries** (NOUVEAU)
-
-### Bug Fix: Commissions Synchronisées
-
-#### Problème Résolu
-Les commissions définies lors de la création (ex: 13%) n'étaient pas synchronisées - affichaient toujours 10% par défaut.
-
-#### Cause
-Le backend lisait depuis les mauvaises collections:
-- Superviseurs: lisait `users.commission_percent` au lieu de `supervisor_policies`
-- Agents: code correct mais frontend hardcodé à 10%
-
-#### Corrections Apportées
-
-1. **Backend `/api/supervisor/my-profile`** - Lit maintenant depuis:
-   - `supervisor_policies.commission_percent` (priorité 1)
-   - `succursales.supervisor_commission_percent` (fallback)
-
-2. **Backend `/api/supervisor/sales-report`** - Commission superviseur et agents synchronisées depuis les bonnes collections
-
-3. **Backend `/api/supervisor/agents`** - Commission agents lue depuis `agent_policies`
-
-4. **Frontend `VendeurDashboard.jsx`** - Récupère la commission depuis le profil API
-
-5. **Frontend `VendeurMesVentes.jsx`** - Calcule la commission avec le vrai taux du profil
-
-### Design Responsive (P1)
-
-Toutes les pages sont maintenant optimisées pour:
-- **Mobile** (390px) - iPhone, Android
-- **Tablette** (768px) - iPad
-- **Desktop** (1920px) - Ordinateurs
-
-#### Pages Optimisées
-- ✅ Vendeur: Dashboard, Mes Ventes, Mes Tickets, Profil, Résultats
-- ✅ Superviseur: Dashboard, Agents, Tickets, Rapports
-- ✅ Company Admin: Rapport Ventes, Succursales
+- `GET /api/company/available-lotteries` - Liste toutes les loteries avec flag
+- `GET /api/company/flag-lotteries/{flag}` - Loteries par drapeau
+- `POST /api/company/assign-lottery-flag` - Assigner un flag
+- `POST /api/company/bulk-assign-flags` - Assignation en lot
+- `DELETE /api/company/remove-lottery-flag/{id}` - Retirer une loterie
 
 ---
 
-## TESTS EFFECTUÉS - Iteration 21
+### P1 - Page Vendeur Améliorée
 
-| Feature | Status |
-|---------|--------|
-| Commission Supervisor 13% (lala@gmail.com) | ✅ PASS |
-| Commission Supervisor 10% (supervisor@lotopam.com) | ✅ PASS |
-| Commission Vendeur 10% (agent.marie@lotopam.com) | ✅ PASS |
-| Vendeur Dashboard Commission Display | ✅ PASS |
-| Vendeur Mes Ventes Commission Calculation | ✅ PASS |
-| Supervisor Reports %Agent, %Sup, B.Final | ✅ PASS |
-| Responsive Mobile 390px | ✅ PASS |
-| Responsive Tablet 768px | ✅ PASS |
-| Supervisor All Pages | ✅ PASS |
+#### Sélection du Tirage
+- Après sélection de la loterie, affichage des tirages disponibles
+- Boutons: Matin, Midi, Soir, Nuit (selon la loterie)
+- Indication "Fermé" en rouge pour les tirages passés
+- Auto-sélection du premier tirage ouvert
+- Message "Tirage sélectionné: [nom] à [heure]"
 
-**Backend: 100%**
-**Frontend: 96% (49/51 tests passed)**
+#### Filtrage par Drapeau
+- Boutons 🇭🇹 Haïti / 🇺🇸 USA / Toutes
+- Filtrage basé sur `flag_type` du backend (pas le state_code)
+
+#### Mariage Gratis
+- Nouveau type de mise: "Mariage Gratis"
+- Montant = 0 HTG (gratuit)
+- Message spécial: "Combinaison offerte au client"
 
 ---
 
-## ARCHITECTURE DES COMMISSIONS
+### P1 - Impression du Ticket Corrigée
 
-### Collections MongoDB
+#### Modifications
+- **Suppression de "En attente"** pour les tickets `PENDING_RESULT`
+- **Suppression de "Gain potentiel"** sur tous les tickets
+- Ajout du `draw_time` dans la transaction
+
+#### Affichage du ticket
+Le ticket imprimé affiche maintenant:
+- ✅ Nom loterie
+- ✅ Tirage (draw_name + draw_time)
+- ✅ Numéros
+- ✅ Montant total
+- ✅ Date
+- ✅ Agent
+- ✅ Code ticket
+- ❌ "En attente" (supprimé)
+- ❌ "Gain potentiel" (supprimé)
+
+---
+
+## FICHIERS CRÉÉS/MODIFIÉS
+
+### Backend
+- `/app/backend/company_admin_routes.py` - Nouveaux endpoints flag management
+- `/app/backend/sync_routes.py` - Template d'impression modifié
+- `/app/backend/universal_pos_routes.py` - Ajout draw_time, suppression potential_win
+
+### Frontend
+- `/app/frontend/src/pages/CompanyLotteryFlagsPage.jsx` - Nouvelle page
+- `/app/frontend/src/pages/vendeur/VendeurNouvelleVente.jsx` - Sélection tirage + filtrage flag
+- `/app/frontend/src/components/Sidebar.js` - Ajout lien "Config Drapeaux"
+- `/app/frontend/src/App.js` - Route /company/lottery-flags
+
+### Database
+- `master_lotteries` - 5 nouvelles loteries haïtiennes
+- `global_schedules` - 14 nouveaux schedules (tirages)
+- `company_lotteries` - Loteries assignées à la company de test
+
+---
+
+## SCHÉMA DES DRAPEAUX
 
 ```
-supervisor_policies:
-  - supervisor_id: string
-  - company_id: string
-  - commission_percent: float (ex: 13.0)
+master_lotteries.flag_type = "HAITI" | "USA"
+company_lotteries.flag_type = "HAITI" | "USA"
 
-agent_policies:
-  - agent_id: string
-  - company_id: string
-  - commission_percent: float (ex: 10.0)
+HAITI FLAG 🇭🇹:
+- Tennessee (TN-HT) - 3 tirages
+- Texas (TX-HT) - 4 tirages
+- Georgia (GA-HT) - 3 tirages
+- Florida (FL-HT) - 2 tirages
+- New York (NY-HT) - 2 tirages
 
-succursales:
-  - supervisor_commission_percent: float (fallback)
+USA FLAG 🇺🇸:
+- Toutes les autres loteries (AR, AZ, NY, FL, etc.)
 ```
 
-### Hiérarchie de Lecture
+---
 
-**Pour Superviseur:**
-1. `supervisor_policies.commission_percent`
-2. `succursales.supervisor_commission_percent`
-3. Default: 10%
+## FLUX DE VENTE VENDEUR
 
-**Pour Agent/Vendeur:**
-1. `agent_policies.commission_percent`
-2. `users.commission_percent`
-3. Default: 10%
+1. Vendeur choisit le drapeau (🇭🇹 ou 🇺🇸)
+2. Vendeur choisit la loterie
+3. **Vendeur choisit le tirage** (Matin/Midi/Soir/Nuit) ← NOUVEAU
+4. Vendeur entre les numéros
+5. Vendeur sélectionne le type de mise (Borlette, Mariage, Mariage Gratis)
+6. Vendeur valide le ticket
+7. Ticket est enregistré avec draw_name et draw_time
+8. Ticket est imprimé (sans "En attente", sans "Gain potentiel")
 
 ---
 
 ## CREDENTIALS DE TEST
 
-| Rôle | Email | Password | Commission |
-|------|-------|----------|------------|
-| Super Admin | jefferson@jmstudio.com | JMStudio@2026! | - |
-| Company Admin | admin@lotopam.com | Admin123! | - |
-| Superviseur (10%) | supervisor@lotopam.com | Supervisor123! | 10% |
-| Superviseur (13%) | lala@gmail.com | Test123! | 13% |
-| Vendeur | agent.marie@lotopam.com | Agent123! | 10% |
-
----
-
-## FICHIERS MODIFIÉS
-
-### Backend
-- `/app/backend/supervisor_routes.py` - my-profile, sales-report, agents endpoints
-
-### Frontend
-- `/app/frontend/src/pages/vendeur/VendeurDashboard.jsx` - Commission depuis profil
-- `/app/frontend/src/pages/vendeur/VendeurMesVentes.jsx` - Commission depuis profil + responsive
-- `/app/frontend/src/pages/supervisor/SupervisorReportsPage.jsx` - Commission depuis API
-- `/app/frontend/src/pages/supervisor/SupervisorTicketsPage.jsx` - Amélioré
+| Rôle | Email | Password |
+|------|-------|----------|
+| Super Admin | jefferson@jmstudio.com | JMStudio@2026! |
+| Company Admin | admin@lotopam.com | Admin123! |
+| Superviseur | supervisor@lotopam.com | Supervisor123! |
+| Vendeur | agent.marie@lotopam.com | Agent123! |
 
 ---
 
 ## TÂCHES RESTANTES
 
-### P1 (Prochaine priorité)
-- [ ] Ajouter le logo de l'entreprise sur les tickets imprimés
-- [ ] Configuration Company Admin (Tables primes, Limites, Blocage boules)
-- [ ] Traduction française complète de l'interface
-
-### P2 (Backlog)
-- [ ] Système de notifications (icône cloche)
-- [ ] Export Excel fonctionnel pour les rapports
-- [ ] Synchronisation "gérer de loterie" avec "catalogue loterie"
-- [ ] Support multi-langues (Espagnol, Anglais)
-
-### P3 (Future)
-- [ ] Automatisation des paiements gagnants
-- [ ] Développement plateforme LOTO PAM publique
-- [ ] Refactoring frontend (centraliser API calls)
+### P2 - Backlog
+- [ ] Super Admin: Page de création/édition des loteries master
+- [ ] Super Admin: Page de configuration des schedules globaux
+- [ ] Super Admin: Page de publication des résultats
+- [ ] Export Excel des rapports
+- [ ] Système de notifications
+- [ ] Support multi-langues complet
 
 ---
 
-## NOTES POUR LE LANCEMENT
-
-L'application est prête pour le lancement officiel avec:
-
-✅ **Synchronisation des données** - Ventes vendeur visibles par superviseurs et admins
-✅ **Système de commissions** - Superviseurs et vendeurs avec % configurables
-✅ **Design responsive** - Mobile, tablette et desktop supportés
-✅ **4 rôles fonctionnels** - Super Admin, Company Admin, Superviseur, Vendeur
-✅ **Rapport de ventes** - Avec calculs de commissions détaillés
-
----
-
-*Document mis à jour le 2026-03-06*
+*Document mis à jour le 2026-03-11*
