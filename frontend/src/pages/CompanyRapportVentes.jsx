@@ -73,6 +73,14 @@ const CompanyRapportVentes = () => {
     fetchReport();
   };
 
+  const exportToExcel = () => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.append('date_from', dateFrom);
+    if (dateTo) params.append('date_to', dateTo);
+    window.open(`${API_URL}/api/export/company/sales-report?token=${token}&${params.toString()}`, '_blank');
+    toast.success('Téléchargement du fichier Excel en cours...');
+  };
+
   // Calculate B.Final (Balance Final) for an agent
   const calculateBFinal = (agent) => {
     const vente = agent.total_ventes || 0;
@@ -94,14 +102,25 @@ const CompanyRapportVentes = () => {
             </h1>
             <p className="text-slate-400 text-sm md:text-base">Rapport détaillé avec pourcentages agents et superviseurs</p>
           </div>
-          <Button 
-            onClick={handleSearch} 
-            className="bg-emerald-600 hover:bg-emerald-700"
-            disabled={loading}
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Actualiser
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={exportToExcel} 
+              variant="outline"
+              className="border-emerald-700 text-emerald-400 hover:bg-emerald-500/10"
+              data-testid="export-excel-btn"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Excel
+            </Button>
+            <Button 
+              onClick={handleSearch} 
+              className="bg-emerald-600 hover:bg-emerald-700"
+              disabled={loading}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Actualiser
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}

@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 
 class LottoLabAPITester:
-    def __init__(self, base_url="https://vendor-flags.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://pos-seller-setup.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.token = None
         self.user_data = None

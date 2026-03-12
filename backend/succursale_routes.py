@@ -114,6 +114,9 @@ class AgentCreate(BaseModel):
     password: str
     password_confirm: str
     
+    # POS Serial Number
+    pos_serial_number: Optional[str] = None  # Unique identifier for POS device
+    
     # Commission & Limits
     commission_percent: float = 0.0
     limite_credit: float = 50000.0
@@ -125,6 +128,7 @@ class AgentUpdate(BaseModel):
     nom_agent: Optional[str] = None
     prenom_agent: Optional[str] = None
     telephone: Optional[str] = None
+    pos_serial_number: Optional[str] = None  # Can update POS serial
     commission_percent: Optional[float] = None
     limite_credit: Optional[float] = None
     limite_gain: Optional[float] = None
@@ -707,6 +711,17 @@ async def create_agent_in_succursale(
     if existing:
         raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
     
+    # Check POS serial number uniqueness if provided
+    pos_serial = agent_data.pos_serial_number
+    if pos_serial:
+        pos_serial = pos_serial.strip().upper()
+        existing_pos = await db.pos_devices.find_one({
+            "pos_serial_number": pos_serial,
+            "status": {"$ne": "DELETED"}
+        })
+        if existing_pos:
+            raise HTTPException(status_code=400, detail=f"Le numéro de série POS '{pos_serial}' est déjà utilisé")
+    
     now = get_current_timestamp()
     agent_id = generate_id("user_")
     agent_name = f"{agent_data.prenom_agent} {agent_data.nom_agent}"
@@ -725,11 +740,36 @@ async def create_agent_in_succursale(
         "role": UserRole.AGENT_POS,
         "company_id": company_id,
         "succursale_id": succursale_id,
+        "pos_serial_number": pos_serial,  # POS Serial Number
         "status": agent_data.status,
         "created_at": now,
         "updated_at": now
     }
     await db.users.insert_one(user_doc)
+    
+    # 1b. If POS serial provided, also create POS device record
+    device_id = None
+    if pos_serial:
+        device_id = generate_id("pos_")
+        device_doc = {
+            "device_id": device_id,
+            "company_id": company_id,
+            "assigned_agent_id": agent_id,
+            "succursale_id": succursale_id,
+            "pos_serial_number": pos_serial,
+            "device_name": f"{agent_name}'s POS",
+            "device_type": "POS",
+            "status": "ACTIVE",
+            "created_at": now,
+            "updated_at": now
+        }
+        await db.pos_devices.insert_one(device_doc)
+        
+        # Update user with device_id
+        await db.users.update_one(
+            {"user_id": agent_id},
+            {"$set": {"device_id": device_id}}
+        )
     
     # 2. Create agent policy
     policy_id = generate_id("policy_")

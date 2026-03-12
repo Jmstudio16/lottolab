@@ -4,7 +4,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   Building2, Plus, Trash2, Save, Users, Eye, 
-  RefreshCw, UserPlus, Store, Mail, Phone, User, Lock, Edit, PlayCircle, StopCircle, Settings, Percent
+  RefreshCw, UserPlus, Store, Mail, Phone, User, Lock, Edit, PlayCircle, StopCircle, Settings, Percent, Smartphone
 } from 'lucide-react';
 import CompanyLayout from '@/components/CompanyLayout';
 import { useNavigate } from 'react-router-dom';
@@ -59,8 +59,11 @@ export const CompanySuccursalesPage = () => {
     commission_percent: 0,
     limite_credit: 50000,
     limite_gain: 100000,
-    status: 'ACTIVE'
+    status: 'ACTIVE',
+    pos_serial_number: ''  // POS Serial Number - unique identifier
   });
+
+  const [posCheckStatus, setPosCheckStatus] = useState({ checking: false, valid: null, message: '' });
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -129,6 +132,12 @@ export const CompanySuccursalesPage = () => {
     
     if (!agentForm.email) {
       toast.error('Email agent requis');
+      return;
+    }
+    
+    // Check if POS serial is valid (if provided)
+    if (agentForm.pos_serial_number && posCheckStatus.valid === false) {
+      toast.error('Ce numéro de série POS est déjà utilisé');
       return;
     }
     
@@ -203,6 +212,44 @@ export const CompanySuccursalesPage = () => {
     }
   };
 
+  // Check if POS serial number is available
+  const checkPosSerialAvailable = async (serialNumber) => {
+    if (!serialNumber || serialNumber.trim() === '') {
+      setPosCheckStatus({ checking: false, valid: null, message: '' });
+      return;
+    }
+    
+    setPosCheckStatus({ checking: true, valid: null, message: 'Vérification...' });
+    
+    try {
+      const res = await axios.get(
+        `${API_URL}/api/company-admin/check-pos-serial/${encodeURIComponent(serialNumber.trim())}`,
+        { headers }
+      );
+      setPosCheckStatus({ 
+        checking: false, 
+        valid: res.data.available, 
+        message: res.data.available ? 'Numéro disponible' : 'Numéro déjà utilisé'
+      });
+    } catch (error) {
+      setPosCheckStatus({ 
+        checking: false, 
+        valid: false, 
+        message: 'Erreur de vérification'
+      });
+    }
+  };
+
+  // Debounced POS check
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (agentForm.pos_serial_number) {
+        checkPosSerialAvailable(agentForm.pos_serial_number);
+      }
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [agentForm.pos_serial_number]);
+
   const openEditAgentModal = (agent) => {
     setEditingAgent({
       user_id: agent.user_id,
@@ -213,7 +260,8 @@ export const CompanySuccursalesPage = () => {
       commission_percent: agent.commission_percent || 0,
       limite_credit: agent.limite_credit || 50000,
       limite_gain: agent.limite_gain || 100000,
-      status: agent.status || 'ACTIVE'
+      status: agent.status || 'ACTIVE',
+      pos_serial_number: agent.pos_serial_number || ''
     });
     setShowEditAgentModal(true);
   };
@@ -275,8 +323,10 @@ export const CompanySuccursalesPage = () => {
       commission_percent: 0,
       limite_credit: 50000,
       limite_gain: 100000,
-      status: 'ACTIVE'
+      status: 'ACTIVE',
+      pos_serial_number: ''
     });
+    setPosCheckStatus({ checking: false, valid: null, message: '' });
   };
 
   // Suspend entire succursale
@@ -1003,6 +1053,34 @@ export const CompanySuccursalesPage = () => {
                   placeholder="+509-XXXX-XXXX"
                   data-testid="agent-telephone"
                 />
+              </div>
+
+              {/* POS Serial Number */}
+              <div>
+                <Label className="text-slate-300 flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-amber-400" />
+                  Numéro de série POS
+                </Label>
+                <div className="relative">
+                  <Input
+                    value={agentForm.pos_serial_number}
+                    onChange={(e) => setAgentForm({...agentForm, pos_serial_number: e.target.value.toUpperCase()})}
+                    className={`bg-slate-800 border-slate-700 text-white pr-24 ${
+                      posCheckStatus.valid === false ? 'border-red-500' : 
+                      posCheckStatus.valid === true ? 'border-emerald-500' : ''
+                    }`}
+                    placeholder="POS-XXXX"
+                    data-testid="agent-pos-serial"
+                  />
+                  {posCheckStatus.message && (
+                    <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs ${
+                      posCheckStatus.valid ? 'text-emerald-400' : 'text-red-400'
+                    }`}>
+                      {posCheckStatus.message}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Ce numéro unique identifie l'appareil POS de l'agent</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

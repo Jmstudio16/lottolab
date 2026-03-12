@@ -471,14 +471,17 @@ async def print_ticket_universal(
     token: Optional[str] = None  # Allow token via query param for window.open()
 ):
     """
-    Generate printable ticket HTML.
-    Supports thermal (80mm) and standard (A4) formats.
-    Accepts token via query param or Authorization header.
+    Generate printable ticket HTML - LOTO PAM 80mm thermal format.
+    
+    IMPORTANT: This ticket does NOT display:
+    - "En attente" status text
+    - "Gains potentiels" section
+    
+    Only shows: VALIDÉ status, actual ticket data
     """
     # Get token from query param or header
     auth_token = token
     if not auth_token:
-        # Try to get from Authorization header
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             auth_token = auth_header.replace("Bearer ", "")
@@ -508,186 +511,182 @@ async def print_ticket_universal(
     
     # Get company info
     company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
-    config = await db.company_configurations.find_one({"company_id": company_id}, {"_id": 0})
+    company_name = company.get("name", "LOTO PAM") if company else "LOTO PAM"
+    currency = ticket.get("currency", "HTG")
     
-    # Get logos
-    system_settings = await db.system_settings.find_one({}, {"_id": 0})
-    system_logo = system_settings.get("system_logo_url", "/assets/logos/lottolab-logo.png") if system_settings else "/assets/logos/lottolab-logo.png"
-    company_logo = company.get("company_logo_url") if company else None
-    display_logo = company_logo if company_logo else system_logo
+    # Get agent info for POS ID
+    agent = await db.users.find_one({"user_id": ticket.get("agent_id")}, {"_id": 0})
+    agent_name = ticket.get("agent_name") or (agent.get("name") if agent else "") or "N/A"
+    pos_id = (agent.get("pos_serial_number") if agent else None) or "N/A"
     
-    # Generate QR code
-    qr_payload = ticket.get("qr_payload", f"{ticket.get('ticket_code')}|{ticket.get('verification_code')}|{company_id}")
-    qr_code = generate_qr_code_base64(qr_payload)
+    # Format date and time
+    created_at = ticket.get("created_at", "")
+    formatted_date = "N/A"
+    formatted_time = "N/A"
+    if created_at:
+        try:
+            from datetime import datetime, timezone
+            dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            formatted_date = dt.strftime("%d/%m/%Y")
+            formatted_time = dt.strftime("%I:%M %p")
+        except:
+            formatted_date = created_at[:10] if len(created_at) >= 10 else created_at
+            formatted_time = created_at[11:16] if len(created_at) >= 16 else ""
     
-    # Build plays HTML
-    plays_html = ""
+    # Get draw info
+    lottery_name = ticket.get("lottery_name", "N/A")
+    draw_name = ticket.get("draw_name", "")
+    ticket_code = ticket.get("ticket_code", ticket_id[:12].upper())
+    
+    # Build plays rows
+    plays_rows = ""
     for play in ticket.get("plays", []):
-        plays_html += f"""
-        <tr>
-            <td class="num">{play.get('numbers', '')}</td>
-            <td class="type">{play.get('bet_type', '')}</td>
-            <td class="amt">{play.get('amount', 0):.0f}</td>
-        </tr>
+        numbers = play.get("numbers", "N/A")
+        amount = play.get("amount", 0)
+        plays_rows += f"""
+        <div class="play-line">
+            <span class="play-numbers">{numbers}</span>
+            <span class="play-amount">{amount} {currency}</span>
+        </div>
         """
     
-    # Receipt header/footer
-    receipt_header = config.get("receipt_header", "") if config else ""
-    receipt_footer = config.get("receipt_footer", "Merci et bonne chance!") if config else "Merci et bonne chance!"
+    total_amount = ticket.get("total_amount", 0)
     
-    # Status badge - Don't show for PENDING_RESULT
-    status = ticket.get("status", "PENDING_RESULT")
-    status_class = "pending"
-    status_text = ""  # Empty by default
-    show_status = False
-    
-    if status == "WINNER":
-        status_class = "winner"
-        status_text = "GAGNANT"
-        show_status = True
-    elif status == "LOSER":
-        status_class = "loser"
-        status_text = "Perdant"
-        show_status = True
-    elif status == "VOID":
-        status_class = "void"
-        status_text = "ANNULÉ"
-        show_status = True
-    elif status == "PAID":
-        status_class = "paid"
-        status_text = "PAYÉ"
-        show_status = True
-    # Don't show status for PENDING_RESULT
-    
-    # Format-specific styling
-    if format == "thermal":
-        page_style = """
-            @page { size: 80mm auto; margin: 2mm; }
-            body { width: 76mm; font-size: 11px; }
-        """
-    else:
-        page_style = """
-            @page { size: A4; margin: 10mm; }
-            body { width: 210mm; font-size: 14px; max-width: 300px; margin: 0 auto; }
-        """
-    
-    html = f"""
-<!DOCTYPE html>
+    # Generate the 80mm thermal receipt HTML - LOTO PAM format
+    html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Ticket {ticket.get('ticket_code', '')}</title>
+    <meta name="viewport" content="width=80mm">
+    <title>Ticket {ticket_code}</title>
     <style>
-        {page_style}
-        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        @page {{
+            size: 80mm auto;
+            margin: 0;
+        }}
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
         body {{
-            font-family: 'Courier New', monospace;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 11px;
+            width: 80mm;
+            max-width: 80mm;
             padding: 3mm;
-            background: #fff;
+            background: white;
+            color: black;
+            line-height: 1.3;
+        }}
+        .separator {{
+            text-align: center;
+            font-size: 10px;
+            letter-spacing: 1px;
+            margin: 4px 0;
+        }}
+        .separator-dashed {{
+            border-top: 1px dashed black;
+            margin: 6px 0;
         }}
         .header {{
             text-align: center;
-            border-bottom: 2px dashed #000;
-            padding-bottom: 4px;
             margin-bottom: 6px;
         }}
-        .company-name {{
-            font-size: 1.3em;
+        .logo-text {{
+            font-size: 20px;
             font-weight: bold;
-            letter-spacing: 1px;
-        }}
-        .sub-header {{
-            font-size: 0.85em;
-            color: #555;
-        }}
-        .ticket-code {{
-            text-align: center;
-            font-size: 1.4em;
-            font-weight: bold;
-            padding: 6px;
-            margin: 6px 0;
-            border: 2px solid #000;
             letter-spacing: 2px;
         }}
-        .info-row {{
+        .sub-header {{
+            font-size: 9px;
+            margin: 2px 0;
+        }}
+        .info-line {{
             display: flex;
             justify-content: space-between;
-            padding: 2px 0;
-            font-size: 0.9em;
+            margin: 2px 0;
+            font-size: 10px;
         }}
-        .info-label {{ font-weight: bold; }}
-        table {{
-            width: 100%;
-            border-collapse: collapse;
+        .info-label {{
+            font-weight: normal;
+        }}
+        .info-value {{
+            font-weight: bold;
+        }}
+        .section-title {{
+            text-align: center;
+            font-weight: bold;
+            font-size: 10px;
+            margin: 6px 0 4px 0;
+            text-transform: uppercase;
+        }}
+        .lottery-info {{
+            text-align: center;
             margin: 6px 0;
         }}
-        th {{
-            border-bottom: 1px solid #000;
-            padding: 3px;
-            text-align: left;
-            font-size: 0.85em;
-        }}
-        td {{
-            padding: 3px;
-            border-bottom: 1px dotted #ccc;
-        }}
-        .num {{ font-weight: bold; font-size: 1.1em; }}
-        .type {{ font-size: 0.85em; }}
-        .amt {{ text-align: right; font-weight: bold; }}
-        .total {{
-            text-align: right;
-            font-size: 1.2em;
+        .lottery-name {{
             font-weight: bold;
-            border-top: 2px solid #000;
-            padding-top: 4px;
-            margin-top: 4px;
+            font-size: 12px;
         }}
-        .potential {{
-            text-align: right;
-            font-size: 0.95em;
-            color: #333;
+        .lottery-draw {{
+            font-size: 10px;
         }}
-        .qr-section {{
+        .play-line {{
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+            padding: 2px 0;
+        }}
+        .play-numbers {{
+            font-weight: bold;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }}
+        .play-amount {{
+            font-size: 11px;
+        }}
+        .total-section {{
             text-align: center;
             margin: 8px 0;
+            padding: 6px 0;
+            border-top: 1px solid black;
+            border-bottom: 1px solid black;
         }}
-        .qr-section img {{
-            width: 80px;
-            height: 80px;
+        .total-label {{
+            font-size: 11px;
+            font-weight: bold;
         }}
-        .logo-section {{
+        .total-amount {{
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 2px;
+        }}
+        .status-section {{
             text-align: center;
-            margin-bottom: 6px;
+            margin: 6px 0;
         }}
-        .logo-section img {{
-            max-width: 60mm;
-            max-height: 25mm;
-            object-fit: contain;
-        }}
-        .verification {{
-            text-align: center;
-            font-size: 0.8em;
-            color: #666;
+        .status-badge {{
+            font-size: 12px;
+            font-weight: bold;
+            padding: 4px 12px;
+            border: 2px solid black;
+            display: inline-block;
         }}
         .footer {{
             text-align: center;
-            border-top: 2px dashed #000;
-            padding-top: 4px;
-            margin-top: 6px;
-            font-size: 0.85em;
+            margin-top: 8px;
+            font-size: 9px;
         }}
-        .status {{
-            text-align: center;
-            padding: 4px;
-            margin: 4px 0;
+        .footer-url {{
+            font-size: 8px;
+            margin-top: 4px;
+        }}
+        .thank-you {{
             font-weight: bold;
-            border-radius: 3px;
+            margin-top: 6px;
+            font-size: 10px;
         }}
-        .status.pending {{ background: #fff3cd; color: #856404; }}
-        .status.winner {{ background: #d4edda; color: #155724; }}
-        .status.loser {{ background: #f8d7da; color: #721c24; }}
-        .status.void {{ background: #f5f5f5; color: #666; text-decoration: line-through; }}
-        .status.paid {{ background: #cce5ff; color: #004085; }}
         .print-btn {{
             display: block;
             width: 100%;
@@ -700,82 +699,84 @@ async def print_ticket_universal(
             font-size: 14px;
         }}
         @media print {{
+            body {{
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }}
             .no-print {{ display: none !important; }}
+            @page {{
+                margin: 0;
+            }}
         }}
     </style>
 </head>
 <body>
     <button class="print-btn no-print" onclick="window.print()">IMPRIMER</button>
     
-    <div class="logo-section">
-        <img src="{display_logo}" alt="Logo" onerror="this.style.display='none'" />
-    </div>
+    <div class="separator">================================</div>
     
     <div class="header">
-        <div class="company-name">{company.get('name', 'LOTTOLAB')}</div>
-        {f'<div class="sub-header">{receipt_header}</div>' if receipt_header else ''}
+        <div class="logo-text">LOTO PAM</div>
+        <div class="sub-header">© JM STUDIO</div>
+        <div class="sub-header">lotopam.com</div>
     </div>
     
-    <div class="ticket-code">{ticket.get('ticket_code', '')}</div>
+    <div class="separator">================================</div>
     
-    {f'<div class="status {status_class}">{status_text}</div>' if show_status else ''}
-    
-    <div class="info-row">
-        <span class="info-label">Loterie:</span>
-        <span>{ticket.get('lottery_name', '')}</span>
+    <div class="info-line">
+        <span class="info-label">VENDEUR :</span>
+        <span class="info-value">{agent_name.upper() if agent_name else 'N/A'}</span>
     </div>
-    <div class="info-row">
-        <span class="info-label">Tirage:</span>
-        <span>{ticket.get('draw_name', '')} - {ticket.get('draw_date', '')}</span>
+    <div class="info-line">
+        <span class="info-label">POS ID  :</span>
+        <span class="info-value">{pos_id}</span>
     </div>
-    <div class="info-row">
-        <span class="info-label">Agent:</span>
-        <span>{ticket.get('agent_name', '')}</span>
-    </div>
-    <div class="info-row">
-        <span class="info-label">Date:</span>
-        <span>{ticket.get('created_at', '')[:16].replace('T', ' ')}</span>
+    <div class="info-line">
+        <span class="info-label">TICKET  :</span>
+        <span class="info-value">{ticket_code}</span>
     </div>
     
-    <table>
-        <thead>
-            <tr>
-                <th>Numéro</th>
-                <th>Type</th>
-                <th style="text-align:right;">Montant</th>
-            </tr>
-        </thead>
-        <tbody>
-            {plays_html}
-        </tbody>
-    </table>
+    <div class="separator-dashed"></div>
     
-    <div class="total">
-        TOTAL: {ticket.get('total_amount', 0):.0f} {ticket.get('currency', 'HTG')}
+    <div class="lottery-info">
+        <div class="lottery-name">LOTTERIE : {lottery_name}</div>
+        <div class="lottery-draw">TIRAGE   : {draw_name if draw_name else 'Standard'}</div>
+        <div class="lottery-draw">DATE     : {formatted_date}</div>
+        <div class="lottery-draw">HEURE    : {formatted_time}</div>
     </div>
     
-    <div class="qr-section">
-        <img src="data:image/png;base64,{qr_code}" alt="QR" />
+    <div class="separator-dashed"></div>
+    
+    <div class="section-title">NUMÉROS JOUÉS</div>
+    
+    {plays_rows if plays_rows else '<div style="text-align:center;font-size:10px;">Aucun numéro</div>'}
+    
+    <div class="total-section">
+        <div class="total-label">TOTAL MISE :</div>
+        <div class="total-amount">{total_amount:,.0f} {currency}</div>
     </div>
     
-    <div class="verification">
-        Vérification: {ticket.get('verification_code', '')}
+    <div class="status-section">
+        <div class="status-badge">STATUT : VALIDÉ</div>
     </div>
+    
+    <div class="separator-dashed"></div>
     
     <div class="footer">
-        {receipt_footer}
-        <br>
-        <small>Appareil: {ticket.get('device_type', '')}</small>
+        <div>Vérifiez vos résultats sur :</div>
+        <div class="footer-url">www.lotopam.com</div>
+        <div class="thank-you">MERCI DE JOUER AVEC<br>LOTO PAM</div>
     </div>
+    
+    <div class="separator">================================</div>
     
     <script>
         if (window.location.search.includes('auto=true')) {{
-            window.onload = function() {{ window.print(); }};
+            window.onload = function() {{ setTimeout(function() {{ window.print(); }}, 300); }};
         }}
     </script>
 </body>
-</html>
-    """
+</html>"""
     
     return HTMLResponse(content=html)
 

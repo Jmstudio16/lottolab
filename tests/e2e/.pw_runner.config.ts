@@ -2,16 +2,16 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: '/app/tests/e2e',
-  outputDir: '/root/.emergent/automation_output/20260312_035819/test-results',
+  outputDir: '/root/.emergent/automation_output/20260312_054344/test-results',
   timeout: 60000,
   retries: 0,
   workers: 1,
   reporter: [
     ['line'],
-    ['json', { outputFile: '/root/.emergent/automation_output/20260312_035819/results.json' }],
+    ['json', { outputFile: '/root/.emergent/automation_output/20260312_054344/results.json' }],
   ],
   use: {
-    baseURL: 'https://vendor-flags.preview.emergentagent.com',
+    baseURL: 'https://pos-seller-setup.preview.emergentagent.com',
     screenshot: 'only-on-failure',
     trace: 'off',
     headless: true,

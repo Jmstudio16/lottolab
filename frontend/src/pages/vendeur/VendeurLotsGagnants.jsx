@@ -4,7 +4,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   Trophy, RefreshCw, Search, Calendar, DollarSign, 
-  CheckCircle, Clock, Eye, Printer, Filter
+  CheckCircle, Clock, Eye, Printer, Filter, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,6 +53,11 @@ const VendeurLotsGagnants = () => {
     window.open(`${API_URL}/api/ticket/print/${ticketId}?token=${token}&format=thermal`, '_blank');
   };
 
+  const exportToExcel = () => {
+    window.open(`${API_URL}/api/export/vendeur/winning-tickets?token=${token}`, '_blank');
+    toast.success('Téléchargement du fichier Excel en cours...');
+  };
+
   return (
     <div className="p-4 sm:p-6 pb-24 lg:pb-6 space-y-6" data-testid="vendeur-lots-gagnants">
       {/* Header */}
@@ -64,10 +69,16 @@ const VendeurLotsGagnants = () => {
           </h1>
           <p className="text-sm text-slate-400">Vos tickets gagnants</p>
         </div>
-        <Button onClick={fetchWinningTickets} variant="outline" className="border-slate-700">
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Actualiser
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={exportToExcel} variant="outline" className="border-emerald-700 text-emerald-400 hover:bg-emerald-500/10" data-testid="export-excel-btn">
+            <Download className="w-4 h-4 mr-2" />
+            Excel
+          </Button>
+          <Button onClick={fetchWinningTickets} variant="outline" className="border-slate-700">
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

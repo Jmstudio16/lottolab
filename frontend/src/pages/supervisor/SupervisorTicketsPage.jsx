@@ -4,7 +4,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   Ticket, RefreshCw, Search, Eye, Filter, Calendar,
-  DollarSign, CheckCircle, XCircle, Clock, Printer
+  DollarSign, CheckCircle, XCircle, Clock, Printer, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -127,6 +127,11 @@ export const SupervisorTicketsPage = () => {
     }
   };
 
+  const exportToExcel = () => {
+    window.open(`${API_URL}/api/export/supervisor/tickets?token=${token}`, '_blank');
+    toast.success('Téléchargement du fichier Excel en cours...');
+  };
+
   return (
     <div className="space-y-6" data-testid="supervisor-tickets-page">
       {/* Header */}
@@ -138,10 +143,16 @@ export const SupervisorTicketsPage = () => {
           </h1>
           <p className="text-slate-400">Tous les tickets de vos agents</p>
         </div>
-        <Button onClick={fetchData} variant="outline" className="border-slate-700">
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Actualiser
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={exportToExcel} variant="outline" className="border-emerald-700 text-emerald-400 hover:bg-emerald-500/10" data-testid="export-excel-btn">
+            <Download className="w-4 h-4 mr-2" />
+            Excel
+          </Button>
+          <Button onClick={fetchData} variant="outline" className="border-slate-700">
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

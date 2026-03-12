@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = 'https://vendor-flags.preview.emergentagent.com';
+const BASE_URL = 'https://pos-seller-setup.preview.emergentagent.com';
 
 test.describe('Iteration 23 - Haiti Lottery Renamed & Lottery Flags Features', () => {
   

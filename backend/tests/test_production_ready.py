@@ -7,7 +7,7 @@ import requests
 import os
 from datetime import datetime, timezone, timedelta
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/') or 'https://vendor-flags.preview.emergentagent.com'
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/') or 'https://pos-seller-setup.preview.emergentagent.com'
 
 # Credentials
 AGENT_EMAIL = "agent.marie@lotopam.com"
