@@ -21,6 +21,7 @@ import { SuperGlobalSchedulesPage } from '@/pages/SuperGlobalSchedulesPage';
 import { SuperGlobalResultsPage } from '@/pages/SuperGlobalResultsPage';
 import { SuperResultManagementPage } from '@/pages/SuperResultManagementPage';
 import { SuperCreateCompanyPage } from '@/pages/SuperCreateCompanyPage';
+import SuperLotteryFlagsPage from '@/pages/SuperLotteryFlagsPage';
 
 // Company Admin Pages
 import { CompanyDashboardPage } from '@/pages/CompanyDashboardPage';
@@ -264,6 +265,14 @@ const SaaSApp = () => {
                   element={
                     <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
                       <SuperLotteryCatalogPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/super/lottery-flags"
+                  element={
+                    <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                      <SuperLotteryFlagsPage />
                     </ProtectedRoute>
                   }
                 />

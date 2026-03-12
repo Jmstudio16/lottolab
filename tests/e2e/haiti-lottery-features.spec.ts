@@ -59,22 +59,22 @@ test.describe('Haiti Lotteries - API Verification', () => {
     // Verify at least 14 Haiti lotteries exist
     expect(haitiLotteries.length).toBeGreaterThanOrEqual(14);
 
-    // Verify specific lottery names exist
+    // Verify specific lottery names exist (renamed without hours)
     const expectedNames = [
-      'Tennessee Matin 10h15',
-      'Tennessee Midi 13h15',
-      'Tennessee Soir 19h15',
-      'Texas Matin 10h55',
-      'Texas Midi 13h24',
-      'Texas Soir 18h55',
-      'Texas Nuit 23h00',
-      'Georgia Midi 12h25',
-      'Georgia Soir 18h55',
-      'Georgia Nuit 23h20',
-      'Florida Midi 13h25',
-      'Florida Soir 21h40',
-      'New York Midi 14h25',
-      'New York Soir 22h25'
+      'Tennessee Matin',
+      'Tennessee Midi',
+      'Tennessee Soir',
+      'Texas Matin',
+      'Texas Midi',
+      'Texas Soir',
+      'Texas Nuit',
+      'Georgia Midi',
+      'Georgia Soir',
+      'Georgia Nuit',
+      'Florida Midi',
+      'Florida Soir',
+      'New York Midi',
+      'New York Soir'
     ];
 
     const lotteryNames = haitiLotteries.map((lot: any) => lot.lottery_name);
@@ -324,8 +324,8 @@ test.describe('Supervisor - Lottery Flags Configuration Page', () => {
     // Wait for data to load
     await page.waitForLoadState('networkidle');
     
-    // Verify Haiti section header with count
-    await expect(page.locator('h2:has-text("🇭🇹")').locator('text=/Drapeau Haïtien/')).toBeVisible();
+    // Verify Haiti section header - updated to new format "🇭🇹 LOTERIE HAITI"
+    await expect(page.getByText('🇭🇹 LOTERIE HAITI', { exact: true }).first()).toBeVisible();
     
     // Take screenshot
     await page.screenshot({ path: '/app/tests/e2e/supervisor-haiti-section.jpeg', quality: 20, fullPage: false });
@@ -403,8 +403,8 @@ test.describe('Supervisor - Lottery Flags Configuration Page', () => {
     // Wait for filter
     await page.waitForTimeout(500);
     
-    // Haiti section header should be visible
-    await expect(page.locator('h2').filter({ hasText: 'Drapeau Haïtien' })).toBeVisible();
+    // Haiti section header should be visible - updated to new format
+    await expect(page.getByText('🇭🇹 LOTERIE HAITI', { exact: true }).first()).toBeVisible();
     
     // Take screenshot for verification
     await page.screenshot({ path: '/app/tests/e2e/supervisor-haiti-filter-only.jpeg', quality: 20, fullPage: false });
@@ -459,13 +459,13 @@ test.describe('Supervisor Lottery Flags - API Tests', () => {
     // Verify Haiti lotteries exist
     expect(haitiLotteries.length).toBeGreaterThanOrEqual(14);
 
-    // Verify specific names
+    // Verify specific names (renamed without hours)
     const haitiNames = haitiLotteries.map((lot: any) => lot.lottery_name);
-    expect(haitiNames).toContain('Tennessee Matin 10h15');
-    expect(haitiNames).toContain('Texas Midi 13h24');
-    expect(haitiNames).toContain('Georgia Midi 12h25');
-    expect(haitiNames).toContain('Florida Midi 13h25');
-    expect(haitiNames).toContain('New York Midi 14h25');
+    expect(haitiNames).toContain('Tennessee Matin');
+    expect(haitiNames).toContain('Texas Midi');
+    expect(haitiNames).toContain('Georgia Midi');
+    expect(haitiNames).toContain('Florida Midi');
+    expect(haitiNames).toContain('New York Midi');
   });
 
   test('API should allow toggling lottery enable/disable', async ({ request }) => {

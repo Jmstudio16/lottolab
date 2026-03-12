@@ -1,0 +1,99 @@
+{
+  "summary": "Iteration 23 - Haiti Lotteries Renamed & Lottery Flags Features Testing Complete. All 14 Haiti lotteries have been renamed without hours (Tennessee Matin instead of Tennessee Matin 10h15). Super Admin lottery flags page at /super/lottery-flags shows 234 total lotteries (14 HAITI + 220 USA). Supervisor lottery flags page working. Vendeur profile page shows ID Appareil / POS field. Commission only displays when configured > 0.",
+  "mode": "generate",
+  "baseline_commit": "0d30f8287883b8b6b4c04adecd7cf8c4e1479c06",
+  "head_commit": "e6bbfb2f42775c6dd57b9d6d64a18627a5e0fb9f",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "regression_results": {
+    "total_specs": 34,
+    "passed": 34,
+    "failed": 0,
+    "skipped": 0
+  },
+  "specs_created": [
+    "/app/tests/e2e/iteration23-lottery-flags.spec.ts",
+    "/app/backend/tests/test_iteration23_lottery_flags.py"
+  ],
+  "specs_updated": [
+    "/app/tests/e2e/haiti-lottery-features.spec.ts"
+  ],
+  "quarantined_tests": [],
+  "test_report_links": [
+    "/app/tests/e2e/iteration23-lottery-flags.spec.ts",
+    "/app/tests/e2e/haiti-lottery-features.spec.ts",
+    "/app/backend/tests/test_iteration23_lottery_flags.py",
+    "/app/test_reports/pytest/iteration23_results.xml"
+  ],
+  "action_items": [],
+  "updated_files": [
+    "/app/tests/e2e/iteration23-lottery-flags.spec.ts",
+    "/app/tests/e2e/haiti-lottery-features.spec.ts",
+    "/app/backend/tests/test_iteration23_lottery_flags.py"
+  ],
+  "success_rate": {
+    "backend": "100% (10/10 pytest tests passed)",
+    "frontend": "100% (34/34 Playwright tests passed)"
+  },
+  "seed_data_creation": "Used existing test users: jefferson@jmstudio.com, supervisor@lotopam.com, admin@lotopam.com, agent.marie@lotopam.com",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All iteration 23 features are working correctly. Haiti lotteries have been renamed without hours. Super Admin and Supervisor lottery flags pages are functional. Vendeur profile page shows ID Appareil / POS field and commission only when configured.",
+  "features_tested": {
+    "haiti_lotteries_renamed": {
+      "status": "PASS",
+      "details": "14 Haiti lotteries renamed without hours: Tennessee Matin (not 10h15), Texas Midi (not 13h24), Georgia Midi (not 12h25), etc."
+    },
+    "super_admin_lottery_flags_page": {
+      "status": "PASS",
+      "details": "Page at /super/lottery-flags shows 234 total lotteries (14 HAITI + 220 USA), filter buttons work, stats display correctly"
+    },
+    "super_admin_lottery_flags_api": {
+      "status": "PASS",
+      "details": "GET /api/super/lottery-flags returns 234 lotteries with correct flag_type. Stats endpoint returns total=234, haiti=14, usa=220"
+    },
+    "supervisor_lottery_flags_page": {
+      "status": "PASS",
+      "details": "Page at /supervisor/lottery-flags shows all lotteries with flag configuration. Filter and search work correctly."
+    },
+    "supervisor_lottery_flags_api": {
+      "status": "PASS",
+      "details": "GET /api/supervisor/lottery-flags returns lotteries with correct structure. Toggle endpoint works."
+    },
+    "vendeur_pos_field": {
+      "status": "PASS",
+      "details": "Vendeur profile page shows 'ID Appareil / POS' field displaying pos_serial_number or 'NON ASSIGNÉ'"
+    },
+    "vendeur_commission_conditional": {
+      "status": "PASS",
+      "details": "Commission section only shows if commission_rate > 0 (agent.marie has 10% commission, shown correctly)"
+    },
+    "company_admin_pos_serial_check": {
+      "status": "PASS",
+      "details": "GET /api/company/check-pos-serial/{serial} returns availability status correctly"
+    }
+  },
+  "api_endpoints_verified": [
+    "POST /api/auth/login - All user types login correctly",
+    "GET /api/super/lottery-flags - Returns 234 lotteries (14 HAITI + 220 USA)",
+    "GET /api/super/lottery-flags/stats - Returns correct counts",
+    "POST /api/super/lottery-flags/toggle/{lottery_id} - Toggles lottery state",
+    "GET /api/supervisor/lottery-flags - Returns lotteries with flag configuration",
+    "POST /api/supervisor/lottery-flags/toggle/{lottery_id} - Toggles lottery state",
+    "GET /api/vendeur/profile - Returns device/POS info and commission rate",
+    "GET /api/company/check-pos-serial/{serial} - Returns availability status"
+  ],
+  "notes": [
+    "Haiti lottery names are now without hours (Tennessee Matin instead of Tennessee Matin 10h15)",
+    "Updated existing haiti-lottery-features.spec.ts to reflect new naming convention",
+    "All features from the request are working correctly",
+    "No bugs or issues found"
+  ]
+}

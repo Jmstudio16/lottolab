@@ -106,7 +106,7 @@ const CompanyLotteryFlagsPage = () => {
             <Flag className="w-6 h-6 sm:w-7 sm:h-7 text-blue-400" />
             Configuration des Drapeaux
           </h1>
-          <p className="text-sm text-slate-400">Assignez les loteries aux drapeaux Haïti 🇭🇹 ou USA 🇺🇸</p>
+          <p className="text-sm text-slate-400">Assignez les loteries aux drapeaux 🇭🇹 LOTERIE HAITI ou 🇺🇸 LOTERIE USA</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={fetchLotteries} variant="outline" className="border-slate-700">
@@ -165,11 +165,11 @@ const CompanyLotteryFlagsPage = () => {
           <p className="text-2xl font-bold text-white">{lotteries.length}</p>
         </div>
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
-          <p className="text-sm text-red-400">{HAITI_FLAG} Haïti</p>
+          <p className="text-sm text-red-400">🇭🇹 LOTERIE HAITI</p>
           <p className="text-2xl font-bold text-red-400">{haitiLotteries.length}</p>
         </div>
         <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
-          <p className="text-sm text-blue-400">{USA_FLAG} USA</p>
+          <p className="text-sm text-blue-400">🇺🇸 LOTERIE USA</p>
           <p className="text-2xl font-bold text-blue-400">{usaLotteries.length}</p>
         </div>
         <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4">
@@ -187,9 +187,9 @@ const CompanyLotteryFlagsPage = () => {
           {/* Haiti Section */}
           {(filterFlag === 'all' || filterFlag === 'HAITI') && (
             <div className="space-y-3">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <span className="text-2xl">{HAITI_FLAG}</span>
-                Drapeau Haïtien ({haitiLotteries.length})
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2 border-b border-red-500/30 pb-2">
+                <span className="text-2xl">🇭🇹</span>
+                LOTERIE HAITI ({haitiLotteries.length})
               </h2>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {haitiLotteries.map(lottery => (
@@ -211,9 +211,9 @@ const CompanyLotteryFlagsPage = () => {
           {/* USA Section */}
           {(filterFlag === 'all' || filterFlag === 'USA') && (
             <div className="space-y-3">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <span className="text-2xl">{USA_FLAG}</span>
-                Drapeau USA ({usaLotteries.length})
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2 border-b border-blue-500/30 pb-2">
+                <span className="text-2xl">🇺🇸</span>
+                LOTERIE USA ({usaLotteries.length})
               </h2>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {usaLotteries.slice(0, 30).map(lottery => (

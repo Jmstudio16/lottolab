@@ -377,7 +377,7 @@ async def create_agent_full(
     Create agent with:
     - User account
     - Agent policy with permissions
-    - POS device (if IMEI provided)
+    - POS device (if IMEI or POS serial number provided)
     - Agent balance record
     """
     company_id = require_admin(current_user)
@@ -394,6 +394,16 @@ async def create_agent_full(
     existing = await db.users.find_one({"email": data["email"]})
     if existing:
         raise HTTPException(status_code=400, detail="Cet email existe déjà")
+    
+    # Check POS serial number uniqueness if provided
+    pos_serial = data.get("pos_serial_number")
+    if pos_serial:
+        existing_pos = await db.pos_devices.find_one({
+            "pos_serial_number": pos_serial,
+            "status": {"$ne": "DELETED"}  # Allow reuse if previous device was deleted
+        })
+        if existing_pos:
+            raise HTTPException(status_code=400, detail=f"Le numéro de série POS '{pos_serial}' est déjà utilisé")
     
     now = get_current_timestamp()
     user_id = generate_id("user_")
@@ -458,15 +468,16 @@ async def create_agent_full(
     }
     await db.agent_balances.insert_one(balance_doc)
     
-    # 4. Create POS device if IMEI provided
+    # 4. Create POS device if IMEI or POS serial number provided
     device_id = None
-    if data.get("imei"):
+    if data.get("imei") or data.get("pos_serial_number"):
         device_id = generate_id("pos_")
         device_doc = {
             "device_id": device_id,
             "company_id": company_id,
             "assigned_agent_id": user_id,
-            "imei": data["imei"],
+            "imei": data.get("imei"),
+            "pos_serial_number": data.get("pos_serial_number"),
             "device_name": data.get("device_name") or f"{full_name}'s Device",
             "device_type": data.get("device_type", "MOBILE"),
             "status": "ACTIVE",
@@ -474,6 +485,12 @@ async def create_agent_full(
             "updated_at": now
         }
         await db.pos_devices.insert_one(device_doc)
+        
+        # Also update the user record with POS serial
+        await db.users.update_one(
+            {"user_id": user_id},
+            {"$set": {"pos_serial_number": data.get("pos_serial_number"), "device_id": device_id}}
+        )
     
     # Increment config version
     await increment_config_version(company_id, "AGENT_CREATED", current_user["user_id"])
@@ -502,6 +519,28 @@ async def create_agent_full(
         "email": data["email"],
         "name": full_name
     }
+
+
+@company_admin_router.get("/check-pos-serial/{serial}")
+async def check_pos_serial_availability(
+    serial: str,
+    current_user: dict = Depends(get_company_admin)
+):
+    """
+    Check if a POS serial number is available.
+    Returns available=True if the serial can be used.
+    """
+    existing = await db.pos_devices.find_one({
+        "pos_serial_number": serial,
+        "status": {"$ne": "DELETED"}
+    })
+    return {
+        "serial": serial,
+        "available": existing is None,
+        "message": "Disponible" if existing is None else "Ce numéro de série est déjà utilisé"
+    }
+
+
 
 
 @company_admin_router.put("/agents/{agent_id}")

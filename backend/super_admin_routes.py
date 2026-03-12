@@ -814,3 +814,158 @@ async def get_all_tickets_global(
     ).sort("created_at", -1).limit(limit).to_list(limit)
     
     return tickets
+
+
+
+# ============ LOTTERY FLAG CONFIGURATION ============
+
+@super_admin_router.get("/lottery-flags")
+async def get_all_lottery_flags(
+    current_user: dict = Depends(get_current_user),
+    flag_type: Optional[str] = None
+):
+    """
+    Get all lotteries with their flag configurations.
+    Super Admin can see and manage all lotteries globally.
+    """
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    query = {}
+    if flag_type:
+        query["flag_type"] = flag_type
+    
+    lotteries = await db.master_lotteries.find(
+        query,
+        {"_id": 0}
+    ).to_list(500)
+    
+    # Enrich with schedule info
+    for lot in lotteries:
+        schedule = await db.global_schedules.find_one(
+            {"lottery_id": lot["lottery_id"]},
+            {"_id": 0}
+        )
+        if schedule:
+            lot["schedule"] = {
+                "open_time": schedule.get("open_time"),
+                "close_time": schedule.get("close_time"),
+                "draw_time": schedule.get("draw_time")
+            }
+    
+    return sorted(lotteries, key=lambda x: x.get("lottery_name", ""))
+
+
+@super_admin_router.post("/lottery-flags")
+async def update_lottery_flags(
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Update lottery flag configurations globally.
+    Accepts: { "assignments": [{ "lottery_id": "...", "flag_type": "HAITI" | "USA", "is_active": true/false }] }
+    """
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    assignments = data.get("assignments", [])
+    if not assignments:
+        raise HTTPException(status_code=400, detail="Aucune assignation fournie")
+    
+    now = get_current_timestamp()
+    updated_count = 0
+    
+    for assignment in assignments:
+        lottery_id = assignment.get("lottery_id")
+        flag_type = assignment.get("flag_type", "USA")
+        is_active = assignment.get("is_active", True)
+        
+        if not lottery_id:
+            continue
+        
+        # Update master_lotteries
+        result = await db.master_lotteries.update_one(
+            {"lottery_id": lottery_id},
+            {"$set": {
+                "flag_type": flag_type,
+                "is_active_global": is_active,
+                "updated_at": now,
+                "updated_by": current_user.get("user_id")
+            }}
+        )
+        
+        if result.modified_count > 0:
+            updated_count += 1
+    
+    # Log activity
+    await log_activity(
+        db,
+        action_type="SUPER_ADMIN_FLAG_UPDATE",
+        entity_type="lottery_flags",
+        entity_id="bulk",
+        performed_by=current_user.get("user_id"),
+        metadata={"updated_count": updated_count}
+    )
+    
+    return {"message": f"{updated_count} loterie(s) mise(s) à jour", "updated": updated_count}
+
+
+@super_admin_router.post("/lottery-flags/toggle/{lottery_id}")
+async def toggle_lottery_global(
+    lottery_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Toggle enable/disable for a specific lottery globally.
+    """
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    now = get_current_timestamp()
+    
+    # Get current state
+    lottery = await db.master_lotteries.find_one(
+        {"lottery_id": lottery_id},
+        {"_id": 0}
+    )
+    
+    if not lottery:
+        raise HTTPException(status_code=404, detail="Loterie non trouvée")
+    
+    current_active = lottery.get("is_active_global", True)
+    new_active = not current_active
+    
+    # Update
+    await db.master_lotteries.update_one(
+        {"lottery_id": lottery_id},
+        {"$set": {
+            "is_active_global": new_active,
+            "updated_at": now,
+            "updated_by": current_user.get("user_id")
+        }}
+    )
+    
+    return {"lottery_id": lottery_id, "is_active": new_active, "lottery_name": lottery.get("lottery_name")}
+
+
+@super_admin_router.get("/lottery-flags/stats")
+async def get_lottery_flags_stats(current_user: dict = Depends(get_current_user)):
+    """
+    Get statistics about lottery flags.
+    """
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    total = await db.master_lotteries.count_documents({})
+    haiti_count = await db.master_lotteries.count_documents({"flag_type": "HAITI"})
+    usa_count = await db.master_lotteries.count_documents({"flag_type": "USA"})
+    active_count = await db.master_lotteries.count_documents({"is_active_global": True})
+    inactive_count = await db.master_lotteries.count_documents({"is_active_global": False})
+    
+    return {
+        "total": total,
+        "haiti": haiti_count,
+        "usa": usa_count,
+        "active": active_count if active_count else total - inactive_count,
+        "inactive": inactive_count
+    }

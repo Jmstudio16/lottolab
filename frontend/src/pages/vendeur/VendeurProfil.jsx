@@ -148,10 +148,12 @@ const VendeurProfil = () => {
                 <Shield className="w-3 h-3" />
                 {vendeur.status === 'ACTIVE' ? 'Actif' : 'Inactif'}
               </span>
-              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-amber-500/20 text-amber-400 rounded-full">
-                <Percent className="w-3 h-3" />
-                Commission: {vendeur.commission_rate || 10}%
-              </span>
+              {vendeur.commission_rate > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-amber-500/20 text-amber-400 rounded-full">
+                  <Percent className="w-3 h-3" />
+                  Commission: {vendeur.commission_rate}%
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -201,9 +203,11 @@ const VendeurProfil = () => {
           <div className="p-4 bg-slate-700/30 rounded-lg">
             <div className="flex items-center gap-3 text-slate-400 mb-1">
               <Monitor className="w-4 h-4" />
-              <span className="text-sm">ID Appareil</span>
+              <span className="text-sm">ID Appareil / POS</span>
             </div>
-            <p className="text-white font-mono text-sm">{device.device_id || 'NON ASSIGNÉ'}</p>
+            <p className="text-white font-mono text-sm">
+              {device.pos_serial_number || device.device_id || 'NON ASSIGNÉ'}
+            </p>
             {device.device_name && (
               <p className="text-xs text-slate-500 mt-1">{device.device_name}</p>
             )}
@@ -229,21 +233,23 @@ const VendeurProfil = () => {
         </div>
       </div>
 
-      {/* Commission Info */}
-      <div className="bg-gradient-to-r from-amber-500/10 to-amber-600/10 border border-amber-500/30 rounded-xl p-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-amber-500/20 rounded-lg">
-            <Percent className="w-6 h-6 text-amber-400" />
-          </div>
-          <div>
-            <p className="text-sm text-amber-300">Votre taux de commission</p>
-            <p className="text-2xl font-bold text-amber-400">{vendeur.commission_rate || 10}%</p>
-            <p className="text-xs text-amber-300/70 mt-1">
-              Sur chaque vente, vous gagnez {vendeur.commission_rate || 10}% du montant
-            </p>
+      {/* Commission Info - Only show if configured */}
+      {vendeur.commission_rate > 0 && (
+        <div className="bg-gradient-to-r from-amber-500/10 to-amber-600/10 border border-amber-500/30 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-500/20 rounded-lg">
+              <Percent className="w-6 h-6 text-amber-400" />
+            </div>
+            <div>
+              <p className="text-sm text-amber-300">Votre taux de commission</p>
+              <p className="text-2xl font-bold text-amber-400">{vendeur.commission_rate}%</p>
+              <p className="text-xs text-amber-300/70 mt-1">
+                Sur chaque vente, vous gagnez {vendeur.commission_rate}% du montant
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Actions */}
       <div className="space-y-3">

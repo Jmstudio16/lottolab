@@ -33,6 +33,7 @@ import Logo from './Logo';
 const SuperAdminMenu = [
   { path: '/super/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/super/lottery-catalog', label: 'Lottery Catalog', icon: Globe },
+  { path: '/super/lottery-flags', label: 'Config Drapeaux', icon: Flag },
   { path: '/super/global-schedules', label: 'Global Schedules', icon: Clock },
   { path: '/super/result-management', label: 'RESULT MANAGEMENT', icon: Trophy },
   { path: '/super/companies', label: 'Companies', icon: Building2 },

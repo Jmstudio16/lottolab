@@ -250,11 +250,20 @@ async def get_vendeur_profile(current_vendeur: dict = Depends(get_current_vendeu
     )
     commission_rate = agent_policy.get("commission_percent", 10) if agent_policy else 10
     
-    # Get device info
+    # Get device info (including POS serial number)
     device = await db.pos_devices.find_one(
-        {"$or": [{"agent_id": vendeur_id}, {"assigned_to": vendeur_id}]},
-        {"_id": 0, "device_id": 1, "device_name": 1, "status": 1}
+        {"$or": [
+            {"agent_id": vendeur_id}, 
+            {"assigned_to": vendeur_id},
+            {"assigned_agent_id": vendeur_id}
+        ]},
+        {"_id": 0, "device_id": 1, "device_name": 1, "status": 1, "pos_serial_number": 1, "imei": 1}
     )
+    
+    # Also check if POS serial is on user record
+    pos_serial = current_vendeur.get("pos_serial_number")
+    if not pos_serial and device:
+        pos_serial = device.get("pos_serial_number")
     
     return {
         "vendeur": {
@@ -264,7 +273,8 @@ async def get_vendeur_profile(current_vendeur: dict = Depends(get_current_vendeu
             "telephone": current_vendeur.get("telephone"),
             "photo_url": current_vendeur.get("photo_url"),
             "status": current_vendeur.get("status"),
-            "commission_rate": commission_rate,
+            "commission_rate": commission_rate if commission_rate and commission_rate > 0 else None,
+            "pos_serial_number": pos_serial,
             "created_at": current_vendeur.get("created_at")
         },
         "company": {
@@ -281,8 +291,9 @@ async def get_vendeur_profile(current_vendeur: dict = Depends(get_current_vendeu
             "telephone": supervisor.get("telephone") if supervisor else None
         },
         "device": {
-            "device_id": device.get("device_id") if device else "NON ASSIGNÉ",
+            "device_id": device.get("device_id") if device else None,
             "device_name": device.get("device_name") if device else None,
+            "pos_serial_number": pos_serial,
             "status": device.get("status") if device else None
         }
     }
