@@ -926,9 +926,70 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 scheduler = AsyncIOScheduler()
 
 
+async def initialize_super_admin_if_empty():
+    """
+    Create default Super Admin if no users exist in the database.
+    This is essential for production deployment with empty MongoDB Atlas.
+    """
+    try:
+        # Check if any users exist
+        user_count = await db.users.count_documents({})
+        if user_count > 0:
+            logger.info(f"[INIT] Database has {user_count} users - skipping Super Admin initialization")
+            return
+        
+        logger.info("[INIT] Empty database detected - Creating default Super Admin...")
+        
+        # Create default super admin
+        from utils import generate_id, get_current_timestamp
+        from auth import get_password_hash
+        
+        super_admin_id = generate_id("user_")
+        now = get_current_timestamp()
+        
+        super_admin = {
+            "user_id": super_admin_id,
+            "email": "admin@lottolab.tech",  # Default email for production
+            "password_hash": get_password_hash("LottoLab@2026!"),  # Default password
+            "name": "Super Administrateur",
+            "role": "SUPER_ADMIN",
+            "status": "ACTIVE",
+            "created_at": now,
+            "updated_at": now
+        }
+        
+        await db.users.insert_one(super_admin)
+        logger.info(f"[INIT] ✅ Super Admin created successfully!")
+        logger.info(f"[INIT] Email: admin@lottolab.tech")
+        logger.info(f"[INIT] Password: LottoLab@2026!")
+        logger.info(f"[INIT] ⚠️  IMPORTANT: Change the password after first login!")
+        
+        # Also create default system settings if not exist
+        settings_exist = await db.system_settings.count_documents({})
+        if settings_exist == 0:
+            default_settings = {
+                "settings_id": generate_id("settings_"),
+                "system_name": "LOTTOLAB",
+                "system_logo_url": "/assets/logos/lottolab-logo.png",
+                "default_currency": "HTG",
+                "default_language": "fr",
+                "support_email": "support@lottolab.tech",
+                "created_at": now,
+                "updated_at": now
+            }
+            await db.system_settings.insert_one(default_settings)
+            logger.info("[INIT] ✅ Default system settings created")
+            
+    except Exception as e:
+        logger.error(f"[INIT] Error initializing Super Admin: {str(e)}")
+
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize scheduler on startup"""
+    # Initialize Super Admin if database is empty (for production deployment)
+    await initialize_super_admin_if_empty()
+    
     # Set database for scheduler
     set_scheduler_db(db)
     
