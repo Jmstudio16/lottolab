@@ -1,112 +1,83 @@
-# LOTTOLAB SaaS Enterprise - Version 6.0.0
+# LOTTOLAB SaaS Enterprise - Version 6.1.0
 
-## Release: LOTTERY REFACTOR + FREE AMOUNT INPUT + SUPERVISOR FLAGS
+## Release: LOTTERY FLAGS + POS SERIAL + PROFILE ENHANCEMENTS
 Date: 2026-03-12
 
 ---
 
 ## ACCOMPLISSEMENTS DE CETTE SESSION
 
-### P0 - Refactorisation Complète du Modèle de Données des Loteries
+### ✅ 1. Loteries Haiti Renommées (SANS les heures)
 
-#### Changement Majeur Effectué
-Chaque tirage est maintenant une **loterie indépendante** avec son nom complet, comme demandé par l'utilisateur.
+Les 14 loteries Haiti ont été renommées comme demandé:
 
-**AVANT** (ancien modèle):
-- Loterie "Tennessee" avec tirages [Matin, Midi, Soir]
-- Sélection en 2 étapes: 1) Loterie 2) Tirage
+| Ancien Nom | Nouveau Nom |
+|------------|-------------|
+| Tennessee Matin 10h15 | **Tennessee Matin** |
+| Tennessee Midi 13h15 | **Tennessee Midi** |
+| Tennessee Soir 19h15 | **Tennessee Soir** |
+| Texas Matin 10h55 | **Texas Matin** |
+| Texas Midi 13h24 | **Texas Midi** |
+| Texas Soir 18h55 | **Texas Soir** |
+| Texas Nuit 23h00 | **Texas Nuit** |
+| Georgia Midi 12h25 | **Georgia Midi** |
+| Georgia Soir 18h55 | **Georgia Soir** |
+| Georgia Nuit 23h20 | **Georgia Nuit** |
+| Florida Midi 13h25 | **Florida Midi** |
+| Florida Soir 21h40 | **Florida Soir** |
+| New York Midi 14h25 | **New York Midi** |
+| New York Soir 22h25 | **New York Soir** |
 
-**APRÈS** (nouveau modèle):
-- Chaque tirage = une loterie unique
-- Ex: "Tennessee Matin 10h15" est une loterie à part entière
-- Sélection directe sans étape supplémentaire
-
-#### 14 Nouvelles Loteries Haiti Créées
-
-| État | Loteries Créées |
-|------|----------------|
-| **Tennessee** | Tennessee Matin 10h15, Tennessee Midi 13h15, Tennessee Soir 19h15 |
-| **Texas** | Texas Matin 10h55, Texas Midi 13h24, Texas Soir 18h55, Texas Nuit 23h00 |
-| **Georgia** | Georgia Midi 12h25, Georgia Soir 18h55, Georgia Nuit 23h20 |
-| **Florida** | Florida Midi 13h25, Florida Soir 21h40 |
-| **New York** | New York Midi 14h25, New York Soir 22h25 |
-
-Chaque loterie dans `master_lotteries` contient:
-- `lottery_name`: Nom complet (ex: "Tennessee Matin 10h15")
-- `state_name`: État (ex: "Tennessee")
-- `draw_name`: Période (ex: "Matin")
-- `draw_time`: Heure du tirage (ex: "10:15")
-- `open_time`: Heure d'ouverture des ventes
-- `close_time`: Heure de fermeture des ventes
-- `flag_type`: "HAITI"
+Les heures sont conservées dans `draw_time` et affichées séparément.
 
 ---
 
-### P1 - Montant de Mise Libre pour Vendeur
+### ✅ 2. Configuration des Drapeaux - Disponible pour:
 
-#### Changement Effectué
-- **Supprimé**: Boutons de montant fixes (25, 50, 100 HTG)
-- **Ajouté**: Champ de saisie libre `<Input type="number">`
-- Le vendeur peut entrer n'importe quel montant (0, 1, 5, 10, 100, 1000...)
-- Support pour "Mariage Gratis" (montant = 0 HTG)
+| Rôle | Page | URL |
+|------|------|-----|
+| Super Admin | ✅ | `/super/lottery-flags` |
+| Company Admin | ✅ | `/company/lottery-flags` |
+| Superviseur | ✅ | `/supervisor/lottery-flags` |
 
-#### Fichier Modifié
-`/app/frontend/src/pages/vendeur/VendeurNouvelleVente.jsx`
-
----
-
-### P1 - Page Configuration des Drapeaux pour Superviseur
-
-#### Nouvelle Page Créée
-`/supervisor/lottery-flags` - Permet au superviseur de:
-- Voir toutes les loteries de sa compagnie (234 total)
-- Filtrer par drapeau: 🇭🇹 Haiti (14) / 🇺🇸 USA (220)
+**Fonctionnalités:**
+- Affichage des 234 loteries totales
+- 🇭🇹 LOTERIE HAITI (14 loteries)
+- 🇺🇸 LOTERIE USA (220 loteries)
+- Filtrage par drapeau (Tous / Haiti / USA)
+- Toggle activer/désactiver chaque loterie
 - Changer le drapeau d'une loterie (Haiti ↔ USA)
-- Activer/désactiver des loteries avec le toggle
-- Rechercher des loteries par nom
-
-#### Nouveaux Endpoints Backend
-- `GET /api/supervisor/lottery-flags` - Liste toutes les loteries avec flags
-- `POST /api/supervisor/lottery-flags` - Mise à jour des flags
-- `POST /api/supervisor/lottery-flags/toggle/{lottery_id}` - Toggle activer/désactiver
-
-#### Fichiers Créés
-- `/app/frontend/src/pages/supervisor/SupervisorLotteryFlagsPage.jsx`
-- Ajout dans `/app/frontend/src/layouts/SupervisorLayout.js`
-- Ajout route dans `/app/frontend/src/App.js`
+- Recherche par nom
 
 ---
 
-## FLUX DU SYSTÈME (TEL QUE DEMANDÉ)
+### ✅ 3. Statistiques des Drapeaux
 
-```
-Super Admin
-├── Configure les loteries dans master_lotteries
-├── Configure les horaires (intégrés dans chaque loterie)
-└── Configure les résultats
-
-Company Admin
-├── Sélectionne les loteries disponibles pour sa compagnie
-└── Assigne les drapeaux (Haiti/USA)
-
-Superviseur
-├── Configure les drapeaux pour ses vendeurs
-└── Active/désactive les loteries au niveau de sa succursale
-
-Vendeur
-├── Voit les loteries selon les drapeaux configurés
-├── Filtre par drapeau Haiti/USA
-├── Entre un montant libre (sans limite)
-└── Vend les tickets
-```
+| Catégorie | Nombre |
+|-----------|--------|
+| Total | 234 |
+| 🇭🇹 LOTERIE HAITI | 14 |
+| 🇺🇸 LOTERIE USA | 220 |
 
 ---
 
-## STATISTIQUES ACTUELLES
+### ✅ 4. Profil Vendeur - Améliorations
 
-- **Total loteries**: 234
-- **Loteries Haiti**: 14 (nouvelles)
-- **Loteries USA**: 220
+- **ID Appareil / POS**: Affiche le numéro de série POS ou "NON ASSIGNÉ"
+- **Commission**: Affichée UNIQUEMENT si configurée (pas de valeur par défaut)
+
+---
+
+### ✅ 5. Numéro de Série POS
+
+**Nouveau champ dans la création d'un vendeur:**
+- Champ: `pos_serial_number`
+- Unique dans tout le système
+- Si un vendeur est supprimé, le numéro peut être réutilisé
+- Affiché dans le profil vendeur
+
+**Nouvel endpoint:**
+- `GET /api/company/check-pos-serial/{serial}` - Vérifie si un numéro est disponible
 
 ---
 
@@ -114,32 +85,46 @@ Vendeur
 
 | Test | Résultat |
 |------|----------|
-| 14 loteries Haiti créées avec noms corrects | ✅ PASS |
-| Champ montant libre dans page Vendeur | ✅ PASS |
-| Filtrage par drapeaux Haiti/USA | ✅ PASS |
-| Page Configuration Drapeaux Superviseur | ✅ PASS |
-| Toggle activer/désactiver loterie | ✅ PASS |
-| API /api/device/config retourne flag_type | ✅ PASS |
-| API /api/supervisor/lottery-flags | ✅ PASS |
+| Backend (pytest) | 100% (10/10) |
+| Frontend (Playwright) | 100% (34/34) |
 
-**Taux de réussite**: 100% (19/21 tests - 2 échecs intermittents dus au rate limiting)
+---
+
+## ENDPOINTS API CRÉÉS
+
+### Super Admin
+- `GET /api/super/lottery-flags` - Liste toutes les loteries avec flags
+- `GET /api/super/lottery-flags/stats` - Statistiques des flags
+- `POST /api/super/lottery-flags` - Mise à jour batch des flags
+- `POST /api/super/lottery-flags/toggle/{lottery_id}` - Toggle activer/désactiver
+
+### Superviseur
+- `GET /api/supervisor/lottery-flags` - Liste des loteries pour la succursale
+- `POST /api/supervisor/lottery-flags` - Mise à jour des flags
+- `POST /api/supervisor/lottery-flags/toggle/{lottery_id}` - Toggle
+
+### Company Admin
+- `GET /api/company/check-pos-serial/{serial}` - Vérifier disponibilité POS
 
 ---
 
 ## TÂCHES RESTANTES
 
+### P1 - À Faire
+1. **Nouveaux boutons** à ajouter (Company Admin, Superviseur, Vendeur):
+   - Lots Gagnants
+   - Fiche Gagnant
+   - Fiche Supprimée
+2. Synchronisation des résultats dans toutes les pages
+
 ### P2 - À Faire
-1. Ajouter toggles activer/désactiver sur page Super Admin
-2. Ajouter toggles sur page Company Admin
-3. Activer le système de notifications (icône cloche)
-4. Implémenter "Mariage Gratis" côté backend (transaction à 0 HTG)
-5. Compléter la traduction française
+- Logo entreprise sur tickets imprimés
+- Notifications (icône cloche)
+- Traduction française complète
 
 ### Backlog
-1. Logo entreprise sur tickets imprimés
-2. Synchronisation "gérer de loterie" avec catalogue principal
-3. Calcul automatique des gains
-4. Plateforme publique LOTO PAM
+- Calcul automatique des gains
+- Plateforme publique LOTO PAM
 
 ---
 
@@ -154,24 +139,53 @@ Vendeur
 
 ---
 
-## ARCHITECTURE
+## ARCHITECTURE MISE À JOUR
 
 ```
 /app
 ├── backend/
-│   ├── supervisor_routes.py    # (Modifié) Nouveaux endpoints lottery-flags
-│   ├── sync_routes.py          # GET /api/device/config
-│   └── server.py
+│   ├── super_admin_routes.py    # Nouveaux endpoints lottery-flags
+│   ├── supervisor_routes.py     # Nouveaux endpoints lottery-flags
+│   ├── company_admin_routes.py  # Nouveau endpoint check-pos-serial
+│   └── vendeur/vendeur_routes.py # Profile avec POS serial
 └── frontend/
     └── src/
         ├── pages/
+        │   ├── SuperLotteryFlagsPage.js           # (Nouveau) Super Admin flags
         │   ├── supervisor/
-        │   │   └── SupervisorLotteryFlagsPage.jsx  # (Nouveau)
+        │   │   └── SupervisorLotteryFlagsPage.jsx # Superviseur flags
+        │   ├── CompanyLotteryFlagsPage.jsx        # Company Admin flags
         │   └── vendeur/
-        │       └── VendeurNouvelleVente.jsx        # (Modifié) Montant libre
-        ├── layouts/
-        │   └── SupervisorLayout.js                 # (Modifié) Lien ajouté
-        └── App.js                                  # (Modifié) Route ajoutée
+        │       └── VendeurProfil.jsx              # Profile avec POS
+        └── components/
+            └── Sidebar.js                         # Lien Config Drapeaux ajouté
+```
+
+---
+
+## FLUX DU SYSTÈME
+
+```
+Super Admin
+├── Configure les 234 loteries globalement
+├── Assigne les drapeaux (HAITI/USA)
+└── Publie les résultats → synchronisé partout
+
+Company Admin
+├── Voit les loteries avec leurs drapeaux
+├── Active/désactive pour sa compagnie
+└── Crée les vendeurs avec POS serial
+
+Superviseur
+├── Configure les drapeaux pour sa succursale
+├── Voit les résultats synchronisés
+└── Gère ses vendeurs
+
+Vendeur
+├── Voit les loteries selon les drapeaux configurés
+├── Filtre par 🇭🇹 HAITI ou 🇺🇸 USA
+├── Vend avec montant libre
+└── Voit son POS dans le profil
 ```
 
 ---
