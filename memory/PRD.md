@@ -1,11 +1,45 @@
-# LOTTOLAB SaaS Enterprise - Version 6.3.0
+# LOTTOLAB SaaS Enterprise - Version 6.4.0
 
-## Release: CORRECTIONS ET SYNCHRONISATION
+## Release: IMPRESSION POS, EXPORT EXCEL, NUMÉRO SÉRIE POS
 Date: 2026-03-12
 
 ---
 
-## CORRECTIONS EFFECTUÉES
+## NOUVELLES FONCTIONNALITÉS (Iteration 24)
+
+### ✅ 1. Impression Tickets POS 80mm (PRIORITÉ 1)
+- Format optimisé pour imprimante thermique 80mm
+- Style LOTO PAM avec branding © JM STUDIO
+- **NE contient PAS**: "En attente", "Gains potentiels"
+- **Affiche**: VENDEUR, POS ID, TICKET, LOTTERIE, TIRAGE, DATE, HEURE, NUMÉROS JOUÉS, TOTAL MISE, STATUT: VALIDÉ
+- Endpoint: `GET /api/ticket/print/{ticket_id}?token={token}&format=thermal`
+- Modifié: `sync_routes.py` (ligne 466-700)
+
+### ✅ 2. Export Excel (PRIORITÉ 2)
+- Boutons "Excel" ajoutés aux pages suivantes:
+  - **Vendeur**: Mes Tickets, Lots Gagnants
+  - **Superviseur**: Tickets, Lots Gagnants
+  - **Company Admin**: Lots Gagnants, Rapport Ventes
+- Endpoints fonctionnels:
+  - `/api/export/vendeur/tickets`
+  - `/api/export/vendeur/winning-tickets`
+  - `/api/export/supervisor/tickets`
+  - `/api/export/supervisor/winning-tickets`
+  - `/api/export/company/tickets`
+  - `/api/export/company/winning-tickets`
+  - `/api/export/company/sales-report`
+
+### ✅ 3. Numéro de Série POS (PRIORITÉ 3)
+- Champ ajouté dans le formulaire de création d'agent: "Numéro de série POS"
+- Validation en temps réel de l'unicité (debounced 500ms)
+- Endpoint de vérification: `GET /api/company-admin/check-pos-serial/{serial}`
+- Le numéro est sauvegardé dans `users.pos_serial_number` et `pos_devices`
+- Affiché sur le ticket d'impression et le profil agent
+- Modifié: `succursale_routes.py`, `CompanySuccursalesPage.jsx`
+
+---
+
+## CORRECTIONS PRÉCÉDENTES
 
 ### ✅ 1. Commission - Affichage Conditionnel
 - Commission = **0 par défaut** lors de la création de nouveaux vendeurs/superviseurs
@@ -70,7 +104,18 @@ Date: 2026-03-12
 
 ## ENDPOINTS API
 
-### Nouveaux
+### Nouveaux (Iteration 24)
+- `GET /api/ticket/print/{id}?token={token}&format=thermal` - Impression ticket 80mm
+- `GET /api/export/vendeur/tickets` - Export Excel tickets vendeur
+- `GET /api/export/vendeur/winning-tickets` - Export Excel tickets gagnants vendeur
+- `GET /api/export/supervisor/tickets` - Export Excel tickets superviseur
+- `GET /api/export/supervisor/winning-tickets` - Export Excel tickets gagnants superviseur
+- `GET /api/export/company/tickets` - Export Excel tickets company
+- `GET /api/export/company/winning-tickets` - Export Excel tickets gagnants company
+- `GET /api/export/company/sales-report` - Export Excel rapport ventes
+- `GET /api/company-admin/check-pos-serial/{serial}` - Vérifier unicité numéro POS
+
+### Nouveaux (Précédents)
 - `PUT /api/super/lottery/{lottery_id}` - Modifier une loterie (Super Admin)
 - `GET /api/vendeur/winning-tickets` - Tickets gagnants vendeur
 - `GET /api/vendeur/deleted-tickets` - Tickets annulés vendeur
@@ -113,7 +158,8 @@ Date: 2026-03-12
 
 ## TÂCHES RESTANTES
 
-### P2
+### P2 - Prochaines priorités
+- **Fiche Gagnant** - Pages pour afficher les tickets gagnants payés
 - Activer le système de notifications (icône cloche)
 - Logo entreprise sur tickets imprimés
 - Traduction française complète
@@ -121,6 +167,7 @@ Date: 2026-03-12
 ### Backlog
 - Calcul automatique des gains
 - Plateforme publique LOTO PAM
+- Synchroniser "gérer de loterie" avec le catalogue
 
 ---
 
