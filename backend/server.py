@@ -928,21 +928,22 @@ scheduler = AsyncIOScheduler()
 
 async def initialize_super_admin_if_empty():
     """
-    Create default Super Admin if no users exist in the database.
+    Create default Super Admin and seed lotteries if database is empty.
     This is essential for production deployment with empty MongoDB Atlas.
     """
     try:
         # Check if any users exist
         user_count = await db.users.count_documents({})
         if user_count > 0:
-            logger.info(f"[INIT] Database has {user_count} users - skipping Super Admin initialization")
+            logger.info(f"[INIT] Database has {user_count} users - skipping initialization")
             return
         
-        logger.info("[INIT] Empty database detected - Creating default Super Admin...")
+        logger.info("[INIT] Empty database detected - Starting initialization...")
         
         # Create default super admin
         from utils import generate_id, get_current_timestamp
         from auth import get_password_hash
+        import json
         
         super_admin_id = generate_id("user_")
         now = get_current_timestamp()
@@ -964,7 +965,7 @@ async def initialize_super_admin_if_empty():
         logger.info(f"[INIT] Password: LottoLab@2026!")
         logger.info(f"[INIT] ⚠️  IMPORTANT: Change the password after first login!")
         
-        # Also create default system settings if not exist
+        # Create default system settings if not exist
         settings_exist = await db.system_settings.count_documents({})
         if settings_exist == 0:
             default_settings = {
@@ -979,9 +980,34 @@ async def initialize_super_admin_if_empty():
             }
             await db.system_settings.insert_one(default_settings)
             logger.info("[INIT] ✅ Default system settings created")
+        
+        # Seed all 234 lotteries
+        lottery_count = await db.master_lotteries.count_documents({})
+        if lottery_count == 0:
+            logger.info("[INIT] Seeding master lotteries...")
+            try:
+                seed_file = Path(__file__).parent / "seed_lotteries.json"
+                if seed_file.exists():
+                    with open(seed_file, 'r') as f:
+                        lotteries = json.load(f)
+                    
+                    if lotteries:
+                        # Update timestamps for fresh insert
+                        for lottery in lotteries:
+                            lottery["created_at"] = now
+                            lottery["updated_at"] = now
+                        
+                        await db.master_lotteries.insert_many(lotteries)
+                        logger.info(f"[INIT] ✅ {len(lotteries)} lotteries seeded successfully!")
+                else:
+                    logger.warning("[INIT] ⚠️ seed_lotteries.json not found - skipping lottery seed")
+            except Exception as e:
+                logger.error(f"[INIT] Error seeding lotteries: {str(e)}")
+        else:
+            logger.info(f"[INIT] Database already has {lottery_count} lotteries")
             
     except Exception as e:
-        logger.error(f"[INIT] Error initializing Super Admin: {str(e)}")
+        logger.error(f"[INIT] Error during initialization: {str(e)}")
 
 
 @app.on_event("startup")
