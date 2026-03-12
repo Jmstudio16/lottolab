@@ -4,7 +4,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   Ticket, Search, Filter, Printer, Eye, Clock,
-  CheckCircle, XCircle, Trophy, RefreshCw, Download
+  CheckCircle, XCircle, Trophy, RefreshCw, Download, Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,9 +43,13 @@ const VendeurMesTickets = () => {
       case 'WON':
         return <Trophy className="w-5 h-5 text-amber-400" />;
       case 'LOST':
+      case 'LOSER':
         return <XCircle className="w-5 h-5 text-red-400" />;
+      case 'VOID':
+      case 'DELETED':
+        return <Trash2 className="w-5 h-5 text-slate-500" />;
       default:
-        return <Clock className="w-5 h-5 text-blue-400" />;
+        return <CheckCircle className="w-5 h-5 text-emerald-400" />;
     }
   };
 
@@ -55,9 +59,13 @@ const VendeurMesTickets = () => {
       case 'WON':
         return <span className="px-2 py-1 text-xs bg-amber-500/20 text-amber-400 rounded-full">Gagnant</span>;
       case 'LOST':
+      case 'LOSER':
         return <span className="px-2 py-1 text-xs bg-red-500/20 text-red-400 rounded-full">Perdu</span>;
+      case 'VOID':
+      case 'DELETED':
+        return <span className="px-2 py-1 text-xs bg-slate-500/20 text-slate-400 rounded-full">Supprimé</span>;
       default:
-        return <span className="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 rounded-full">En attente</span>;
+        return <span className="px-2 py-1 text-xs bg-emerald-500/20 text-emerald-400 rounded-full">Validé</span>;
     }
   };
 
@@ -76,6 +84,21 @@ const VendeurMesTickets = () => {
   const printTicket = (ticketId) => {
     // Pass token as query param for authentication
     window.open(`${API_URL}/api/ticket/print/${ticketId}?token=${token}&format=thermal`, '_blank');
+  };
+
+  const deleteTicket = async (ticketId, ticketCode) => {
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer le ticket ${ticketCode}?`)) {
+      return;
+    }
+    
+    try {
+      await axios.delete(`${API_URL}/api/vendeur/ticket/${ticketId}`, { headers });
+      toast.success('Ticket supprimé avec succès');
+      fetchTickets(); // Refresh the list
+    } catch (error) {
+      const msg = error.response?.data?.detail || 'Erreur lors de la suppression';
+      toast.error(msg);
+    }
   };
 
   const exportToExcel = () => {
@@ -173,6 +196,7 @@ const VendeurMesTickets = () => {
                       variant="ghost"
                       onClick={() => setSelectedTicket(ticket)}
                       className="text-slate-400 hover:text-white"
+                      title="Voir détails"
                     >
                       <Eye className="w-4 h-4" />
                     </Button>
@@ -181,9 +205,22 @@ const VendeurMesTickets = () => {
                       variant="ghost"
                       onClick={() => printTicket(ticket.ticket_id)}
                       className="text-slate-400 hover:text-blue-400"
+                      title="Imprimer"
                     >
                       <Printer className="w-4 h-4" />
                     </Button>
+                    {ticket.status !== 'VOID' && ticket.status !== 'DELETED' && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => deleteTicket(ticket.ticket_id, ticket.ticket_code)}
+                        className="text-slate-400 hover:text-red-400"
+                        title="Supprimer"
+                        data-testid={`delete-ticket-${ticket.ticket_id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

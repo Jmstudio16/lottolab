@@ -1032,3 +1032,95 @@ async def get_deleted_ticket_detail(
         raise HTTPException(status_code=404, detail="Fiche supprimée non trouvée")
     
     return {"ticket": ticket}
+
+
+# ============================================================================
+# DELETE/VOID TICKET - SUPPRIMER UN TICKET
+# ============================================================================
+
+@vendeur_router.delete("/ticket/{ticket_id}")
+async def delete_ticket(
+    ticket_id: str,
+    request: Request,
+    current_vendeur: dict = Depends(get_current_vendeur)
+):
+    """
+    Delete/void a ticket. Only allowed if:
+    - Ticket belongs to this vendeur
+    - Ticket is not already voided
+    - Draw has not happened yet (status is PENDING or ACTIVE)
+    """
+    from utils import get_current_timestamp
+    
+    vendeur_id = current_vendeur.get("user_id")
+    company_id = current_vendeur.get("company_id")
+    
+    # Find the ticket
+    ticket = await db.lottery_transactions.find_one(
+        {"ticket_id": ticket_id, "agent_id": vendeur_id},
+        {"_id": 0}
+    )
+    
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket non trouvé")
+    
+    # Check if already voided
+    if ticket.get("status") in ["VOID", "VOIDED", "CANCELLED", "DELETED", "ANNULÉ"]:
+        raise HTTPException(status_code=400, detail="Ce ticket est déjà supprimé")
+    
+    # Check if ticket has already been drawn (cannot void after draw)
+    if ticket.get("status") in ["WINNER", "WON", "LOSER", "LOST"]:
+        raise HTTPException(status_code=400, detail="Impossible de supprimer un ticket après le tirage")
+    
+    now = get_current_timestamp()
+    
+    # Update ticket status to VOID
+    await db.lottery_transactions.update_one(
+        {"ticket_id": ticket_id},
+        {
+            "$set": {
+                "status": "VOID",
+                "void_reason": "Supprimé par le vendeur",
+                "voided_by": vendeur_id,
+                "voided_at": now,
+                "updated_at": now
+            }
+        }
+    )
+    
+    # Return the amount to agent balance if applicable
+    total_amount = ticket.get("total_amount", 0)
+    if total_amount > 0:
+        await db.agent_balances.update_one(
+            {"agent_id": vendeur_id},
+            {
+                "$inc": {
+                    "available_balance": total_amount,
+                    "total_sales": -total_amount
+                },
+                "$set": {"updated_at": now}
+            }
+        )
+    
+    # Log activity
+    from activity_logger import log_activity
+    await log_activity(
+        db=db,
+        action_type="TICKET_VOIDED",
+        entity_type="ticket",
+        entity_id=ticket_id,
+        performed_by=vendeur_id,
+        company_id=company_id,
+        metadata={
+            "ticket_code": ticket.get("ticket_code"),
+            "amount": total_amount,
+            "reason": "Supprimé par le vendeur"
+        },
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {
+        "message": "Ticket supprimé avec succès",
+        "ticket_id": ticket_id,
+        "refunded_amount": total_amount
+    }

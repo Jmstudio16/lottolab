@@ -12,6 +12,7 @@ from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel
 import qrcode
 import io
+import os
 import base64
 
 from models import UserRole, TicketStatus
@@ -512,7 +513,12 @@ async def print_ticket_universal(
     # Get company info
     company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
     company_name = company.get("name", "LOTO PAM") if company else "LOTO PAM"
+    company_logo = company.get("company_logo_url") or company.get("logo_url") if company else None
     currency = ticket.get("currency", "HTG")
+    
+    # For the logo, we'll use a simple text-based approach since images may not load correctly
+    # The logo will be shown as text "LOTO PAM" with styling
+    display_logo = ""  # Leave empty - logo text will be shown instead
     
     # Get agent info for POS ID
     agent = await db.users.find_one({"user_id": ticket.get("agent_id")}, {"_id": 0})
@@ -697,6 +703,12 @@ async def print_ticket_universal(
             border: none;
             cursor: pointer;
             font-size: 14px;
+        }}
+        .logo-image {{
+            max-width: 60mm;
+            max-height: 20mm;
+            margin: 0 auto 4px auto;
+            display: block;
         }}
         @media print {{
             body {{
