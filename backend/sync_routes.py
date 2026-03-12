@@ -110,9 +110,9 @@ async def get_full_device_config(current_agent: dict = Depends(get_current_agent
     config = await db.company_configurations.find_one({"company_id": company_id}, {"_id": 0})
     if not config:
         config = {
-            "min_bet_amount": 10.0,
-            "max_bet_amount": 10000.0,
-            "max_bet_per_number": 5000.0,
+            "min_bet_amount": 0,  # Pas de limite minimum
+            "max_bet_amount": 999999999,  # Pas de limite maximum pratique
+            "max_bet_per_number": 999999999,
             "stop_sales_before_draw_minutes": 5,
             "allow_ticket_void": True,
             "void_window_minutes": 5,

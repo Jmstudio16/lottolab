@@ -2145,7 +2145,7 @@ async def get_company_deleted_tickets(
     
     query = {
         "company_id": company_id,
-        "status": {"$in": ["CANCELLED", "VOIDED", "DELETED", "ANNULÉ"]}
+        "status": {"$in": ["CANCELLED", "VOIDED", "DELETED", "ANNULÉ", "VOID"]}
     }
     
     if agent_id:
@@ -2173,4 +2173,77 @@ async def get_company_deleted_tickets(
             "total_count": len(tickets),
             "total_cancelled_amount": total_cancelled_amount
         }
+    }
+
+
+
+# ============================================================================
+# DELETE/VOID TICKET - COMPANY ADMIN (PAS DE LIMITE DE TEMPS)
+# ============================================================================
+
+@company_admin_router.delete("/ticket/{ticket_id}")
+async def company_admin_delete_ticket(
+    ticket_id: str,
+    current_user: dict = Depends(get_company_admin)
+):
+    """
+    Delete/void a ticket by company admin. No time limit.
+    Can delete any ticket from the company.
+    """
+    company_id = require_admin(current_user)
+    admin_id = current_user.get("user_id")
+    
+    # Find the ticket
+    ticket = await db.lottery_transactions.find_one(
+        {"ticket_id": ticket_id, "company_id": company_id},
+        {"_id": 0}
+    )
+    
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket non trouvé")
+    
+    # Check if already voided
+    if ticket.get("status") in ["VOID", "VOIDED", "CANCELLED", "DELETED", "ANNULÉ"]:
+        raise HTTPException(status_code=400, detail="Ce ticket est déjà supprimé")
+    
+    # Check if ticket has already been drawn (cannot void after draw)
+    if ticket.get("status") in ["WINNER", "WON", "LOSER", "LOST"]:
+        raise HTTPException(status_code=400, detail="Impossible de supprimer un ticket après le tirage")
+    
+    now = get_current_timestamp()
+    agent_id = ticket.get("agent_id")
+    
+    # Update ticket status to VOID
+    await db.lottery_transactions.update_one(
+        {"ticket_id": ticket_id},
+        {
+            "$set": {
+                "status": "VOID",
+                "void_reason": "Supprimé par l'administrateur",
+                "voided_by": admin_id,
+                "voided_by_role": "COMPANY_ADMIN",
+                "voided_at": now,
+                "updated_at": now
+            }
+        }
+    )
+    
+    # Return the amount to agent balance
+    total_amount = ticket.get("total_amount", 0)
+    if total_amount > 0:
+        await db.agent_balances.update_one(
+            {"agent_id": agent_id},
+            {
+                "$inc": {
+                    "available_balance": total_amount,
+                    "total_sales": -total_amount
+                },
+                "$set": {"updated_at": now}
+            }
+        )
+    
+    return {
+        "message": "Ticket supprimé avec succès par l'administrateur",
+        "ticket_id": ticket_id,
+        "refunded_amount": total_amount
     }

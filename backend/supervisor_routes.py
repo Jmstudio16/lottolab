@@ -860,7 +860,7 @@ async def get_supervisor_deleted_tickets(
     
     query = {
         "agent_id": {"$in": agent_ids},
-        "status": {"$in": ["CANCELLED", "VOIDED", "DELETED", "ANNULÉ"]}
+        "status": {"$in": ["CANCELLED", "VOIDED", "DELETED", "ANNULÉ", "VOID"]}
     }
     
     if agent_id and agent_id in agent_ids:
@@ -886,4 +886,93 @@ async def get_supervisor_deleted_tickets(
             "total_count": len(tickets),
             "total_cancelled_amount": total_cancelled_amount
         }
+    }
+
+
+
+# ============================================================================
+# DELETE/VOID TICKET - SUPERVISEUR (PAS DE LIMITE DE TEMPS)
+# ============================================================================
+
+@supervisor_router.delete("/ticket/{ticket_id}")
+async def supervisor_delete_ticket(
+    ticket_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Delete/void a ticket by supervisor. No time limit.
+    Can delete any ticket from agents under this supervisor.
+    """
+    current_user = require_supervisor(current_user)
+    
+    supervisor_id = current_user.get("user_id")
+    company_id = current_user.get("company_id")
+    succursale_id = current_user.get("succursale_id")
+    
+    # Get list of agents managed by this supervisor
+    agent_ids = []
+    agents = await db.users.find({
+        "company_id": company_id,
+        "role": UserRole.AGENT_POS,
+        "status": {"$ne": "DELETED"},
+        "$or": [
+            {"succursale_id": succursale_id},
+            {"created_by": supervisor_id}
+        ]
+    }, {"user_id": 1}).to_list(None)
+    agent_ids = [a["user_id"] for a in agents]
+    
+    # Find the ticket
+    ticket = await db.lottery_transactions.find_one(
+        {"ticket_id": ticket_id, "agent_id": {"$in": agent_ids}},
+        {"_id": 0}
+    )
+    
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket non trouvé ou non autorisé")
+    
+    # Check if already voided
+    if ticket.get("status") in ["VOID", "VOIDED", "CANCELLED", "DELETED", "ANNULÉ"]:
+        raise HTTPException(status_code=400, detail="Ce ticket est déjà supprimé")
+    
+    # Check if ticket has already been drawn (cannot void after draw)
+    if ticket.get("status") in ["WINNER", "WON", "LOSER", "LOST"]:
+        raise HTTPException(status_code=400, detail="Impossible de supprimer un ticket après le tirage")
+    
+    now = get_current_timestamp()
+    agent_id = ticket.get("agent_id")
+    
+    # Update ticket status to VOID
+    await db.lottery_transactions.update_one(
+        {"ticket_id": ticket_id},
+        {
+            "$set": {
+                "status": "VOID",
+                "void_reason": "Supprimé par le superviseur",
+                "voided_by": supervisor_id,
+                "voided_by_role": "SUPERVISEUR",
+                "voided_at": now,
+                "updated_at": now
+            }
+        }
+    )
+    
+    # Return the amount to agent balance
+    total_amount = ticket.get("total_amount", 0)
+    if total_amount > 0:
+        await db.agent_balances.update_one(
+            {"agent_id": agent_id},
+            {
+                "$inc": {
+                    "available_balance": total_amount,
+                    "total_sales": -total_amount
+                },
+                "$set": {"updated_at": now}
+            }
+        )
+    
+    return {
+        "message": "Ticket supprimé avec succès par le superviseur",
+        "ticket_id": ticket_id,
+        "refunded_amount": total_amount
     }

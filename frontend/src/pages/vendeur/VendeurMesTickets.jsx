@@ -70,6 +70,11 @@ const VendeurMesTickets = () => {
   };
 
   const filteredTickets = tickets.filter(ticket => {
+    // Exclude voided/deleted tickets from main list
+    if (ticket.status === 'VOID' || ticket.status === 'DELETED' || ticket.status === 'VOIDED' || ticket.status === 'CANCELLED') {
+      return false;
+    }
+    
     const matchesSearch = 
       ticket.ticket_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.ticket_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -80,6 +85,26 @@ const VendeurMesTickets = () => {
       (filterStatus === 'pending' && (!ticket.status || ticket.status === 'PENDING'));
     return matchesSearch && matchesStatus;
   });
+
+  // Check if ticket can be deleted (within 5 minutes)
+  const canDeleteTicket = (ticket) => {
+    if (!ticket.created_at) return true;
+    try {
+      const createdAt = new Date(ticket.created_at);
+      const now = new Date();
+      const diffMinutes = (now - createdAt) / 1000 / 60;
+      return diffMinutes <= 5;
+    } catch {
+      return true;
+    }
+  };
+
+  const getDeleteButtonTitle = (ticket) => {
+    if (!canDeleteTicket(ticket)) {
+      return "Délai de 5 minutes dépassé - Contactez votre superviseur";
+    }
+    return "Supprimer (dans les 5 minutes)";
+  };
 
   const printTicket = (ticketId) => {
     // Pass token as query param for authentication
@@ -214,9 +239,10 @@ const VendeurMesTickets = () => {
                         size="sm"
                         variant="ghost"
                         onClick={() => deleteTicket(ticket.ticket_id, ticket.ticket_code)}
-                        className="text-slate-400 hover:text-red-400"
-                        title="Supprimer"
+                        className={`${canDeleteTicket(ticket) ? 'text-slate-400 hover:text-red-400' : 'text-slate-600 cursor-not-allowed'}`}
+                        title={getDeleteButtonTitle(ticket)}
                         data-testid={`delete-ticket-${ticket.ticket_id}`}
+                        disabled={!canDeleteTicket(ticket)}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>

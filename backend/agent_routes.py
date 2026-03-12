@@ -238,17 +238,16 @@ async def sell_ticket(
     
     # Get company settings for validation
     settings = await db.company_settings.find_one({"company_id": company_id}, {"_id": 0})
-    min_amount = settings.get("min_ticket_amount", 10) if settings else 10
-    max_amount = settings.get("max_ticket_amount", 10000) if settings else 10000
+    # No minimum limit - vendors can sell at any price from 0 to infinity
+    min_amount = 0  # Pas de limite minimum
+    max_amount = float('inf')  # Pas de limite maximum
     currency = settings.get("currency", "HTG") if settings else "HTG"
     
     # Calculate total amount
     total_amount = sum(play.amount for play in ticket_data.plays)
     
-    if total_amount < min_amount:
-        raise HTTPException(status_code=400, detail=f"Minimum ticket amount is {min_amount} {currency}")
-    if total_amount > max_amount:
-        raise HTTPException(status_code=400, detail=f"Maximum ticket amount is {max_amount} {currency}")
+    # No minimum validation - allow any amount
+    # No maximum validation - unlimited
     
     ticket_id = generate_id("tkt_")
     now = get_current_timestamp()

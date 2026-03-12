@@ -981,7 +981,7 @@ async def get_deleted_tickets(
     
     query = {
         "agent_id": vendeur_id,
-        "status": {"$in": ["CANCELLED", "VOIDED", "DELETED", "ANNULÉ"]}
+        "status": {"$in": ["CANCELLED", "VOIDED", "DELETED", "ANNULÉ", "VOID"]}
     }
     
     if date_from:
@@ -1023,7 +1023,7 @@ async def get_deleted_ticket_detail(
         {
             "ticket_id": ticket_id,
             "agent_id": vendeur_id,
-            "status": {"$in": ["CANCELLED", "VOIDED", "DELETED", "ANNULÉ"]}
+            "status": {"$in": ["CANCELLED", "VOIDED", "DELETED", "ANNULÉ", "VOID"]}
         },
         {"_id": 0}
     )
@@ -1035,7 +1035,7 @@ async def get_deleted_ticket_detail(
 
 
 # ============================================================================
-# DELETE/VOID TICKET - SUPPRIMER UN TICKET
+# DELETE/VOID TICKET - SUPPRIMER UN TICKET (5 MINUTES MAX)
 # ============================================================================
 
 @vendeur_router.delete("/ticket/{ticket_id}")
@@ -1049,8 +1049,12 @@ async def delete_ticket(
     - Ticket belongs to this vendeur
     - Ticket is not already voided
     - Draw has not happened yet (status is PENDING or ACTIVE)
+    - Ticket was created less than 5 minutes ago (VENDEUR ONLY)
+    
+    After 5 minutes, only supervisors and company admins can delete tickets.
     """
     from utils import get_current_timestamp
+    from datetime import datetime, timezone, timedelta
     
     vendeur_id = current_vendeur.get("user_id")
     company_id = current_vendeur.get("company_id")
@@ -1072,6 +1076,23 @@ async def delete_ticket(
     if ticket.get("status") in ["WINNER", "WON", "LOSER", "LOST"]:
         raise HTTPException(status_code=400, detail="Impossible de supprimer un ticket après le tirage")
     
+    # Check 5-minute time limit for vendeurs
+    created_at = ticket.get("created_at", "")
+    if created_at:
+        try:
+            ticket_time = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            now_time = datetime.now(timezone.utc)
+            time_diff = now_time - ticket_time
+            
+            # 5 minutes = 300 seconds
+            if time_diff.total_seconds() > 300:
+                raise HTTPException(
+                    status_code=403, 
+                    detail="Délai de 5 minutes dépassé. Seul un superviseur ou administrateur peut supprimer ce ticket."
+                )
+        except ValueError:
+            pass  # If date parsing fails, allow deletion
+    
     now = get_current_timestamp()
     
     # Update ticket status to VOID
@@ -1080,8 +1101,9 @@ async def delete_ticket(
         {
             "$set": {
                 "status": "VOID",
-                "void_reason": "Supprimé par le vendeur",
+                "void_reason": "Supprimé par le vendeur (dans les 5 minutes)",
                 "voided_by": vendeur_id,
+                "voided_by_role": "VENDEUR",
                 "voided_at": now,
                 "updated_at": now
             }
@@ -1114,7 +1136,8 @@ async def delete_ticket(
         metadata={
             "ticket_code": ticket.get("ticket_code"),
             "amount": total_amount,
-            "reason": "Supprimé par le vendeur"
+            "reason": "Supprimé par le vendeur (dans les 5 minutes)",
+            "voided_by_role": "VENDEUR"
         },
         ip_address=request.client.host if request.client else None
     )
