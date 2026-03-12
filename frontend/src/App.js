@@ -43,6 +43,8 @@ import { CompanyWinningTicketsPage } from '@/pages/CompanyWinningTicketsPage';
 import { BranchLotteriesPage } from '@/pages/BranchLotteriesPage';
 import CompanyRapportVentes from '@/pages/CompanyRapportVentes';
 import CompanyLotteryFlagsPage from '@/pages/CompanyLotteryFlagsPage';
+import CompanyLotsGagnants from '@/pages/CompanyLotsGagnants';
+import CompanyFichesSupprimees from '@/pages/CompanyFichesSupprimees';
 
 // Supervisor Pages
 import { SupervisorLayout } from '@/layouts/SupervisorLayout';
@@ -53,6 +55,8 @@ import { SupervisorReportsPage } from '@/pages/supervisor/SupervisorReportsPage'
 import { SupervisorResultsPage } from '@/pages/supervisor/SupervisorResultsPage';
 import { SupervisorLotterySchedulesPage } from '@/pages/supervisor/SupervisorLotterySchedulesPage';
 import SupervisorLotteryFlagsPage from '@/pages/supervisor/SupervisorLotteryFlagsPage';
+import SupervisorLotsGagnants from '@/pages/supervisor/SupervisorLotsGagnants';
+import SupervisorFichesSupprimees from '@/pages/supervisor/SupervisorFichesSupprimees';
 
 // Vendeur Pages
 import VendeurLayout from '@/layouts/VendeurLayout';
@@ -66,6 +70,8 @@ import {
   VendeurProfil,
   VendeurRecherche
 } from '@/pages/vendeur';
+import VendeurLotsGagnants from '@/pages/vendeur/VendeurLotsGagnants';
+import VendeurFichesSupprimees from '@/pages/vendeur/VendeurFichesSupprimees';
 
 // LOTO PAM Public Platform Pages
 import LotoPamHomePage from '@/pages/lotopam/LotoPamHomePage';
@@ -401,6 +407,22 @@ const SaaSApp = () => {
                   }
                 />
                 <Route
+                  path="/company/lots-gagnants"
+                  element={
+                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
+                      <CompanyLotsGagnants />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/company/fiches-supprimees"
+                  element={
+                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
+                      <CompanyFichesSupprimees />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/company/lotteries-for-agents"
                   element={
                     <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
@@ -529,6 +551,8 @@ const SaaSApp = () => {
                   <Route path="results" element={<SupervisorResultsPage />} />
                   <Route path="lottery-schedules" element={<SupervisorLotterySchedulesPage />} />
                   <Route path="lottery-flags" element={<SupervisorLotteryFlagsPage />} />
+                  <Route path="lots-gagnants" element={<SupervisorLotsGagnants />} />
+                  <Route path="fiches-supprimees" element={<SupervisorFichesSupprimees />} />
                   <Route index element={<Navigate to="/supervisor/dashboard" replace />} />
                 </Route>
 
@@ -549,6 +573,8 @@ const SaaSApp = () => {
                   <Route path="resultats" element={<VendeurResultats />} />
                   <Route path="mes-ventes" element={<VendeurMesVentes />} />
                   <Route path="profil" element={<VendeurProfil />} />
+                  <Route path="lots-gagnants" element={<VendeurLotsGagnants />} />
+                  <Route path="fiches-supprimees" element={<VendeurFichesSupprimees />} />
                   <Route index element={<Navigate to="/vendeur/dashboard" replace />} />
                 </Route>
 

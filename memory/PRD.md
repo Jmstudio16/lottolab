@@ -1,130 +1,113 @@
-# LOTTOLAB SaaS Enterprise - Version 6.1.0
+# LOTTOLAB SaaS Enterprise - Version 6.2.0
 
-## Release: LOTTERY FLAGS + POS SERIAL + PROFILE ENHANCEMENTS
+## Release: LOTS GAGNANTS + FICHES SUPPRIMÉES
 Date: 2026-03-12
 
 ---
 
 ## ACCOMPLISSEMENTS DE CETTE SESSION
 
-### ✅ 1. Loteries Haiti Renommées (SANS les heures)
+### ✅ Nouvelles Pages Créées
 
-Les 14 loteries Haiti ont été renommées comme demandé:
-
-| Ancien Nom | Nouveau Nom |
-|------------|-------------|
-| Tennessee Matin 10h15 | **Tennessee Matin** |
-| Tennessee Midi 13h15 | **Tennessee Midi** |
-| Tennessee Soir 19h15 | **Tennessee Soir** |
-| Texas Matin 10h55 | **Texas Matin** |
-| Texas Midi 13h24 | **Texas Midi** |
-| Texas Soir 18h55 | **Texas Soir** |
-| Texas Nuit 23h00 | **Texas Nuit** |
-| Georgia Midi 12h25 | **Georgia Midi** |
-| Georgia Soir 18h55 | **Georgia Soir** |
-| Georgia Nuit 23h20 | **Georgia Nuit** |
-| Florida Midi 13h25 | **Florida Midi** |
-| Florida Soir 21h40 | **Florida Soir** |
-| New York Midi 14h25 | **New York Midi** |
-| New York Soir 22h25 | **New York Soir** |
-
-Les heures sont conservées dans `draw_time` et affichées séparément.
+| Fonctionnalité | Vendeur | Superviseur | Company Admin |
+|---------------|---------|-------------|---------------|
+| **Lots Gagnants** | ✅ `/vendeur/lots-gagnants` | ✅ `/supervisor/lots-gagnants` | ✅ `/company/lots-gagnants` |
+| **Fiches Supprimées** | ✅ `/vendeur/fiches-supprimees` | ✅ `/supervisor/fiches-supprimees` | ✅ `/company/fiches-supprimees` |
 
 ---
 
-### ✅ 2. Configuration des Drapeaux - Disponible pour:
-
-| Rôle | Page | URL |
-|------|------|-----|
-| Super Admin | ✅ | `/super/lottery-flags` |
-| Company Admin | ✅ | `/company/lottery-flags` |
-| Superviseur | ✅ | `/supervisor/lottery-flags` |
+### ✅ 1. Page Lots Gagnants (3 versions)
 
 **Fonctionnalités:**
-- Affichage des 234 loteries totales
+- Affichage des tickets gagnants avec code, loterie, montant des gains
+- Statistiques: Total gagnants, Montant total, Payés, En attente
+- Filtrage par statut (Tous / Payés / En attente)
+- Recherche par code ticket, loterie ou agent
+- Boutons Voir détails et Imprimer
+- Modal de détail avec informations complètes
+
+**Endpoints Backend:**
+- `GET /api/vendeur/winning-tickets` - Tickets gagnants du vendeur
+- `GET /api/vendeur/winning-tickets/{ticket_id}` - Détail d'un ticket gagnant
+- `GET /api/supervisor/winning-tickets` - Tickets gagnants de tous les agents du superviseur
+- `GET /api/company/winning-tickets` - Tickets gagnants de toute la compagnie
+
+---
+
+### ✅ 2. Page Fiches Supprimées (3 versions)
+
+**Fonctionnalités:**
+- Affichage des tickets annulés/supprimés
+- Statistiques: Total supprimées, Montant annulé
+- Recherche par code ticket, loterie ou agent
+- Modal de détail avec raison d'annulation si disponible
+
+**Endpoints Backend:**
+- `GET /api/vendeur/deleted-tickets` - Tickets annulés du vendeur
+- `GET /api/vendeur/deleted-tickets/{ticket_id}` - Détail d'un ticket annulé
+- `GET /api/supervisor/deleted-tickets` - Tickets annulés de tous les agents
+- `GET /api/company/deleted-tickets` - Tickets annulés de toute la compagnie
+
+---
+
+### ✅ 3. Menus Mis à Jour
+
+**Menu Vendeur:**
+- Lots Gagnants (icône: Trophy, couleur: amber)
+- Fiches Supprimées (icône: Trash2, couleur: red)
+
+**Menu Superviseur:**
+- Lots Gagnants
+- Fiches Supprimées
+
+**Menu Company Admin:**
+- Lots Gagnants
+- Fiches Supprimées
+
+---
+
+## RÉCAPITULATIF DES TÂCHES PRÉCÉDENTES
+
+### Loteries Haiti (14 loteries)
+- Tennessee Matin, Tennessee Midi, Tennessee Soir
+- Texas Matin, Texas Midi, Texas Soir, Texas Nuit
+- Georgia Midi, Georgia Soir, Georgia Nuit
+- Florida Midi, Florida Soir
+- New York Midi, New York Soir
+
+### Configuration des Drapeaux
 - 🇭🇹 LOTERIE HAITI (14 loteries)
 - 🇺🇸 LOTERIE USA (220 loteries)
-- Filtrage par drapeau (Tous / Haiti / USA)
-- Toggle activer/désactiver chaque loterie
-- Changer le drapeau d'une loterie (Haiti ↔ USA)
-- Recherche par nom
+- Disponible pour: Super Admin, Company Admin, Superviseur
+
+### Profil Vendeur
+- Commission affichée uniquement si configurée
+- ID Appareil / POS affiché
 
 ---
 
-### ✅ 3. Statistiques des Drapeaux
-
-| Catégorie | Nombre |
-|-----------|--------|
-| Total | 234 |
-| 🇭🇹 LOTERIE HAITI | 14 |
-| 🇺🇸 LOTERIE USA | 220 |
-
----
-
-### ✅ 4. Profil Vendeur - Améliorations
-
-- **ID Appareil / POS**: Affiche le numéro de série POS ou "NON ASSIGNÉ"
-- **Commission**: Affichée UNIQUEMENT si configurée (pas de valeur par défaut)
-
----
-
-### ✅ 5. Numéro de Série POS
-
-**Nouveau champ dans la création d'un vendeur:**
-- Champ: `pos_serial_number`
-- Unique dans tout le système
-- Si un vendeur est supprimé, le numéro peut être réutilisé
-- Affiché dans le profil vendeur
-
-**Nouvel endpoint:**
-- `GET /api/company/check-pos-serial/{serial}` - Vérifie si un numéro est disponible
-
----
-
-## TESTS EFFECTUÉS
+## TESTS
 
 | Test | Résultat |
 |------|----------|
-| Backend (pytest) | 100% (10/10) |
-| Frontend (Playwright) | 100% (34/34) |
-
----
-
-## ENDPOINTS API CRÉÉS
-
-### Super Admin
-- `GET /api/super/lottery-flags` - Liste toutes les loteries avec flags
-- `GET /api/super/lottery-flags/stats` - Statistiques des flags
-- `POST /api/super/lottery-flags` - Mise à jour batch des flags
-- `POST /api/super/lottery-flags/toggle/{lottery_id}` - Toggle activer/désactiver
-
-### Superviseur
-- `GET /api/supervisor/lottery-flags` - Liste des loteries pour la succursale
-- `POST /api/supervisor/lottery-flags` - Mise à jour des flags
-- `POST /api/supervisor/lottery-flags/toggle/{lottery_id}` - Toggle
-
-### Company Admin
-- `GET /api/company/check-pos-serial/{serial}` - Vérifier disponibilité POS
+| Page Lots Gagnants Vendeur | ✅ PASS |
+| Page Lots Gagnants Superviseur | ✅ PASS |
+| API /api/vendeur/winning-tickets | ✅ PASS (1 ticket, 6000 HTG) |
+| API /api/supervisor/winning-tickets | ✅ PASS |
 
 ---
 
 ## TÂCHES RESTANTES
 
-### P1 - À Faire
-1. **Nouveaux boutons** à ajouter (Company Admin, Superviseur, Vendeur):
-   - Lots Gagnants
-   - Fiche Gagnant
-   - Fiche Supprimée
-2. Synchronisation des résultats dans toutes les pages
-
 ### P2 - À Faire
+- Activer le système de notifications (icône cloche)
+- Compléter la traduction française
 - Logo entreprise sur tickets imprimés
-- Notifications (icône cloche)
-- Traduction française complète
 
 ### Backlog
 - Calcul automatique des gains
 - Plateforme publique LOTO PAM
+- Synchronisation avancée des résultats
 
 ---
 
@@ -139,54 +122,24 @@ Les heures sont conservées dans `draw_time` et affichées séparément.
 
 ---
 
-## ARCHITECTURE MISE À JOUR
+## FICHIERS CRÉÉS/MODIFIÉS
 
-```
-/app
-├── backend/
-│   ├── super_admin_routes.py    # Nouveaux endpoints lottery-flags
-│   ├── supervisor_routes.py     # Nouveaux endpoints lottery-flags
-│   ├── company_admin_routes.py  # Nouveau endpoint check-pos-serial
-│   └── vendeur/vendeur_routes.py # Profile avec POS serial
-└── frontend/
-    └── src/
-        ├── pages/
-        │   ├── SuperLotteryFlagsPage.js           # (Nouveau) Super Admin flags
-        │   ├── supervisor/
-        │   │   └── SupervisorLotteryFlagsPage.jsx # Superviseur flags
-        │   ├── CompanyLotteryFlagsPage.jsx        # Company Admin flags
-        │   └── vendeur/
-        │       └── VendeurProfil.jsx              # Profile avec POS
-        └── components/
-            └── Sidebar.js                         # Lien Config Drapeaux ajouté
-```
+### Backend
+- `/app/backend/vendeur/vendeur_routes.py` - Nouveaux endpoints winning-tickets, deleted-tickets
+- `/app/backend/supervisor_routes.py` - Nouveaux endpoints winning-tickets, deleted-tickets
+- `/app/backend/company_admin_routes.py` - Nouveaux endpoints winning-tickets, deleted-tickets
 
----
-
-## FLUX DU SYSTÈME
-
-```
-Super Admin
-├── Configure les 234 loteries globalement
-├── Assigne les drapeaux (HAITI/USA)
-└── Publie les résultats → synchronisé partout
-
-Company Admin
-├── Voit les loteries avec leurs drapeaux
-├── Active/désactive pour sa compagnie
-└── Crée les vendeurs avec POS serial
-
-Superviseur
-├── Configure les drapeaux pour sa succursale
-├── Voit les résultats synchronisés
-└── Gère ses vendeurs
-
-Vendeur
-├── Voit les loteries selon les drapeaux configurés
-├── Filtre par 🇭🇹 HAITI ou 🇺🇸 USA
-├── Vend avec montant libre
-└── Voit son POS dans le profil
-```
+### Frontend
+- `/app/frontend/src/pages/vendeur/VendeurLotsGagnants.jsx` (NOUVEAU)
+- `/app/frontend/src/pages/vendeur/VendeurFichesSupprimees.jsx` (NOUVEAU)
+- `/app/frontend/src/pages/supervisor/SupervisorLotsGagnants.jsx` (NOUVEAU)
+- `/app/frontend/src/pages/supervisor/SupervisorFichesSupprimees.jsx` (NOUVEAU)
+- `/app/frontend/src/pages/CompanyLotsGagnants.jsx` (NOUVEAU)
+- `/app/frontend/src/pages/CompanyFichesSupprimees.jsx` (NOUVEAU)
+- `/app/frontend/src/layouts/VendeurLayout.jsx` (MODIFIÉ - liens ajoutés)
+- `/app/frontend/src/layouts/SupervisorLayout.js` (MODIFIÉ - liens ajoutés)
+- `/app/frontend/src/components/Sidebar.js` (MODIFIÉ - liens ajoutés)
+- `/app/frontend/src/App.js` (MODIFIÉ - routes ajoutées)
 
 ---
 

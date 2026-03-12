@@ -858,3 +858,174 @@ async def change_password(
     )
     
     return {"message": "Mot de passe modifié avec succès"}
+
+
+
+# ============================================================================
+# WINNING TICKETS / LOTS GAGNANTS
+# ============================================================================
+
+@vendeur_router.get("/winning-tickets")
+async def get_winning_tickets(
+    current_vendeur: dict = Depends(get_current_vendeur),
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 100
+):
+    """
+    Get winning tickets for the vendeur.
+    Returns tickets with status WINNER or WON.
+    """
+    vendeur_id = current_vendeur.get("user_id")
+    
+    query = {
+        "agent_id": vendeur_id,
+        "status": {"$in": ["WINNER", "WON", "PAID"]}
+    }
+    
+    if date_from:
+        query["created_at"] = {"$gte": date_from}
+    if date_to:
+        if "created_at" in query:
+            query["created_at"]["$lte"] = date_to
+        else:
+            query["created_at"] = {"$lte": date_to}
+    if status:
+        query["status"] = status
+    
+    tickets = await db.lottery_transactions.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Calculate totals
+    total_win_amount = sum(t.get("win_amount", 0) for t in tickets)
+    paid_count = sum(1 for t in tickets if t.get("status") == "PAID")
+    pending_count = sum(1 for t in tickets if t.get("status") in ["WINNER", "WON"])
+    
+    return {
+        "tickets": tickets,
+        "summary": {
+            "total_count": len(tickets),
+            "total_win_amount": total_win_amount,
+            "paid_count": paid_count,
+            "pending_count": pending_count
+        }
+    }
+
+
+@vendeur_router.get("/winning-tickets/{ticket_id}")
+async def get_winning_ticket_detail(
+    ticket_id: str,
+    current_vendeur: dict = Depends(get_current_vendeur)
+):
+    """
+    Get detailed information about a specific winning ticket.
+    """
+    vendeur_id = current_vendeur.get("user_id")
+    
+    ticket = await db.lottery_transactions.find_one(
+        {
+            "ticket_id": ticket_id,
+            "agent_id": vendeur_id,
+            "status": {"$in": ["WINNER", "WON", "PAID"]}
+        },
+        {"_id": 0}
+    )
+    
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Fiche gagnante non trouvée")
+    
+    # Get lottery info
+    lottery = await db.master_lotteries.find_one(
+        {"lottery_id": ticket.get("lottery_id")},
+        {"_id": 0, "lottery_name": 1, "draw_time": 1}
+    )
+    
+    # Get result info
+    result = await db.global_results.find_one(
+        {
+            "lottery_id": ticket.get("lottery_id"),
+            "draw_date": ticket.get("draw_date")
+        },
+        {"_id": 0}
+    )
+    
+    return {
+        "ticket": ticket,
+        "lottery": lottery,
+        "result": result
+    }
+
+
+# ============================================================================
+# DELETED/CANCELLED TICKETS / FICHES SUPPRIMÉES
+# ============================================================================
+
+@vendeur_router.get("/deleted-tickets")
+async def get_deleted_tickets(
+    current_vendeur: dict = Depends(get_current_vendeur),
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    limit: int = 100
+):
+    """
+    Get cancelled/deleted tickets for the vendeur.
+    Returns tickets with status CANCELLED or VOIDED.
+    """
+    vendeur_id = current_vendeur.get("user_id")
+    
+    query = {
+        "agent_id": vendeur_id,
+        "status": {"$in": ["CANCELLED", "VOIDED", "DELETED", "ANNULÉ"]}
+    }
+    
+    if date_from:
+        query["created_at"] = {"$gte": date_from}
+    if date_to:
+        if "created_at" in query:
+            query["created_at"]["$lte"] = date_to
+        else:
+            query["created_at"] = {"$lte": date_to}
+    
+    tickets = await db.lottery_transactions.find(
+        query,
+        {"_id": 0}
+    ).sort("updated_at", -1).limit(limit).to_list(limit)
+    
+    # Calculate totals
+    total_cancelled_amount = sum(t.get("total_amount", 0) for t in tickets)
+    
+    return {
+        "tickets": tickets,
+        "summary": {
+            "total_count": len(tickets),
+            "total_cancelled_amount": total_cancelled_amount
+        }
+    }
+
+
+@vendeur_router.get("/deleted-tickets/{ticket_id}")
+async def get_deleted_ticket_detail(
+    ticket_id: str,
+    current_vendeur: dict = Depends(get_current_vendeur)
+):
+    """
+    Get detailed information about a specific deleted/cancelled ticket.
+    """
+    vendeur_id = current_vendeur.get("user_id")
+    
+    ticket = await db.lottery_transactions.find_one(
+        {
+            "ticket_id": ticket_id,
+            "agent_id": vendeur_id,
+            "status": {"$in": ["CANCELLED", "VOIDED", "DELETED", "ANNULÉ"]}
+        },
+        {"_id": 0}
+    )
+    
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Fiche supprimée non trouvée")
+    
+    return {"ticket": ticket}

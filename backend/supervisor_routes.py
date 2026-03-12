@@ -4,6 +4,7 @@ Supervisor Routes - Manages supervisor access to their agents
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timezone
+from typing import Optional
 from motor.motor_asyncio import AsyncIOMotorClient
 from models import UserRole
 from utils import get_current_timestamp
@@ -740,3 +741,149 @@ async def toggle_supervisor_lottery(
     )
     
     return {"lottery_id": lottery_id, "is_enabled": new_enabled}
+
+
+
+# ============================================================================
+# WINNING TICKETS / LOTS GAGNANTS - SUPERVISOR
+# ============================================================================
+
+@supervisor_router.get("/winning-tickets")
+async def get_supervisor_winning_tickets(
+    current_user: dict = Depends(get_current_user),
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    agent_id: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 200
+):
+    """
+    Get winning tickets for all agents under this supervisor.
+    """
+    current_user = require_supervisor(current_user)
+    succursale_id = current_user.get("succursale_id")
+    company_id = current_user.get("company_id")
+    
+    # Get all agents under this supervisor
+    agents = await db.users.find(
+        {
+            "$or": [
+                {"succursale_id": succursale_id},
+                {"branch_id": succursale_id}
+            ],
+            "role": {"$in": [UserRole.AGENT_POS, "AGENT_POS", "VENDEUR"]}
+        },
+        {"user_id": 1}
+    ).to_list(500)
+    agent_ids = [a["user_id"] for a in agents]
+    
+    if not agent_ids:
+        return {"tickets": [], "summary": {"total_count": 0, "total_win_amount": 0}}
+    
+    query = {
+        "agent_id": {"$in": agent_ids},
+        "status": {"$in": ["WINNER", "WON", "PAID"]}
+    }
+    
+    if agent_id and agent_id in agent_ids:
+        query["agent_id"] = agent_id
+    if date_from:
+        query["created_at"] = {"$gte": date_from}
+    if date_to:
+        if "created_at" in query:
+            query["created_at"]["$lte"] = date_to
+        else:
+            query["created_at"] = {"$lte": date_to}
+    if status:
+        query["status"] = status
+    
+    tickets = await db.lottery_transactions.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Calculate totals
+    total_win_amount = sum(t.get("win_amount", 0) for t in tickets)
+    paid_count = sum(1 for t in tickets if t.get("status") == "PAID")
+    pending_count = sum(1 for t in tickets if t.get("status") in ["WINNER", "WON"])
+    
+    # Group by agent
+    by_agent = {}
+    for t in tickets:
+        aid = t.get("agent_id")
+        if aid not in by_agent:
+            by_agent[aid] = {"count": 0, "amount": 0}
+        by_agent[aid]["count"] += 1
+        by_agent[aid]["amount"] += t.get("win_amount", 0)
+    
+    return {
+        "tickets": tickets,
+        "summary": {
+            "total_count": len(tickets),
+            "total_win_amount": total_win_amount,
+            "paid_count": paid_count,
+            "pending_count": pending_count,
+            "by_agent": by_agent
+        }
+    }
+
+
+@supervisor_router.get("/deleted-tickets")
+async def get_supervisor_deleted_tickets(
+    current_user: dict = Depends(get_current_user),
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    agent_id: Optional[str] = None,
+    limit: int = 200
+):
+    """
+    Get cancelled/deleted tickets for all agents under this supervisor.
+    """
+    current_user = require_supervisor(current_user)
+    succursale_id = current_user.get("succursale_id")
+    
+    # Get all agents under this supervisor
+    agents = await db.users.find(
+        {
+            "$or": [
+                {"succursale_id": succursale_id},
+                {"branch_id": succursale_id}
+            ],
+            "role": {"$in": [UserRole.AGENT_POS, "AGENT_POS", "VENDEUR"]}
+        },
+        {"user_id": 1}
+    ).to_list(500)
+    agent_ids = [a["user_id"] for a in agents]
+    
+    if not agent_ids:
+        return {"tickets": [], "summary": {"total_count": 0, "total_cancelled_amount": 0}}
+    
+    query = {
+        "agent_id": {"$in": agent_ids},
+        "status": {"$in": ["CANCELLED", "VOIDED", "DELETED", "ANNULÉ"]}
+    }
+    
+    if agent_id and agent_id in agent_ids:
+        query["agent_id"] = agent_id
+    if date_from:
+        query["created_at"] = {"$gte": date_from}
+    if date_to:
+        if "created_at" in query:
+            query["created_at"]["$lte"] = date_to
+        else:
+            query["created_at"] = {"$lte": date_to}
+    
+    tickets = await db.lottery_transactions.find(
+        query,
+        {"_id": 0}
+    ).sort("updated_at", -1).limit(limit).to_list(limit)
+    
+    total_cancelled_amount = sum(t.get("total_amount", 0) for t in tickets)
+    
+    return {
+        "tickets": tickets,
+        "summary": {
+            "total_count": len(tickets),
+            "total_cancelled_amount": total_cancelled_amount
+        }
+    }

@@ -25,7 +25,8 @@ import {
   Image,
   Wallet,
   Banknote,
-  Flag
+  Flag,
+  Trash2
 } from 'lucide-react';
 import { useAuth } from '@/api/auth';
 import Logo from './Logo';
@@ -59,6 +60,8 @@ const CompanyAdminMenu = [
   { path: '/company/schedules', label: 'Horaires (Vue)', icon: CalendarClock },
   { path: '/company/results', label: 'Résultats (Vue)', icon: Trophy },
   { path: '/company/tickets', label: 'Tickets', icon: FileText },
+  { path: '/company/lots-gagnants', label: 'Lots Gagnants', icon: Trophy },
+  { path: '/company/fiches-supprimees', label: 'Fiches Supprimées', icon: Trash2 },
   { path: '/company/winning-tickets', label: 'Gagnants & Paiements', icon: Banknote },
   { path: '/company/configuration', label: 'Configuration', icon: Sliders },
   { path: '/company/statistics', label: 'Statistiques', icon: ChartLine },

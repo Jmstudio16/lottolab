@@ -2057,3 +2057,120 @@ async def remove_lottery_from_flags(
         raise HTTPException(status_code=404, detail="Lottery not found")
     
     return {"message": "Lottery disabled", "lottery_id": lottery_id}
+
+
+
+# ============================================================================
+# WINNING TICKETS / LOTS GAGNANTS - COMPANY ADMIN
+# ============================================================================
+
+@company_admin_router.get("/winning-tickets")
+async def get_company_winning_tickets(
+    current_user: dict = Depends(get_company_admin),
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    agent_id: Optional[str] = None,
+    branch_id: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 500
+):
+    """
+    Get winning tickets for the entire company.
+    """
+    company_id = current_user.get("company_id")
+    
+    query = {
+        "company_id": company_id,
+        "status": {"$in": ["WINNER", "WON", "PAID"]}
+    }
+    
+    if agent_id:
+        query["agent_id"] = agent_id
+    if branch_id:
+        query["succursale_id"] = branch_id
+    if date_from:
+        query["created_at"] = {"$gte": date_from}
+    if date_to:
+        if "created_at" in query:
+            query["created_at"]["$lte"] = date_to
+        else:
+            query["created_at"] = {"$lte": date_to}
+    if status:
+        query["status"] = status
+    
+    tickets = await db.lottery_transactions.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Calculate totals
+    total_win_amount = sum(t.get("win_amount", 0) for t in tickets)
+    paid_count = sum(1 for t in tickets if t.get("status") == "PAID")
+    pending_count = sum(1 for t in tickets if t.get("status") in ["WINNER", "WON"])
+    
+    # Group by branch
+    by_branch = {}
+    for t in tickets:
+        bid = t.get("succursale_id") or "unknown"
+        if bid not in by_branch:
+            by_branch[bid] = {"count": 0, "amount": 0}
+        by_branch[bid]["count"] += 1
+        by_branch[bid]["amount"] += t.get("win_amount", 0)
+    
+    return {
+        "tickets": tickets,
+        "summary": {
+            "total_count": len(tickets),
+            "total_win_amount": total_win_amount,
+            "paid_count": paid_count,
+            "pending_count": pending_count,
+            "by_branch": by_branch
+        }
+    }
+
+
+@company_admin_router.get("/deleted-tickets")
+async def get_company_deleted_tickets(
+    current_user: dict = Depends(get_company_admin),
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    agent_id: Optional[str] = None,
+    branch_id: Optional[str] = None,
+    limit: int = 500
+):
+    """
+    Get cancelled/deleted tickets for the entire company.
+    """
+    company_id = current_user.get("company_id")
+    
+    query = {
+        "company_id": company_id,
+        "status": {"$in": ["CANCELLED", "VOIDED", "DELETED", "ANNULÉ"]}
+    }
+    
+    if agent_id:
+        query["agent_id"] = agent_id
+    if branch_id:
+        query["succursale_id"] = branch_id
+    if date_from:
+        query["created_at"] = {"$gte": date_from}
+    if date_to:
+        if "created_at" in query:
+            query["created_at"]["$lte"] = date_to
+        else:
+            query["created_at"] = {"$lte": date_to}
+    
+    tickets = await db.lottery_transactions.find(
+        query,
+        {"_id": 0}
+    ).sort("updated_at", -1).limit(limit).to_list(limit)
+    
+    total_cancelled_amount = sum(t.get("total_amount", 0) for t in tickets)
+    
+    return {
+        "tickets": tickets,
+        "summary": {
+            "total_count": len(tickets),
+            "total_cancelled_amount": total_cancelled_amount
+        }
+    }
