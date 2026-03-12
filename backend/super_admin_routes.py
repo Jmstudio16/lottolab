@@ -969,3 +969,77 @@ async def get_lottery_flags_stats(current_user: dict = Depends(get_current_user)
         "active": active_count if active_count else total - inactive_count,
         "inactive": inactive_count
     }
+
+
+
+@super_admin_router.put("/lottery/{lottery_id}")
+async def update_lottery_details(
+    lottery_id: str,
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Update lottery details (name, state_code, etc.) - Super Admin only.
+    """
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Check lottery exists
+    existing = await db.master_lotteries.find_one({"lottery_id": lottery_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Loterie non trouvée")
+    
+    now = get_current_timestamp()
+    
+    # Build update fields
+    update_fields = {"updated_at": now, "updated_by": current_user.get("user_id")}
+    
+    if data.get("lottery_name"):
+        update_fields["lottery_name"] = data["lottery_name"]
+    if data.get("state_code"):
+        update_fields["state_code"] = data["state_code"]
+    if data.get("state_name"):
+        update_fields["state_name"] = data["state_name"]
+    if data.get("draw_time"):
+        update_fields["draw_time"] = data["draw_time"]
+    if data.get("open_time"):
+        update_fields["open_time"] = data["open_time"]
+    if data.get("close_time"):
+        update_fields["close_time"] = data["close_time"]
+    if data.get("flag_type"):
+        update_fields["flag_type"] = data["flag_type"]
+    
+    # Update master_lotteries
+    await db.master_lotteries.update_one(
+        {"lottery_id": lottery_id},
+        {"$set": update_fields}
+    )
+    
+    # Also update in company_lotteries for synchronization
+    if data.get("lottery_name"):
+        await db.company_lotteries.update_many(
+            {"lottery_id": lottery_id},
+            {"$set": {"lottery_name": data["lottery_name"], "updated_at": now}}
+        )
+    
+    # Update in global_schedules
+    await db.global_schedules.update_one(
+        {"lottery_id": lottery_id},
+        {"$set": update_fields}
+    )
+    
+    # Log activity
+    await log_activity(
+        db,
+        action_type="LOTTERY_UPDATED",
+        entity_type="lottery",
+        entity_id=lottery_id,
+        performed_by=current_user.get("user_id"),
+        metadata={"fields_updated": list(update_fields.keys())}
+    )
+    
+    return {
+        "message": "Loterie mise à jour avec succès",
+        "lottery_id": lottery_id,
+        "updated_fields": list(update_fields.keys())
+    }

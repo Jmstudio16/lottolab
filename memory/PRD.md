@@ -1,113 +1,87 @@
-# LOTTOLAB SaaS Enterprise - Version 6.2.0
+# LOTTOLAB SaaS Enterprise - Version 6.3.0
 
-## Release: LOTS GAGNANTS + FICHES SUPPRIMÉES
+## Release: CORRECTIONS ET SYNCHRONISATION
 Date: 2026-03-12
 
 ---
 
-## ACCOMPLISSEMENTS DE CETTE SESSION
+## CORRECTIONS EFFECTUÉES
 
-### ✅ Nouvelles Pages Créées
+### ✅ 1. Commission - Affichage Conditionnel
+- Commission = **0 par défaut** lors de la création de nouveaux vendeurs/superviseurs
+- Si commission = 0 ou non configurée → **ne s'affiche pas** dans le profil
+- Modifié: `company_admin_routes.py` (ligne 443: `commission_percent: 0.0`)
+- Modifié: `vendeur_routes.py` (profile endpoint)
+- Modifié: `VendeurProfil.jsx` (condition `commission_rate > 0`)
 
-| Fonctionnalité | Vendeur | Superviseur | Company Admin |
-|---------------|---------|-------------|---------------|
-| **Lots Gagnants** | ✅ `/vendeur/lots-gagnants` | ✅ `/supervisor/lots-gagnants` | ✅ `/company/lots-gagnants` |
-| **Fiches Supprimées** | ✅ `/vendeur/fiches-supprimees` | ✅ `/supervisor/fiches-supprimees` | ✅ `/company/fiches-supprimees` |
+### ✅ 2. Tirages Disponibles - Synchronisation Complète
+- Affiche **TOUTES** les loteries activées (USA + Haiti)
+- Ajout des filtres par drapeau: 🇭🇹 Haiti | 🇺🇸 USA
+- Les loteries sont maintenant directement utilisées (pas besoin de schedules séparés)
+- Statistiques: **Tous (90)**, **Haiti (14)**, **USA (76)**
 
----
+### ✅ 3. Résultats Superviseur - Synchronisation
+- Corrigé: endpoint `/api/supervisor/results` 
+- Utilise maintenant `global_results` (synchronisé avec Super Admin)
+- Les résultats s'affichent correctement (5 résultats visibles)
 
-### ✅ 1. Page Lots Gagnants (3 versions)
-
-**Fonctionnalités:**
-- Affichage des tickets gagnants avec code, loterie, montant des gains
-- Statistiques: Total gagnants, Montant total, Payés, En attente
-- Filtrage par statut (Tous / Payés / En attente)
-- Recherche par code ticket, loterie ou agent
-- Boutons Voir détails et Imprimer
-- Modal de détail avec informations complètes
-
-**Endpoints Backend:**
-- `GET /api/vendeur/winning-tickets` - Tickets gagnants du vendeur
-- `GET /api/vendeur/winning-tickets/{ticket_id}` - Détail d'un ticket gagnant
-- `GET /api/supervisor/winning-tickets` - Tickets gagnants de tous les agents du superviseur
-- `GET /api/company/winning-tickets` - Tickets gagnants de toute la compagnie
-
----
-
-### ✅ 2. Page Fiches Supprimées (3 versions)
-
-**Fonctionnalités:**
-- Affichage des tickets annulés/supprimés
-- Statistiques: Total supprimées, Montant annulé
-- Recherche par code ticket, loterie ou agent
-- Modal de détail avec raison d'annulation si disponible
-
-**Endpoints Backend:**
-- `GET /api/vendeur/deleted-tickets` - Tickets annulés du vendeur
-- `GET /api/vendeur/deleted-tickets/{ticket_id}` - Détail d'un ticket annulé
-- `GET /api/supervisor/deleted-tickets` - Tickets annulés de tous les agents
-- `GET /api/company/deleted-tickets` - Tickets annulés de toute la compagnie
+### ✅ 4. Super Admin - Modifier Noms des Loteries
+- Nouveau endpoint: `PUT /api/super/lottery/{lottery_id}`
+- Permet de modifier: `lottery_name`, `state_code`, `draw_time`, etc.
+- Bouton d'édition (✏️) ajouté à côté de chaque loterie
+- Modal d'édition avec prévisualisation et sauvegarde
+- Synchronisation automatique vers `company_lotteries` et `global_schedules`
 
 ---
 
-### ✅ 3. Menus Mis à Jour
+## RÉSUMÉ DES FONCTIONNALITÉS
 
-**Menu Vendeur:**
-- Lots Gagnants (icône: Trophy, couleur: amber)
-- Fiches Supprimées (icône: Trash2, couleur: red)
-
-**Menu Superviseur:**
-- Lots Gagnants
-- Fiches Supprimées
-
-**Menu Company Admin:**
-- Lots Gagnants
-- Fiches Supprimées
-
----
-
-## RÉCAPITULATIF DES TÂCHES PRÉCÉDENTES
-
-### Loteries Haiti (14 loteries)
-- Tennessee Matin, Tennessee Midi, Tennessee Soir
-- Texas Matin, Texas Midi, Texas Soir, Texas Nuit
-- Georgia Midi, Georgia Soir, Georgia Nuit
-- Florida Midi, Florida Soir
-- New York Midi, New York Soir
+### Pages Lots Gagnants / Fiches Supprimées
+| Rôle | Lots Gagnants | Fiches Supprimées |
+|------|---------------|-------------------|
+| Vendeur | ✅ `/vendeur/lots-gagnants` | ✅ `/vendeur/fiches-supprimees` |
+| Superviseur | ✅ `/supervisor/lots-gagnants` | ✅ `/supervisor/fiches-supprimees` |
+| Company Admin | ✅ `/company/lots-gagnants` | ✅ `/company/fiches-supprimees` |
 
 ### Configuration des Drapeaux
-- 🇭🇹 LOTERIE HAITI (14 loteries)
-- 🇺🇸 LOTERIE USA (220 loteries)
-- Disponible pour: Super Admin, Company Admin, Superviseur
+| Rôle | Page | Fonctionnalités |
+|------|------|-----------------|
+| Super Admin | `/super/lottery-flags` | ✅ Modifier noms, Toggle, Changer drapeau |
+| Company Admin | `/company/lottery-flags` | Toggle, Changer drapeau |
+| Superviseur | `/supervisor/lottery-flags` | Toggle, Changer drapeau |
 
-### Profil Vendeur
-- Commission affichée uniquement si configurée
-- ID Appareil / POS affiché
-
----
-
-## TESTS
-
-| Test | Résultat |
-|------|----------|
-| Page Lots Gagnants Vendeur | ✅ PASS |
-| Page Lots Gagnants Superviseur | ✅ PASS |
-| API /api/vendeur/winning-tickets | ✅ PASS (1 ticket, 6000 HTG) |
-| API /api/supervisor/winning-tickets | ✅ PASS |
+### Synchronisation
+- ✅ Résultats: Super Admin → Company Admin → Superviseur → Vendeur
+- ✅ Loteries: Super Admin → Company Admin → Superviseur → Vendeur
+- ✅ Tirages: Toutes les loteries activées sont visibles
 
 ---
 
-## TÂCHES RESTANTES
+## STATISTIQUES ACTUELLES
 
-### P2 - À Faire
-- Activer le système de notifications (icône cloche)
-- Compléter la traduction française
-- Logo entreprise sur tickets imprimés
+| Catégorie | Nombre |
+|-----------|--------|
+| Total Loteries | 234 |
+| 🇭🇹 LOTERIE HAITI | 14 |
+| 🇺🇸 LOTERIE USA | 220 |
+| Loteries Actives | 90 |
 
-### Backlog
-- Calcul automatique des gains
-- Plateforme publique LOTO PAM
-- Synchronisation avancée des résultats
+---
+
+## ENDPOINTS API
+
+### Nouveaux
+- `PUT /api/super/lottery/{lottery_id}` - Modifier une loterie (Super Admin)
+- `GET /api/vendeur/winning-tickets` - Tickets gagnants vendeur
+- `GET /api/vendeur/deleted-tickets` - Tickets annulés vendeur
+- `GET /api/supervisor/winning-tickets` - Tickets gagnants superviseur
+- `GET /api/supervisor/deleted-tickets` - Tickets annulés superviseur
+- `GET /api/company/winning-tickets` - Tickets gagnants company
+- `GET /api/company/deleted-tickets` - Tickets annulés company
+
+### Corrigés
+- `GET /api/supervisor/results` - Maintenant utilise `global_results`
+- `GET /api/vendeur/profile` - Commission = 0 si non configurée
 
 ---
 
@@ -122,24 +96,31 @@ Date: 2026-03-12
 
 ---
 
-## FICHIERS CRÉÉS/MODIFIÉS
+## FICHIERS MODIFIÉS
 
 ### Backend
-- `/app/backend/vendeur/vendeur_routes.py` - Nouveaux endpoints winning-tickets, deleted-tickets
-- `/app/backend/supervisor_routes.py` - Nouveaux endpoints winning-tickets, deleted-tickets
-- `/app/backend/company_admin_routes.py` - Nouveaux endpoints winning-tickets, deleted-tickets
+- `/app/backend/super_admin_routes.py` - Endpoint PUT lottery
+- `/app/backend/supervisor_routes.py` - Corrigé results, ajouté winning/deleted tickets
+- `/app/backend/vendeur/vendeur_routes.py` - Profile commission fix, winning/deleted tickets
+- `/app/backend/company_admin_routes.py` - Commission = 0 par défaut
 
 ### Frontend
-- `/app/frontend/src/pages/vendeur/VendeurLotsGagnants.jsx` (NOUVEAU)
-- `/app/frontend/src/pages/vendeur/VendeurFichesSupprimees.jsx` (NOUVEAU)
-- `/app/frontend/src/pages/supervisor/SupervisorLotsGagnants.jsx` (NOUVEAU)
-- `/app/frontend/src/pages/supervisor/SupervisorFichesSupprimees.jsx` (NOUVEAU)
-- `/app/frontend/src/pages/CompanyLotsGagnants.jsx` (NOUVEAU)
-- `/app/frontend/src/pages/CompanyFichesSupprimees.jsx` (NOUVEAU)
-- `/app/frontend/src/layouts/VendeurLayout.jsx` (MODIFIÉ - liens ajoutés)
-- `/app/frontend/src/layouts/SupervisorLayout.js` (MODIFIÉ - liens ajoutés)
-- `/app/frontend/src/components/Sidebar.js` (MODIFIÉ - liens ajoutés)
-- `/app/frontend/src/App.js` (MODIFIÉ - routes ajoutées)
+- `/app/frontend/src/pages/SuperLotteryFlagsPage.js` - Bouton édition + modal
+- `/app/frontend/src/pages/vendeur/VendeurTirages.jsx` - Filtres drapeaux
+- `/app/frontend/src/pages/vendeur/VendeurProfil.jsx` - Commission conditionnelle
+
+---
+
+## TÂCHES RESTANTES
+
+### P2
+- Activer le système de notifications (icône cloche)
+- Logo entreprise sur tickets imprimés
+- Traduction française complète
+
+### Backlog
+- Calcul automatique des gains
+- Plateforme publique LOTO PAM
 
 ---
 

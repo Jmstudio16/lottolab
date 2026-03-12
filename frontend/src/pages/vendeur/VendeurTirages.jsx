@@ -18,6 +18,7 @@ const VendeurTirages = () => {
   const [lotteries, setLotteries] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterFlag, setFilterFlag] = useState('all');
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const headers = { Authorization: `Bearer ${token}` };
@@ -138,16 +139,24 @@ const VendeurTirages = () => {
     };
   };
 
-  // Build draws list - only for lotteries that are enabled
-  const draws = schedules.map(schedule => {
-    const lottery = lotteries.find(l => l.lottery_id === schedule.lottery_id);
-    if (!lottery) return null; // Skip if lottery not in enabled list
+  // Build draws list - use lotteries directly with their integrated schedules
+  const draws = lotteries.map(lottery => {
+    // Each lottery now has its own draw_time, open_time, close_time
+    const schedule = {
+      lottery_id: lottery.lottery_id,
+      open_time: lottery.open_time,
+      close_time: lottery.close_time,
+      draw_time: lottery.draw_time,
+      draw_name: lottery.draw_name
+    };
     
     const status = getDrawStatus(schedule);
     return {
       ...schedule,
-      lottery_name: lottery?.lottery_name || schedule.lottery_id,
-      state_code: lottery?.state_code || '',
+      lottery_id: lottery.lottery_id,
+      lottery_name: lottery.lottery_name,
+      state_code: lottery.state_code || '',
+      flag_type: lottery.flag_type,
       ...status
     };
   }).filter(Boolean).sort((a, b) => {
@@ -157,13 +166,21 @@ const VendeurTirages = () => {
   });
 
   const filteredDraws = draws.filter(draw => {
-    if (filterStatus === 'open') return draw.canSell;
-    if (filterStatus === 'closed') return !draw.canSell;
+    // Filter by status
+    if (filterStatus === 'open' && !draw.canSell) return false;
+    if (filterStatus === 'closed' && draw.canSell) return false;
+    
+    // Filter by flag
+    if (filterFlag === 'haiti' && draw.flag_type !== 'HAITI') return false;
+    if (filterFlag === 'usa' && draw.flag_type === 'HAITI') return false;
+    
     return true;
   });
 
   const openCount = draws.filter(d => d.canSell).length;
   const closedCount = draws.filter(d => !d.canSell).length;
+  const haitiCount = draws.filter(d => d.flag_type === 'HAITI').length;
+  const usaCount = draws.filter(d => d.flag_type !== 'HAITI').length;
 
   const goToSell = (lotteryId) => {
     navigate('/vendeur/nouvelle-vente');
@@ -198,7 +215,8 @@ const VendeurTirages = () => {
       </div>
 
       {/* Filter Buttons */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        {/* Status Filters */}
         <Button
           onClick={() => setFilterStatus('all')}
           variant={filterStatus === 'all' ? 'default' : 'outline'}
@@ -224,6 +242,35 @@ const VendeurTirages = () => {
         >
           <XCircle className="w-4 h-4 mr-1" />
           Fermés ({closedCount})
+        </Button>
+        
+        {/* Separator */}
+        <div className="w-px h-8 bg-slate-700 mx-2 hidden sm:block" />
+        
+        {/* Flag Filters */}
+        <Button
+          onClick={() => setFilterFlag('all')}
+          variant={filterFlag === 'all' ? 'default' : 'outline'}
+          size="sm"
+          className={filterFlag === 'all' ? 'bg-purple-600' : 'border-slate-700'}
+        >
+          Tous Drapeaux
+        </Button>
+        <Button
+          onClick={() => setFilterFlag('haiti')}
+          variant={filterFlag === 'haiti' ? 'default' : 'outline'}
+          size="sm"
+          className={filterFlag === 'haiti' ? 'bg-red-600' : 'border-slate-700'}
+        >
+          🇭🇹 Haiti ({haitiCount})
+        </Button>
+        <Button
+          onClick={() => setFilterFlag('usa')}
+          variant={filterFlag === 'usa' ? 'default' : 'outline'}
+          size="sm"
+          className={filterFlag === 'usa' ? 'bg-blue-600' : 'border-slate-700'}
+        >
+          🇺🇸 USA ({usaCount})
         </Button>
       </div>
 

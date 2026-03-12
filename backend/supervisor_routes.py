@@ -466,18 +466,18 @@ async def get_supervisor_results(
     limit: int = 50,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get lottery results (read-only for supervisors)"""
+    """Get lottery results (read-only for supervisors) - synchronized with all system"""
     current_user = require_supervisor(current_user)
     
     company_id = current_user.get("company_id")
     
-    # Get results from draw_results collection
-    results = await db.draw_results.find(
-        {"company_id": company_id},
+    # Get results from global_results collection (synchronized with Super Admin)
+    results = await db.global_results.find(
+        {},
         {"_id": 0}
     ).sort("created_at", -1).limit(limit).to_list(limit)
     
-    # If no company-specific results, get global results
+    # If no global results, try draw_results
     if not results:
         results = await db.draw_results.find(
             {},

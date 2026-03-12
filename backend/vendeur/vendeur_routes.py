@@ -243,12 +243,15 @@ async def get_vendeur_profile(current_vendeur: dict = Depends(get_current_vendeu
             {"_id": 0, "name": 1, "email": 1, "telephone": 1}
         )
     
-    # Get agent policy (commission rate)
+    # Get agent policy (commission rate) - Only show if explicitly configured
     agent_policy = await db.agent_policies.find_one(
         {"agent_id": vendeur_id},
         {"_id": 0}
     )
-    commission_rate = agent_policy.get("commission_percent", 10) if agent_policy else 10
+    # Commission is 0 by default unless explicitly configured
+    commission_rate = 0
+    if agent_policy and agent_policy.get("commission_percent"):
+        commission_rate = agent_policy.get("commission_percent", 0)
     
     # Get device info (including POS serial number)
     device = await db.pos_devices.find_one(

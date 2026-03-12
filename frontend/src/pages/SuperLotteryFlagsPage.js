@@ -4,7 +4,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   Flag, RefreshCw, Search, Save, CheckCircle, XCircle,
-  ArrowRight, ToggleLeft, ToggleRight, Globe
+  ArrowRight, ToggleLeft, ToggleRight, Globe, Edit, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ const SuperLotteryFlagsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterFlag, setFilterFlag] = useState('all');
   const [changes, setChanges] = useState({});
+  const [editingLottery, setEditingLottery] = useState(null);
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -120,6 +121,21 @@ const SuperLotteryFlagsPage = () => {
   const usaLotteries = filteredLotteries.filter(l => (changes[l.lottery_id]?.flag_type || l.flag_type) !== 'HAITI');
 
   const hasChanges = Object.keys(changes).length > 0;
+
+  const updateLotteryName = async (lotteryId, newName) => {
+    try {
+      await axios.put(
+        `${API_URL}/api/super/lottery/${lotteryId}`,
+        { lottery_name: newName },
+        { headers }
+      );
+      toast.success('Nom de la loterie mis à jour');
+      setEditingLottery(null);
+      fetchData();
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour');
+    }
+  };
 
   return (
     <div className="p-4 sm:p-6 space-y-6" data-testid="super-lottery-flags-page">
@@ -230,6 +246,7 @@ const SuperLotteryFlagsPage = () => {
                     currentFlag={changes[lottery.lottery_id]?.flag_type || lottery.flag_type || 'HAITI'}
                     onFlagChange={(flag) => handleFlagChange(lottery.lottery_id, flag)}
                     onToggle={() => handleToggleActive(lottery.lottery_id)}
+                    onEdit={() => setEditingLottery(lottery)}
                     hasChange={!!changes[lottery.lottery_id]}
                   />
                 ))}
@@ -255,6 +272,7 @@ const SuperLotteryFlagsPage = () => {
                     currentFlag={changes[lottery.lottery_id]?.flag_type || lottery.flag_type || 'USA'}
                     onFlagChange={(flag) => handleFlagChange(lottery.lottery_id, flag)}
                     onToggle={() => handleToggleActive(lottery.lottery_id)}
+                    onEdit={() => setEditingLottery(lottery)}
                     hasChange={!!changes[lottery.lottery_id]}
                   />
                 ))}
@@ -263,11 +281,90 @@ const SuperLotteryFlagsPage = () => {
           )}
         </div>
       )}
+
+      {/* Edit Modal */}
+      {editingLottery && (
+        <EditLotteryModal
+          lottery={editingLottery}
+          onSave={updateLotteryName}
+          onClose={() => setEditingLottery(null)}
+        />
+      )}
     </div>
   );
 };
 
-const LotteryCard = ({ lottery, currentFlag, onFlagChange, onToggle, hasChange }) => {
+const EditLotteryModal = ({ lottery, onSave, onClose }) => {
+  const [newName, setNewName] = useState(lottery.lottery_name);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!newName.trim()) return;
+    setSaving(true);
+    await onSave(lottery.lottery_id, newName.trim());
+    setSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-md w-full">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <Edit className="w-5 h-5 text-blue-400" />
+            Modifier le nom de la loterie
+          </h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm text-slate-400 mb-1 block">Nom actuel</label>
+            <p className="text-white bg-slate-700/50 rounded-lg px-3 py-2">{lottery.lottery_name}</p>
+          </div>
+          
+          <div>
+            <label className="text-sm text-slate-400 mb-1 block">Nouveau nom</label>
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="bg-slate-700 border-slate-600"
+              placeholder="Entrez le nouveau nom..."
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="p-2 bg-slate-700/50 rounded">
+              <p className="text-slate-400">Code</p>
+              <p className="text-white">{lottery.state_code || '-'}</p>
+            </div>
+            <div className="p-2 bg-slate-700/50 rounded">
+              <p className="text-slate-400">Tirage</p>
+              <p className="text-white">{lottery.draw_time || '-'}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <Button onClick={onClose} variant="outline" className="flex-1 border-slate-600">
+            Annuler
+          </Button>
+          <Button 
+            onClick={handleSave} 
+            className="flex-1 bg-blue-600 hover:bg-blue-700"
+            disabled={saving || !newName.trim() || newName === lottery.lottery_name}
+          >
+            {saving ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
+            Enregistrer
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const LotteryCard = ({ lottery, currentFlag, onFlagChange, onToggle, hasChange, onEdit }) => {
   const isActive = lottery.is_active_global !== false;
   const schedule = lottery.schedule || {};
   
@@ -284,15 +381,24 @@ const LotteryCard = ({ lottery, currentFlag, onFlagChange, onToggle, hasChange }
             {lottery.draw_time && ` • Tirage: ${lottery.draw_time}`}
           </p>
         </div>
-        <button
-          onClick={onToggle}
-          className={`p-1 rounded-lg transition-colors ${
-            isActive ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-red-400 hover:bg-red-500/10'
-          }`}
-          title={isActive ? 'Désactiver globalement' : 'Activer globalement'}
-        >
-          {isActive ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onEdit}
+            className="p-1 rounded-lg text-blue-400 hover:bg-blue-500/10"
+            title="Modifier le nom"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onToggle}
+            className={`p-1 rounded-lg transition-colors ${
+              isActive ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-red-400 hover:bg-red-500/10'
+            }`}
+            title={isActive ? 'Désactiver globalement' : 'Activer globalement'}
+          >
+            {isActive ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
       
       {/* Status */}

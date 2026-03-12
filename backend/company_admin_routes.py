@@ -440,7 +440,7 @@ async def create_agent_full(
         "must_use_imei": bool(data.get("imei")),
         "max_credit_limit": data.get("credit_limit", 50000.0),
         "max_win_limit": data.get("winning_limit", 100000.0),
-        "commission_percent": data.get("commission_percent", 5.0),
+        "commission_percent": data.get("commission_percent", 0.0),
         "supervisor_percent": data.get("supervisor_percent", 0.0),
         "can_void_ticket": data.get("can_cancel_tickets", True),
         "can_pay_winners": data.get("can_pay_winners", True),
