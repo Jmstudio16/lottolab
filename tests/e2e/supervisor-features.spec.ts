@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 import { loginAsSupervisor, dismissToasts, removeEmergentBadge } from '../fixtures/helpers';
 
-const BASE_URL = 'https://vendeur-dashboard.preview.emergentagent.com';
+const BASE_URL = 'https://vendor-flags.preview.emergentagent.com';
 
 test.describe('Supervisor Features', () => {
   test.beforeEach(async ({ page }) => {

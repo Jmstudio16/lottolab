@@ -572,3 +572,171 @@ async def get_supervisor_lottery_schedules(current_user: dict = Depends(get_curr
         })
     
     return enriched_lotteries
+
+
+
+# ============================================================================
+# SUPERVISOR FLAG CONFIGURATION - Manage lottery flags for agents
+# ============================================================================
+
+@supervisor_router.get("/lottery-flags")
+async def get_supervisor_lottery_flags(current_user: dict = Depends(get_current_user)):
+    """
+    Get all lotteries with their flag configurations for supervisor's view.
+    Shows all company lotteries that the supervisor can configure for their agents.
+    """
+    current_user = require_supervisor(current_user)
+    
+    company_id = current_user.get("company_id")
+    succursale_id = current_user.get("succursale_id")
+    
+    # Get all enabled lotteries for this company
+    company_lotteries = await db.company_lotteries.find(
+        {
+            "company_id": company_id,
+            "$or": [{"is_enabled": True}, {"enabled": True}, {"is_enabled_for_company": True}]
+        },
+        {"_id": 0}
+    ).to_list(300)
+    
+    lottery_ids = [cl["lottery_id"] for cl in company_lotteries]
+    
+    # Get master lottery details
+    master_data = {}
+    if lottery_ids:
+        masters = await db.master_lotteries.find(
+            {"lottery_id": {"$in": lottery_ids}},
+            {"_id": 0}
+        ).to_list(300)
+        master_data = {m["lottery_id"]: m for m in masters}
+    
+    # Get branch-level flag overrides (if supervisor has configured any)
+    branch_flags = {}
+    if succursale_id:
+        branch_flag_docs = await db.branch_lottery_flags.find(
+            {"branch_id": succursale_id},
+            {"_id": 0}
+        ).to_list(300)
+        branch_flags = {bf["lottery_id"]: bf for bf in branch_flag_docs}
+    
+    # Build result
+    result = []
+    for cl in company_lotteries:
+        lottery_id = cl["lottery_id"]
+        master = master_data.get(lottery_id, {})
+        branch_flag = branch_flags.get(lottery_id, {})
+        
+        # Priority: branch flag > company flag > master flag
+        flag_type = branch_flag.get("flag_type") or cl.get("flag_type") or master.get("flag_type") or "USA"
+        is_enabled_for_branch = branch_flag.get("is_enabled", True) if branch_flag else True
+        
+        result.append({
+            "lottery_id": lottery_id,
+            "lottery_name": master.get("lottery_name") or cl.get("lottery_name") or lottery_id,
+            "state_code": master.get("state_code") or cl.get("state_code"),
+            "draw_time": master.get("draw_time"),
+            "flag_type": flag_type,
+            "is_enabled": is_enabled_for_branch,
+            "company_flag": cl.get("flag_type"),
+            "branch_flag": branch_flag.get("flag_type")
+        })
+    
+    return sorted(result, key=lambda x: x.get("lottery_name", ""))
+
+
+@supervisor_router.post("/lottery-flags")
+async def update_supervisor_lottery_flags(
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Update lottery flag configurations for the supervisor's branch.
+    Accepts: { "assignments": [{ "lottery_id": "...", "flag_type": "HAITI" | "USA", "is_enabled": true/false }] }
+    """
+    current_user = require_supervisor(current_user)
+    
+    succursale_id = current_user.get("succursale_id")
+    if not succursale_id:
+        raise HTTPException(status_code=400, detail="Supervisor n'a pas de succursale assignée")
+    
+    assignments = data.get("assignments", [])
+    if not assignments:
+        raise HTTPException(status_code=400, detail="Aucune assignation fournie")
+    
+    now = get_current_timestamp()
+    updated_count = 0
+    
+    for assignment in assignments:
+        lottery_id = assignment.get("lottery_id")
+        flag_type = assignment.get("flag_type", "USA")
+        is_enabled = assignment.get("is_enabled", True)
+        
+        if not lottery_id:
+            continue
+        
+        # Upsert branch-level flag configuration
+        await db.branch_lottery_flags.update_one(
+            {"branch_id": succursale_id, "lottery_id": lottery_id},
+            {"$set": {
+                "branch_id": succursale_id,
+                "lottery_id": lottery_id,
+                "flag_type": flag_type,
+                "is_enabled": is_enabled,
+                "updated_by": current_user.get("user_id"),
+                "updated_at": now
+            }},
+            upsert=True
+        )
+        updated_count += 1
+    
+    # Log activity
+    await db.activity_logs.insert_one({
+        "action_type": "SUPERVISOR_FLAG_UPDATE",
+        "performed_by": current_user.get("user_id"),
+        "succursale_id": succursale_id,
+        "metadata": {"updated_count": updated_count},
+        "created_at": now
+    })
+    
+    return {"message": f"{updated_count} loterie(s) mise(s) à jour", "updated": updated_count}
+
+
+@supervisor_router.post("/lottery-flags/toggle/{lottery_id}")
+async def toggle_supervisor_lottery(
+    lottery_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Toggle enable/disable for a specific lottery at the branch level.
+    """
+    current_user = require_supervisor(current_user)
+    
+    succursale_id = current_user.get("succursale_id")
+    if not succursale_id:
+        raise HTTPException(status_code=400, detail="Supervisor n'a pas de succursale assignée")
+    
+    now = get_current_timestamp()
+    
+    # Get current state
+    existing = await db.branch_lottery_flags.find_one(
+        {"branch_id": succursale_id, "lottery_id": lottery_id},
+        {"_id": 0}
+    )
+    
+    current_enabled = existing.get("is_enabled", True) if existing else True
+    new_enabled = not current_enabled
+    
+    # Update
+    await db.branch_lottery_flags.update_one(
+        {"branch_id": succursale_id, "lottery_id": lottery_id},
+        {"$set": {
+            "branch_id": succursale_id,
+            "lottery_id": lottery_id,
+            "is_enabled": new_enabled,
+            "updated_by": current_user.get("user_id"),
+            "updated_at": now
+        }},
+        upsert=True
+    )
+    
+    return {"lottery_id": lottery_id, "is_enabled": new_enabled}

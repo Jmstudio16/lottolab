@@ -51,6 +51,7 @@ import { SupervisorTicketsPage } from '@/pages/supervisor/SupervisorTicketsPage'
 import { SupervisorReportsPage } from '@/pages/supervisor/SupervisorReportsPage';
 import { SupervisorResultsPage } from '@/pages/supervisor/SupervisorResultsPage';
 import { SupervisorLotterySchedulesPage } from '@/pages/supervisor/SupervisorLotterySchedulesPage';
+import SupervisorLotteryFlagsPage from '@/pages/supervisor/SupervisorLotteryFlagsPage';
 
 // Vendeur Pages
 import VendeurLayout from '@/layouts/VendeurLayout';
@@ -518,6 +519,7 @@ const SaaSApp = () => {
                   <Route path="reports" element={<SupervisorReportsPage />} />
                   <Route path="results" element={<SupervisorResultsPage />} />
                   <Route path="lottery-schedules" element={<SupervisorLotterySchedulesPage />} />
+                  <Route path="lottery-flags" element={<SupervisorLotteryFlagsPage />} />
                   <Route index element={<Navigate to="/supervisor/dashboard" replace />} />
                 </Route>
 
