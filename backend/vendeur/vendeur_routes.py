@@ -559,7 +559,7 @@ async def sell_ticket(
         "total_amount": total_amount,
         "potential_win": potential_win,
         "currency": company.get("currency", "HTG"),
-        "status": "PENDING",
+        "status": "VALIDATED",
         "printed_count": 0,
         "device_type": "WEB",
         "created_at": now,

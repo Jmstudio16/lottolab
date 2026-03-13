@@ -555,7 +555,7 @@ async def sell_lottery_ticket(
         "total_amount": total_amount,
         "potential_win": potential_win,
         "currency": company.get("currency", "HTG"),
-        "status": TicketStatus.PENDING_RESULT.value,
+        "status": "VALIDATED",
         "created_at": now
     }
     

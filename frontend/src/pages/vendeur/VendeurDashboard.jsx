@@ -165,18 +165,20 @@ const VendeurDashboard = () => {
           </div>
         </div>
 
-        {/* Commission Card with real rate */}
-        <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/30 rounded-xl p-3 sm:p-4">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-amber-500/20 rounded-lg flex-shrink-0">
-              <Percent className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm text-amber-300">Commission ({commissionRate}%)</p>
-              <p className="text-base sm:text-xl font-bold text-amber-400 truncate">{formatCurrency(stats.commissions)} <span className="text-xs">HTG</span></p>
+        {/* Commission Card - Only show if commission rate is configured */}
+        {commissionRate > 0 && (
+          <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/30 rounded-xl p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-amber-500/20 rounded-lg flex-shrink-0">
+                <Percent className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-amber-300">Commission ({commissionRate}%)</p>
+                <p className="text-base sm:text-xl font-bold text-amber-400 truncate">{formatCurrency(stats.commissions)} <span className="text-xs">HTG</span></p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-3 sm:p-4">
           <div className="flex items-center gap-2 sm:gap-3">

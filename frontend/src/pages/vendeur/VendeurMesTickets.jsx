@@ -64,6 +64,10 @@ const VendeurMesTickets = () => {
       case 'VOID':
       case 'DELETED':
         return <span className="px-2 py-1 text-xs bg-slate-500/20 text-slate-400 rounded-full">Supprimé</span>;
+      case 'PAID':
+        return <span className="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 rounded-full">Payé</span>;
+      case 'VALIDATED':
+      case 'PENDING':
       default:
         return <span className="px-2 py-1 text-xs bg-emerald-500/20 text-emerald-400 rounded-full">Validé</span>;
     }
@@ -81,8 +85,8 @@ const VendeurMesTickets = () => {
       ticket.lottery_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || 
       (filterStatus === 'winner' && (ticket.status === 'WINNER' || ticket.status === 'WON')) ||
-      (filterStatus === 'lost' && ticket.status === 'LOST') ||
-      (filterStatus === 'pending' && (!ticket.status || ticket.status === 'PENDING'));
+      (filterStatus === 'lost' && (ticket.status === 'LOST' || ticket.status === 'LOSER')) ||
+      (filterStatus === 'validated' && (!ticket.status || ticket.status === 'PENDING' || ticket.status === 'VALIDATED'));
     return matchesSearch && matchesStatus;
   });
 
@@ -168,9 +172,9 @@ const VendeurMesTickets = () => {
         <div className="flex gap-2">
           {[
             { value: 'all', label: 'Tous' },
+            { value: 'validated', label: 'Validés' },
             { value: 'winner', label: 'Gagnants' },
-            { value: 'lost', label: 'Perdus' },
-            { value: 'pending', label: 'En attente' }
+            { value: 'lost', label: 'Perdus' }
           ].map(opt => (
             <Button
               key={opt.value}

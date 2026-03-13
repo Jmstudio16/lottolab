@@ -74,14 +74,14 @@ def require_company_admin(user: dict):
 
 
 # ============ BET TYPE MULTIPLIERS ============
-# These are the standard Haitian lottery payout multipliers
+# Haitian lottery payout multipliers - Updated to client specifications
 
 BET_MULTIPLIERS = {
-    # Borlette (3 chiffres)
-    "borlette": 50,      # 1:50 payout
-    "borlette_1": 50,
-    "borlette_2": 20,
-    "borlette_3": 10,
+    # Borlette (3 chiffres) - Principal bet type
+    "borlette": 60,      # 1st position: 60x payout
+    "borlette_1": 60,    # 1st position: 60x
+    "borlette_2": 20,    # 2nd position: 20x
+    "borlette_3": 10,    # 3rd position: 10x
     
     # Loto 3 (3 chiffres exact)
     "loto3": 500,        # 1:500 payout
@@ -103,8 +103,8 @@ BET_MULTIPLIERS = {
     "mariage": 100,
     "maryaj": 100,
     
-    # Default
-    "default": 50
+    # Default - uses 1st position multiplier
+    "default": 60
 }
 
 
@@ -242,7 +242,7 @@ async def process_winning_tickets(result_id: str, lottery_id: str, draw_date: st
         # Find all tickets for this lottery and draw that haven't been processed
         query = {
             "lottery_id": lottery_id,
-            "status": {"$in": ["PENDING", "ACTIVE", "PENDING_RESULT"]},
+            "status": {"$in": ["PENDING", "ACTIVE", "PENDING_RESULT", "VALIDATED"]},
         }
         
         # Also match by draw time if available

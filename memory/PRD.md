@@ -1,11 +1,59 @@
-# LOTTOLAB SaaS Enterprise - Version 6.4.0
+# LOTTOLAB SaaS Enterprise - Version 6.5.0
 
-## Release: IMPRESSION POS, EXPORT EXCEL, NUMÉRO SÉRIE POS
-Date: 2026-03-12
+## Release: SYSTÈME COMPLET SYNCHRONISÉ 100%
+Date: 2026-03-13
 
 ---
 
-## NOUVELLES FONCTIONNALITÉS (Iteration 24)
+## MAJOR UPDATE (Version 6.5.0)
+
+### ✅ 1. SYSTÈME DE CALCUL AUTOMATIQUE DES GAINS
+- **Multiplicateurs** :
+  - 1er prix (exact match) : **60x**
+  - 2ème prix : **20x**
+  - 3ème prix : **10x**
+- Le calcul est **AUTOMATIQUE** après publication du résultat par Super Admin
+- Fichier modifié : `lottery_results_routes.py` (BET_MULTIPLIERS)
+- **Testé et validé** : 100 HTG × 60 = 6000 HTG ✅
+
+### ✅ 2. STATUT TICKET "VALIDATED"
+- Les tickets sont maintenant **VALIDÉS** immédiatement à la vente
+- Plus de statut "En attente" / "PENDING"
+- Fichiers modifiés :
+  - `vendeur/vendeur_routes.py` : status = "VALIDATED"
+  - `universal_pos_routes.py` : status = "VALIDATED"
+  - `VendeurMesTickets.jsx` : Filtres et badges mis à jour
+
+### ✅ 3. SYNCHRONISATION RÉSULTATS GLOBALE
+- **Une seule source de vérité** : `global_results` collection
+- Super Admin publie → TOUS les rôles voient le même résultat :
+  - ✅ Company Admin
+  - ✅ Supervisor  
+  - ✅ Vendeur
+- Endpoints synchronisés :
+  - `/api/results` (pour tous)
+  - `/api/supervisor/results`
+  - `/api/vendeur/results`
+
+### ✅ 4. PAGE SUPER ADMIN SIMPLIFIÉE
+- **RETIRÉ** : Colonne "Gagnants"
+- **RETIRÉ** : Colonne "Total Gains"
+- **GARDÉ** : Loterie, Date, Tirage, Numéros Gagnants, Statut, Actions
+- Le Super Admin contrôle le système, pas les ventes
+
+### ✅ 5. POURCENTAGES CONDITIONNELS
+- Commission affichée **SEULEMENT** si `commission_rate > 0`
+- Caché si pas configuré
+- Fichiers modifiés : `VendeurDashboard.jsx`, `VendeurProfil.jsx`
+
+### ✅ 6. ENDPOINT CRÉATION SUPER ADMIN
+- Endpoint d'urgence pour production : `POST /api/init/create-super-admin`
+- Crée ou réinitialise le Super Admin
+- Secret key requis : `LOTTOLAB_INIT_2026`
+
+---
+
+## FONCTIONNALITÉS PRÉCÉDENTES (v6.4.0)
 
 ### ✅ 1. Impression Tickets POS 80mm (PRIORITÉ 1)
 - Format optimisé pour imprimante thermique 80mm

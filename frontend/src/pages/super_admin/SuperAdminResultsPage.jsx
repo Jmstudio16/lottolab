@@ -185,15 +185,14 @@ const SuperAdminResultsPage = () => {
                 <th className="text-left text-slate-400 text-sm font-medium px-4 py-3">Date</th>
                 <th className="text-left text-slate-400 text-sm font-medium px-4 py-3">Tirage</th>
                 <th className="text-left text-slate-400 text-sm font-medium px-4 py-3">Numéros Gagnants</th>
-                <th className="text-center text-slate-400 text-sm font-medium px-4 py-3">Gagnants</th>
-                <th className="text-right text-slate-400 text-sm font-medium px-4 py-3">Total Gains</th>
+                <th className="text-center text-slate-400 text-sm font-medium px-4 py-3">Statut</th>
                 <th className="text-center text-slate-400 text-sm font-medium px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700">
               {filteredResults.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center text-slate-400 py-8">
+                  <td colSpan={6} className="text-center text-slate-400 py-8">
                     Aucun résultat publié
                   </td>
                 </tr>
@@ -219,14 +218,8 @@ const SuperAdminResultsPage = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Users className="w-4 h-4 text-emerald-400" />
-                        <span className="text-emerald-400 font-medium">{result.winners_count || 0}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="text-amber-400 font-medium">
-                        {(result.total_winnings || 0).toLocaleString()} HTG
+                      <span className="px-2 py-1 text-xs bg-emerald-500/20 text-emerald-400 rounded-full">
+                        Publié
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">
