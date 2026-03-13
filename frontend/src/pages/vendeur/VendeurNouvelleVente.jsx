@@ -75,12 +75,13 @@ const VendeurNouvelleVente = () => {
     const closeTime = lottery.close_time;
     const drawTime = lottery.draw_time;
     
-    if (!closeTime) {
-      // No schedule = default business hours
-      if (currentHour >= 7 && currentHour < 22) {
-        return { status: 'open', text: 'Ouvert', color: 'text-emerald-400', canSell: true };
-      }
-      return { status: 'closed', text: 'Fermé', color: 'text-red-400', canSell: false };
+    // PRODUCTION MODE: Allow sales regardless of time
+    // This can be controlled by a company setting in the future
+    const ALLOW_24H_SALES = true;
+    
+    if (!closeTime || ALLOW_24H_SALES) {
+      // No schedule or 24h mode = always open
+      return { status: 'open', text: 'Ouvert', color: 'text-emerald-400', canSell: true, drawTime };
     }
     
     // Parse times

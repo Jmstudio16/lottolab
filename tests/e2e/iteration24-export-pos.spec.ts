@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test';
  * - Ticket printing functionality
  */
 
-const BASE_URL = process.env.REACT_APP_BACKEND_URL || 'https://pos-seller-setup.preview.emergentagent.com';
+const BASE_URL = process.env.REACT_APP_BACKEND_URL || 'https://pam-ticket-system.preview.emergentagent.com';
 
 // Test credentials
 const COMPANY_ADMIN = { email: 'admin@lotopam.com', password: 'Admin123!' };

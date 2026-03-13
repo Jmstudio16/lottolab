@@ -11,7 +11,7 @@ export default defineConfig({
     ['json', { outputFile: '/root/.emergent/automation_output/20260312_054344/results.json' }],
   ],
   use: {
-    baseURL: 'https://pos-seller-setup.preview.emergentagent.com',
+    baseURL: 'https://pam-ticket-system.preview.emergentagent.com',
     screenshot: 'only-on-failure',
     trace: 'off',
     headless: true,

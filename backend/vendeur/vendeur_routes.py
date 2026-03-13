@@ -350,6 +350,54 @@ async def upload_vendeur_photo(
 # MES TICKETS - Get all tickets for this vendeur
 # ============================================================================
 
+@vendeur_router.get("/available-lotteries")
+async def get_available_lotteries(
+    current_vendeur: dict = Depends(get_current_vendeur),
+    flag_type: Optional[str] = None
+):
+    """
+    Get all lotteries available for this vendeur to sell.
+    Filters by company's enabled lotteries and flag type (haiti/usa).
+    """
+    company_id = current_vendeur.get("company_id")
+    
+    # Get all active master lotteries
+    query = {"is_active": True}
+    
+    # Filter by flag if specified
+    if flag_type:
+        query["flag_type"] = flag_type.upper()
+    
+    lotteries = await db.master_lotteries.find(
+        query,
+        {"_id": 0}
+    ).sort("lottery_name", 1).to_list(300)
+    
+    # Get company-specific lottery settings
+    company_lottery_flags = await db.company_lottery_flags.find(
+        {"company_id": company_id},
+        {"_id": 0}
+    ).to_list(500)
+    
+    flag_map = {f.get("lottery_id"): f.get("flag_type") for f in company_lottery_flags}
+    
+    # Enrich lotteries with flag info
+    for lottery in lotteries:
+        lottery_id = lottery.get("lottery_id")
+        if lottery_id in flag_map:
+            lottery["flag_type"] = flag_map[lottery_id]
+    
+    # Filter by flag_type if specified
+    if flag_type:
+        flag_upper = flag_type.upper()
+        lotteries = [l for l in lotteries if l.get("flag_type", "").upper() == flag_upper]
+    
+    return {
+        "lotteries": lotteries,
+        "count": len(lotteries)
+    }
+
+
 @vendeur_router.get("/mes-tickets")
 async def get_mes_tickets(
     current_vendeur: dict = Depends(get_current_vendeur),
