@@ -4,7 +4,8 @@ import { useAuth } from '@/api/auth';
 import axios from 'axios';
 import { 
   LayoutDashboard, ShoppingCart, Ticket, Search, Calendar,
-  Trophy, BarChart3, User, LogOut, Menu, X, Store, Building2, Trash2
+  Trophy, BarChart3, User, LogOut, Menu, X, Store, Building2, Trash2,
+  Banknote, Receipt
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -51,6 +52,8 @@ const VendeurLayout = () => {
     { path: '/vendeur/tirages', icon: Calendar, label: 'Tirages Disponibles' },
     { path: '/vendeur/resultats', icon: Trophy, label: 'Résultats' },
     { path: '/vendeur/lots-gagnants', icon: Trophy, label: 'Lots Gagnants', highlight: 'amber' },
+    { path: '/vendeur/payer-gagnants', icon: Banknote, label: 'Payer Gagnants', highlight: 'emerald' },
+    { path: '/vendeur/fiche-gagnant', icon: Receipt, label: 'Fiches Payées' },
     { path: '/vendeur/fiches-supprimees', icon: Trash2, label: 'Fiches Supprimées', highlight: 'red' },
     { path: '/vendeur/mes-ventes', icon: BarChart3, label: 'Mes Ventes' },
     { path: '/vendeur/profil', icon: User, label: 'Mon Profil' },

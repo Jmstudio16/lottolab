@@ -72,6 +72,11 @@ import {
 } from '@/pages/vendeur';
 import VendeurLotsGagnants from '@/pages/vendeur/VendeurLotsGagnants';
 import VendeurFichesSupprimees from '@/pages/vendeur/VendeurFichesSupprimees';
+import VendeurPayerGagnants from '@/pages/vendeur/VendeurPayerGagnants';
+import VendeurFicheGagnant from '@/pages/vendeur/VendeurFicheGagnant';
+
+// Super Admin Results Page
+import SuperAdminResultsPage from '@/pages/super_admin/SuperAdminResultsPage';
 
 // LOTO PAM Public Platform Pages
 import LotoPamHomePage from '@/pages/lotopam/LotoPamHomePage';
@@ -303,6 +308,14 @@ const SaaSApp = () => {
                   element={
                     <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
                       <SuperResultManagementPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/super/publish-results"
+                  element={
+                    <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                      <SuperAdminResultsPage />
                     </ProtectedRoute>
                   }
                 />
@@ -575,6 +588,8 @@ const SaaSApp = () => {
                   <Route path="profil" element={<VendeurProfil />} />
                   <Route path="lots-gagnants" element={<VendeurLotsGagnants />} />
                   <Route path="fiches-supprimees" element={<VendeurFichesSupprimees />} />
+                  <Route path="payer-gagnants" element={<VendeurPayerGagnants />} />
+                  <Route path="fiche-gagnant" element={<VendeurFicheGagnant />} />
                   <Route index element={<Navigate to="/vendeur/dashboard" replace />} />
                 </Route>
 

@@ -46,6 +46,7 @@ from validation_routes import validation_router, set_validation_db, activate_all
 from branch_lottery_routes import branch_lottery_router, set_branch_lottery_db
 from vendeur.vendeur_routes import vendeur_router, set_vendeur_db
 from export_routes import export_router, set_export_db
+from lottery_results_routes import results_router, set_results_db
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -821,6 +822,7 @@ set_validation_db(db)
 set_branch_lottery_db(db)
 set_vendeur_db(db)
 set_export_db(db)
+set_results_db(db)
 
 # Initialize staff endpoints with dependency
 create_staff_endpoints(get_current_user)
@@ -860,6 +862,9 @@ app.include_router(vendeur_router)
 
 # Include export router
 app.include_router(export_router)
+
+# Include lottery results router
+app.include_router(results_router)
 
 # Include staff router under /api prefix
 api_router.include_router(staff_router)
