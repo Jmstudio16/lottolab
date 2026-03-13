@@ -57,6 +57,15 @@ Date: 2026-03-12
   - `frontend/src/pages/vendeur/VendeurTirages.jsx`: Logique identique
 - **Statut**: ✅ Corrigé et testé - Les deux pages affichent maintenant les mêmes statuts
 
+### ✅ 6. Page Résultats - Suppression mention gagnants (2026-03-13)
+- **Problème**: La page des résultats affichait "1 gagnant" même sans avoir vendu de tickets
+- **Corrections**:
+  1. Supprimé la section `winners_count` de `VendeurResultats.jsx`
+  2. Corrigé la fonction `formatWinningNumbers` pour gérer les tableaux retournés par l'API
+  3. Nettoyé les données de test dans la base (winners_count = 0)
+- **Résultat**: Les pages Vendeur et Supervisor affichent uniquement les numéros gagnants, sans mention des gagnants
+- **Statut**: ✅ Corrigé et testé
+
 ### ℹ️ Vendeur de Test Créé (2026-03-13)
 - **Email**: `vendeur@lotopam.com`
 - **Password**: `Vendeur123!`

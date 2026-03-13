@@ -36,7 +36,14 @@ const VendeurResultats = () => {
   }, [fetchResults]);
 
   const formatWinningNumbers = (wn) => {
-    if (!wn) return '-';
+    if (!wn) return [];
+    
+    // If already an array, return it
+    if (Array.isArray(wn)) {
+      return wn.filter(n => n && n.toString().trim());
+    }
+    
+    // If object with first/second/third
     if (typeof wn === 'object') {
       const nums = [];
       if (wn.first) nums.push(wn.first);
@@ -44,9 +51,12 @@ const VendeurResultats = () => {
       if (wn.third) nums.push(wn.third);
       return nums;
     }
+    
+    // If string, split by common delimiters
     if (typeof wn === 'string') {
       return wn.split(/[-,\s]+/).filter(n => n.trim());
     }
+    
     return [];
   };
 
@@ -168,8 +178,8 @@ const VendeurResultats = () => {
                         </span>
                       </div>
                       
-                      <div className="flex items-center justify-center gap-2 py-3">
-                        {Array.isArray(numbers) ? numbers.map((num, i) => (
+                      <div className="flex items-center justify-center gap-2 py-3 min-h-[60px]">
+                        {Array.isArray(numbers) && numbers.length > 0 ? numbers.map((num, i) => (
                           <div
                             key={i}
                             className={`w-12 h-12 flex items-center justify-center rounded-full font-bold text-lg ${
@@ -180,18 +190,12 @@ const VendeurResultats = () => {
                           >
                             {num}
                           </div>
-                        )) : (
+                        )) : typeof numbers === 'string' && numbers !== '-' ? (
                           <span className="text-2xl font-mono text-amber-400">{numbers}</span>
+                        ) : (
+                          <span className="text-slate-500">Numéros non disponibles</span>
                         )}
                       </div>
-
-                      {result.winners_count > 0 && (
-                        <div className="mt-2 pt-2 border-t border-slate-700 text-center">
-                          <span className="text-sm text-emerald-400">
-                            {result.winners_count} gagnant(s) • {result.total_payouts?.toLocaleString()} HTG
-                          </span>
-                        </div>
-                      )}
                     </div>
                   );
                 })}
