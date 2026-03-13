@@ -49,6 +49,7 @@ const VendeurTirages = () => {
   }, [fetchData]);
 
   // Get draw status with countdown
+  // SYNCHRONIZED with VendeurNouvelleVente.jsx - same logic
   const getDrawStatus = (schedule) => {
     const now = currentTime;
     const currentHour = now.getHours();
@@ -56,86 +57,100 @@ const VendeurTirages = () => {
     const currentSec = now.getSeconds();
     const currentTimeMinutes = currentHour * 60 + currentMin;
 
-    // Parse open time
-    let openTimeMinutes = 7 * 60;
-    if (schedule.open_time) {
-      const [openHour, openMin] = schedule.open_time.split(':').map(Number);
+    const closeTime = schedule.close_time;
+    const openTime = schedule.open_time;
+    
+    // If no close_time defined, lottery is always open (24h mode)
+    if (!closeTime) {
+      return { 
+        status: 'open', 
+        text: 'Ouvert 24h', 
+        color: 'text-emerald-400',
+        bgColor: 'bg-emerald-500/10 border-emerald-500/30',
+        canSell: true,
+        countdown: 0
+      };
+    }
+
+    // Parse open time (default: 06:00)
+    let openTimeMinutes = 6 * 60;
+    if (openTime) {
+      const [openHour, openMin] = openTime.split(':').map(Number);
       openTimeMinutes = openHour * 60 + openMin;
     }
 
     // Parse close time
-    if (schedule.close_time) {
-      const [closeHour, closeMin] = schedule.close_time.split(':').map(Number);
-      const closeTimeMinutes = closeHour * 60 + closeMin;
-      
-      // Before opening
-      if (currentTimeMinutes < openTimeMinutes) {
-        const diffMins = openTimeMinutes - currentTimeMinutes;
-        const hours = Math.floor(diffMins / 60);
-        const mins = diffMins % 60;
-        const timeStr = hours > 0 ? `${hours}h${mins.toString().padStart(2, '0')}` : `${mins}min`;
-        return { 
-          status: 'not_open', 
-          text: `Ouvre dans ${timeStr}`, 
-          color: 'text-blue-400',
-          bgColor: 'bg-blue-500/10 border-blue-500/30',
-          canSell: false,
-          countdown: diffMins * 60
-        };
-      }
-      
-      // Within open hours
-      if (currentTimeMinutes >= openTimeMinutes && currentTimeMinutes < closeTimeMinutes) {
-        const diffMins = closeTimeMinutes - currentTimeMinutes;
-        const hours = Math.floor(diffMins / 60);
-        const mins = diffMins % 60;
-        const secs = 59 - currentSec;
-        
-        if (diffMins <= 5) {
-          // Less than 5 minutes - show seconds
-          const totalSecs = (diffMins - 1) * 60 + secs;
-          const displayMins = Math.floor(totalSecs / 60);
-          const displaySecs = totalSecs % 60;
-          return { 
-            status: 'closing_soon', 
-            text: `Ferme dans ${displayMins}:${displaySecs.toString().padStart(2, '0')}`, 
-            color: 'text-red-400 animate-pulse',
-            bgColor: 'bg-red-500/20 border-red-500/50',
-            canSell: true,
-            urgent: true,
-            countdown: totalSecs
-          };
-        } else if (diffMins <= 30) {
-          const timeStr = hours > 0 ? `${hours}h${mins.toString().padStart(2, '0')}` : `${mins}min`;
-          return { 
-            status: 'closing', 
-            text: `Ferme dans ${timeStr}`, 
-            color: 'text-amber-400',
-            bgColor: 'bg-amber-500/10 border-amber-500/30',
-            canSell: true,
-            countdown: diffMins * 60
-          };
-        }
-        
-        const timeStr = hours > 0 ? `${hours}h${mins.toString().padStart(2, '0')}` : `${mins}min`;
-        return { 
-          status: 'open', 
-          text: `Ouvert (ferme dans ${timeStr})`, 
-          color: 'text-emerald-400',
-          bgColor: 'bg-emerald-500/10 border-emerald-500/30',
-          canSell: true,
-          countdown: diffMins * 60
-        };
-      }
+    const [closeHour, closeMin] = closeTime.split(':').map(Number);
+    const closeTimeMinutes = closeHour * 60 + closeMin;
+    
+    // Before opening
+    if (currentTimeMinutes < openTimeMinutes) {
+      const diffMins = openTimeMinutes - currentTimeMinutes;
+      const hours = Math.floor(diffMins / 60);
+      const mins = diffMins % 60;
+      const timeStr = hours > 0 ? `${hours}h${mins.toString().padStart(2, '0')}` : `${mins}min`;
+      return { 
+        status: 'not_open', 
+        text: `Ouvre dans ${timeStr}`, 
+        color: 'text-blue-400',
+        bgColor: 'bg-blue-500/10 border-blue-500/30',
+        canSell: false,
+        countdown: diffMins * 60
+      };
     }
     
+    // After closing
+    if (currentTimeMinutes >= closeTimeMinutes) {
+      return { 
+        status: 'closed', 
+        text: 'Fermé', 
+        color: 'text-red-400',
+        bgColor: 'bg-red-500/10 border-red-500/30',
+        canSell: false,
+        countdown: 0
+      };
+    }
+    
+    // Currently open - calculate time remaining
+    const diffMins = closeTimeMinutes - currentTimeMinutes;
+    const hours = Math.floor(diffMins / 60);
+    const mins = diffMins % 60;
+    
+    if (diffMins <= 5) {
+      // Less than 5 minutes - show countdown with seconds
+      const totalSecs = (diffMins - 1) * 60 + (59 - currentSec);
+      const displayMins = Math.floor(totalSecs / 60);
+      const displaySecs = totalSecs % 60;
+      return { 
+        status: 'closing_soon', 
+        text: `Ferme dans ${displayMins}:${displaySecs.toString().padStart(2, '0')}`, 
+        color: 'text-red-400 animate-pulse',
+        bgColor: 'bg-red-500/20 border-red-500/50',
+        canSell: true,
+        urgent: true,
+        countdown: totalSecs
+      };
+    } else if (diffMins <= 30) {
+      const timeStr = hours > 0 ? `${hours}h${mins.toString().padStart(2, '0')}` : `${mins}min`;
+      return { 
+        status: 'closing', 
+        text: `Ferme dans ${timeStr}`, 
+        color: 'text-amber-400',
+        bgColor: 'bg-amber-500/10 border-amber-500/30',
+        canSell: true,
+        countdown: diffMins * 60
+      };
+    }
+    
+    // More than 30 mins remaining
+    const timeStr = hours > 0 ? `${hours}h${mins.toString().padStart(2, '0')}` : `${mins}min`;
     return { 
-      status: 'closed', 
-      text: 'Fermé', 
-      color: 'text-red-400',
-      bgColor: 'bg-red-500/10 border-red-500/30',
-      canSell: false,
-      countdown: 0
+      status: 'open', 
+      text: `Ouvert (${timeStr})`, 
+      color: 'text-emerald-400',
+      bgColor: 'bg-emerald-500/10 border-emerald-500/30',
+      canSell: true,
+      countdown: diffMins * 60
     };
   };
 

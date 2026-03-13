@@ -208,17 +208,33 @@ async def get_full_device_config(current_agent: dict = Depends(get_current_agent
     # ---- 6. SCHEDULES FOR TODAY ----
     today_weekday = datetime.now(timezone.utc).weekday()
     schedules = []
+    schedule_map = {}  # Map lottery_id -> schedule for merging
     if lottery_ids:
         all_schedules = await db.global_schedules.find(
             {"lottery_id": {"$in": lottery_ids}, "is_active": True},
             {"_id": 0}
         ).to_list(500)
         
-        # Filter for today
+        # Filter for today and build map
         for sched in all_schedules:
             days = sched.get("days_of_week", [])
             if not days or today_weekday in days:
                 schedules.append(sched)
+                # Store schedule by lottery_id (use first schedule if multiple)
+                lid = sched.get("lottery_id")
+                if lid and lid not in schedule_map:
+                    schedule_map[lid] = sched
+    
+    # ---- 6b. MERGE SCHEDULES INTO LOTTERIES ----
+    # Add open_time, close_time, draw_time to each lottery from its schedule
+    for lottery in lotteries:
+        lid = lottery.get("lottery_id")
+        if lid in schedule_map:
+            sched = schedule_map[lid]
+            lottery["open_time"] = sched.get("open_time")
+            lottery["close_time"] = sched.get("close_time")
+            lottery["draw_time"] = sched.get("draw_time")
+            lottery["draw_name"] = sched.get("draw_name")
     
     # ---- 7. BLOCKED NUMBERS ----
     blocked_numbers = await db.blocked_numbers.find(

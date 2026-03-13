@@ -43,6 +43,26 @@ Date: 2026-03-12
 - **Correction**: Mise à jour de l'URL dans `CompanySuccursalesPage.jsx` ligne 226
 - **Statut**: ✅ Corrigé et testé
 
+### ✅ 5. Synchronisation Horaires Loteries (2026-03-13)
+- **Problème**: Pages "Nouvelle Vente" et "Tirages Disponibles" affichaient des statuts différents (ouvert vs fermé)
+- **Cause**: 
+  1. Le hack `ALLOW_24H_SALES = true` dans `VendeurNouvelleVente.jsx` forçait toutes les loteries "ouvertes"
+  2. Les horaires n'étaient pas fusionnés avec les loteries dans l'API `/api/device/config`
+- **Corrections**:
+  1. Backend: Fusion des schedules (`open_time`, `close_time`, `draw_time`) dans chaque loterie retournée par `/api/device/config`
+  2. Frontend: Suppression du hack et synchronisation de la logique `getLotteryStatus()` entre les deux pages
+- **Fichiers modifiés**:
+  - `backend/sync_routes.py` (ligne 208-237): Fusion schedules → loteries
+  - `frontend/src/pages/vendeur/VendeurNouvelleVente.jsx`: Nouvelle logique synchronisée
+  - `frontend/src/pages/vendeur/VendeurTirages.jsx`: Logique identique
+- **Statut**: ✅ Corrigé et testé - Les deux pages affichent maintenant les mêmes statuts
+
+### ℹ️ Vendeur de Test Créé (2026-03-13)
+- **Email**: `vendeur@lotopam.com`
+- **Password**: `Vendeur123!`
+- **Rôle**: AGENT_POS
+- **Company**: LotoPam Center
+
 ---
 
 ## CORRECTIONS PRÉCÉDENTES
