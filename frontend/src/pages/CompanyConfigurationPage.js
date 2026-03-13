@@ -4,7 +4,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   Settings, Save, DollarSign, Users, Percent, Clock, Printer, FileText,
-  Shield, RefreshCw
+  Shield, RefreshCw, BarChart3, Ban, TrendingUp, Calendar
 } from 'lucide-react';
 import CompanyLayout from '@/components/CompanyLayout';
 
@@ -14,6 +14,9 @@ export const CompanyConfigurationPage = () => {
   const { token } = useAuth();
   const [config, setConfig] = useState(null);
   const [primeConfigs, setPrimeConfigs] = useState([]);
+  const [blockedNumbers, setBlockedNumbers] = useState([]);
+  const [newBlockedNumber, setNewBlockedNumber] = useState('');
+  const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
@@ -29,6 +32,11 @@ export const CompanyConfigurationPage = () => {
       ]);
       setConfig(configRes.data);
       setPrimeConfigs(primesRes.data);
+      
+      // Set blocked numbers from config
+      if (configRes.data.blocked_numbers) {
+        setBlockedNumbers(configRes.data.blocked_numbers);
+      }
     } catch (error) {
       toast.error('Erreur lors du chargement');
     } finally {
@@ -36,9 +44,44 @@ export const CompanyConfigurationPage = () => {
     }
   };
 
+  const fetchStatistics = async () => {
+    try {
+      const [dashRes, ticketsRes] = await Promise.all([
+        axios.get(`${API_URL}/api/company/dashboard`, { headers }),
+        axios.get(`${API_URL}/api/company/tickets?limit=1000`, { headers })
+      ]);
+      
+      // Calculate statistics
+      const tickets = ticketsRes.data.tickets || [];
+      const winners = tickets.filter(t => t.status === 'WINNER' || t.status === 'WON');
+      const losers = tickets.filter(t => t.status === 'LOST' || t.status === 'LOSER');
+      const totalSales = tickets.reduce((sum, t) => sum + (t.total_amount || 0), 0);
+      const totalWinnings = winners.reduce((sum, t) => sum + (t.winnings || 0), 0);
+      
+      setStatistics({
+        ...dashRes.data,
+        totalTickets: tickets.length,
+        winnersCount: winners.length,
+        losersCount: losers.length,
+        pendingCount: tickets.filter(t => t.status === 'VALIDATED' || t.status === 'PENDING').length,
+        totalSales,
+        totalWinnings,
+        profitLoss: totalSales - totalWinnings
+      });
+    } catch (error) {
+      console.error('Error fetching statistics:', error);
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'statistics') {
+      fetchStatistics();
+    }
+  }, [activeTab]);
 
   const handleConfigUpdate = async (e) => {
     e.preventDefault();
@@ -75,6 +118,39 @@ export const CompanyConfigurationPage = () => {
     }
   };
 
+  const addBlockedNumber = async () => {
+    if (!newBlockedNumber.trim()) return;
+    
+    const updatedBlocked = [...blockedNumbers, newBlockedNumber.trim()];
+    try {
+      await axios.put(`${API_URL}/api/company/configuration`, {
+        ...config,
+        blocked_numbers: updatedBlocked
+      }, { headers });
+      setBlockedNumbers(updatedBlocked);
+      setConfig({ ...config, blocked_numbers: updatedBlocked });
+      setNewBlockedNumber('');
+      toast.success(`Numéro ${newBlockedNumber} bloqué`);
+    } catch (error) {
+      toast.error('Erreur lors du blocage');
+    }
+  };
+
+  const removeBlockedNumber = async (number) => {
+    const updatedBlocked = blockedNumbers.filter(n => n !== number);
+    try {
+      await axios.put(`${API_URL}/api/company/configuration`, {
+        ...config,
+        blocked_numbers: updatedBlocked
+      }, { headers });
+      setBlockedNumbers(updatedBlocked);
+      setConfig({ ...config, blocked_numbers: updatedBlocked });
+      toast.success(`Numéro ${number} débloqué`);
+    } catch (error) {
+      toast.error('Erreur lors du déblocage');
+    }
+  };
+
   if (loading) {
     return (
       <CompanyLayout>
@@ -90,7 +166,8 @@ export const CompanyConfigurationPage = () => {
     { id: 'primes', label: 'Table des Primes', icon: DollarSign },
     { id: 'limits', label: 'Limites', icon: Shield },
     { id: 'marriage', label: 'Mariage', icon: Users },
-    { id: 'receipt', label: 'Reçu', icon: Printer },
+    { id: 'statistics', label: 'Statistiques', icon: BarChart3 },
+    { id: 'blocked', label: 'Blocage Boule', icon: Ban },
   ];
 
   return (
@@ -433,55 +510,158 @@ export const CompanyConfigurationPage = () => {
           </form>
         )}
 
-        {/* Receipt Config */}
-        {activeTab === 'receipt' && config && (
-          <form onSubmit={handleConfigUpdate} className="space-y-6">
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-emerald-400" />
-                Personnalisation du reçu
-              </h3>
-              
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
-                    En-tête du reçu
-                  </label>
-                  <textarea
-                    value={config.receipt_header || ''}
-                    onChange={(e) => setConfig({ ...config, receipt_header: e.target.value })}
-                    rows={3}
-                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                    placeholder="Texte affiché en haut du reçu..."
-                    data-testid="receipt-header"
-                  />
+        {/* Statistics */}
+        {activeTab === 'statistics' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <p className="text-slate-400">Statistiques globales de votre entreprise</p>
+              <button
+                onClick={fetchStatistics}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Actualiser
+              </button>
+            </div>
+
+            {statistics ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/30 rounded-xl p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-500/20 rounded-lg">
+                      <BarChart3 className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-blue-300">Total Tickets</p>
+                      <p className="text-2xl font-bold text-white">{statistics.totalTickets || 0}</p>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
-                    Pied de page du reçu
-                  </label>
-                  <textarea
-                    value={config.receipt_footer || ''}
-                    onChange={(e) => setConfig({ ...config, receipt_footer: e.target.value })}
-                    rows={3}
-                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                    placeholder="Texte affiché en bas du reçu..."
-                    data-testid="receipt-footer"
-                  />
+                <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border border-emerald-500/30 rounded-xl p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-500/20 rounded-lg">
+                      <TrendingUp className="w-6 h-6 text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-emerald-300">Ventes Totales</p>
+                      <p className="text-2xl font-bold text-white">{(statistics.totalSales || 0).toLocaleString()} HTG</p>
+                    </div>
+                  </div>
                 </div>
+
+                <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/30 rounded-xl p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-amber-500/20 rounded-lg">
+                      <DollarSign className="w-6 h-6 text-amber-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-amber-300">Gains Payés</p>
+                      <p className="text-2xl font-bold text-white">{(statistics.totalWinnings || 0).toLocaleString()} HTG</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`bg-gradient-to-br ${statistics.profitLoss >= 0 ? 'from-green-500/20 to-green-600/10 border-green-500/30' : 'from-red-500/20 to-red-600/10 border-red-500/30'} border rounded-xl p-4`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 ${statistics.profitLoss >= 0 ? 'bg-green-500/20' : 'bg-red-500/20'} rounded-lg`}>
+                      <TrendingUp className={`w-6 h-6 ${statistics.profitLoss >= 0 ? 'text-green-400' : 'text-red-400 rotate-180'}`} />
+                    </div>
+                    <div>
+                      <p className={`text-sm ${statistics.profitLoss >= 0 ? 'text-green-300' : 'text-red-300'}`}>Profit/Perte</p>
+                      <p className="text-2xl font-bold text-white">{(statistics.profitLoss || 0).toLocaleString()} HTG</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-slate-400">
+                Chargement des statistiques...
+              </div>
+            )}
+
+            {statistics && (
+              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Détails des tickets</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center p-4 bg-slate-800/50 rounded-lg">
+                    <p className="text-3xl font-bold text-amber-400">{statistics.winnersCount || 0}</p>
+                    <p className="text-slate-400">Tickets Gagnants</p>
+                  </div>
+                  <div className="text-center p-4 bg-slate-800/50 rounded-lg">
+                    <p className="text-3xl font-bold text-red-400">{statistics.losersCount || 0}</p>
+                    <p className="text-slate-400">Tickets Perdants</p>
+                  </div>
+                  <div className="text-center p-4 bg-slate-800/50 rounded-lg">
+                    <p className="text-3xl font-bold text-blue-400">{statistics.pendingCount || 0}</p>
+                    <p className="text-slate-400">En Attente</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Blocked Numbers */}
+        {activeTab === 'blocked' && (
+          <div className="space-y-6">
+            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <Ban className="w-5 h-5 text-red-400" />
+                Blocage de Numéros
+              </h3>
+              <p className="text-slate-400 mb-4">
+                Les numéros bloqués ne peuvent pas être joués par les vendeurs.
+              </p>
+              
+              <div className="flex gap-2 mb-6">
+                <input
+                  type="text"
+                  value={newBlockedNumber}
+                  onChange={(e) => setNewBlockedNumber(e.target.value)}
+                  placeholder="Ex: 555"
+                  className="flex-1 max-w-xs px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-red-500"
+                  onKeyDown={(e) => e.key === 'Enter' && addBlockedNumber()}
+                />
+                <button
+                  onClick={addBlockedNumber}
+                  disabled={!newBlockedNumber.trim()}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white rounded-lg flex items-center gap-2"
+                >
+                  <Ban className="w-4 h-4" />
+                  Bloquer
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm text-slate-400">Numéros actuellement bloqués:</p>
+                {blockedNumbers.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {blockedNumbers.map((num) => (
+                      <div key={num} className="flex items-center gap-2 px-3 py-1 bg-red-500/20 border border-red-500/30 rounded-lg">
+                        <span className="text-red-400 font-mono font-bold">{num}</span>
+                        <button
+                          onClick={() => removeBlockedNumber(num)}
+                          className="text-red-400 hover:text-red-300"
+                          title="Débloquer"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-500 italic">Aucun numéro bloqué</p>
+                )}
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-600/50 text-white rounded-lg transition-colors"
-            >
-              <Save className="w-4 h-4" />
-              {saving ? 'Enregistrement...' : 'Enregistrer'}
-            </button>
-          </form>
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+              <p className="text-amber-400 text-sm">
+                <strong>Note:</strong> Les numéros bloqués seront automatiquement appliqués à tous les superviseurs et vendeurs de votre entreprise.
+              </p>
+            </div>
+          </div>
         )}
       </div>
     </CompanyLayout>

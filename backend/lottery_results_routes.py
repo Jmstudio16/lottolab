@@ -472,6 +472,110 @@ async def get_all_results(
     }
 
 
+class UpdateResultRequest(BaseModel):
+    winning_numbers: str
+    winning_numbers_second: Optional[str] = None
+    winning_numbers_third: Optional[str] = None
+    draw_time: Optional[str] = None
+
+
+@results_router.put("/super-admin/results/{result_id}")
+async def update_result(
+    result_id: str,
+    update_data: UpdateResultRequest,
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update a result and recalculate winners (Super Admin only)"""
+    require_super_admin(current_user)
+    
+    result = await db.global_results.find_one({"result_id": result_id}, {"_id": 0})
+    if not result:
+        raise HTTPException(status_code=404, detail="Résultat non trouvé")
+    
+    now = get_current_timestamp()
+    
+    # Build winning numbers object
+    winning_numbers_obj = {
+        "first": update_data.winning_numbers,
+        "second": update_data.winning_numbers_second or "",
+        "third": update_data.winning_numbers_third or ""
+    }
+    
+    # First, reset all tickets that were processed with this result
+    await db.lottery_transactions.update_many(
+        {"result_id": result_id},
+        {
+            "$set": {
+                "status": "VALIDATED",
+                "is_winner": None,
+                "winnings": 0,
+                "winning_plays": [],
+                "result_id": None,
+                "winning_numbers": None,
+                "result_processed_at": None,
+                "payment_status": None,
+                "updated_at": now
+            }
+        }
+    )
+    
+    # Update the result
+    update_fields = {
+        "winning_numbers": winning_numbers_obj,
+        "updated_at": now
+    }
+    if update_data.draw_time:
+        update_fields["draw_time"] = update_data.draw_time
+    
+    await db.global_results.update_one(
+        {"result_id": result_id},
+        {"$set": update_fields}
+    )
+    
+    # Recalculate winners
+    winners_count, losers_count, total_winnings = await process_winning_tickets(
+        lottery_id=result["lottery_id"],
+        draw_date=result["draw_date"],
+        winning_numbers=winning_numbers_obj,
+        result_id=result_id
+    )
+    
+    # Update result with stats
+    await db.global_results.update_one(
+        {"result_id": result_id},
+        {
+            "$set": {
+                "winners_count": winners_count,
+                "losers_count": losers_count,
+                "total_winnings": total_winnings
+            }
+        }
+    )
+    
+    await log_activity(
+        db=db,
+        action_type="RESULT_UPDATED",
+        entity_type="lottery_result",
+        entity_id=result_id,
+        performed_by=current_user.get("user_id"),
+        company_id=None,
+        metadata={
+            "lottery_name": result.get("lottery_name"),
+            "new_numbers": winning_numbers_obj,
+            "winners_count": winners_count
+        },
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {
+        "message": "Résultat modifié et gagnants recalculés",
+        "winners_count": winners_count,
+        "losers_count": losers_count,
+        "total_winnings": total_winnings
+    }
+
+
 @results_router.delete("/super-admin/results/{result_id}")
 async def delete_result(
     result_id: str,

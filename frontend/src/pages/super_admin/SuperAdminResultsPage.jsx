@@ -3,8 +3,8 @@ import { useAuth } from '@/api/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { 
-  Trophy, Plus, Search, Calendar, Clock, Hash, 
-  RefreshCw, Trash2, CheckCircle, Users, DollarSign
+  Trophy, Plus, Search, Calendar, Clock, 
+  RefreshCw, Trash2, Edit2, X, Save
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,8 @@ const SuperAdminResultsPage = () => {
   const [lotteries, setLotteries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingResult, setEditingResult] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState('');
   
@@ -51,9 +53,7 @@ const SuperAdminResultsPage = () => {
   const fetchLotteries = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/super/lottery-flags?limit=300`, { headers });
-      // API returns array directly - extract only what we need
       const lotteryList = Array.isArray(res.data) ? res.data : (res.data.lotteries || []);
-      // Map to simpler objects to avoid React rendering issues
       const simpleLotteries = lotteryList.map(l => ({
         lottery_id: l.lottery_id,
         lottery_name: l.lottery_name,
@@ -93,41 +93,99 @@ const SuperAdminResultsPage = () => {
       await axios.post(`${API_URL}/api/super-admin/results`, formData, { headers });
       toast.success('Résultat publié! Calcul des gagnants en cours...');
       setShowAddModal(false);
-      setFormData({
-        lottery_id: '',
-        lottery_name: '',
-        draw_date: new Date().toISOString().split('T')[0],
-        draw_time: 'Midi',
-        winning_numbers: '',
-        winning_numbers_second: '',
-        winning_numbers_third: ''
-      });
-      setTimeout(fetchResults, 2000); // Refresh after processing
+      resetForm();
+      setTimeout(fetchResults, 2000);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erreur lors de la publication');
     }
   };
 
+  const handleEdit = (result) => {
+    setEditingResult(result);
+    setFormData({
+      lottery_id: result.lottery_id,
+      lottery_name: result.lottery_name,
+      draw_date: result.draw_date,
+      draw_time: result.draw_time || 'Midi',
+      winning_numbers: typeof result.winning_numbers === 'object' 
+        ? result.winning_numbers.first || '' 
+        : result.winning_numbers || '',
+      winning_numbers_second: typeof result.winning_numbers === 'object' 
+        ? result.winning_numbers.second || '' 
+        : '',
+      winning_numbers_third: typeof result.winning_numbers === 'object' 
+        ? result.winning_numbers.third || '' 
+        : ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.winning_numbers) {
+      toast.error('Veuillez entrer les numéros gagnants');
+      return;
+    }
+    
+    try {
+      await axios.put(`${API_URL}/api/super-admin/results/${editingResult.result_id}`, {
+        winning_numbers: formData.winning_numbers,
+        winning_numbers_second: formData.winning_numbers_second,
+        winning_numbers_third: formData.winning_numbers_third,
+        draw_time: formData.draw_time
+      }, { headers });
+      toast.success('Résultat modifié! Recalcul des gagnants en cours...');
+      setShowEditModal(false);
+      setEditingResult(null);
+      resetForm();
+      setTimeout(fetchResults, 2000);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la modification');
+    }
+  };
+
   const handleDelete = async (resultId) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce résultat? Les tickets seront réinitialisés.')) {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce résultat?\n\nLes tickets gagnants seront réinitialisés à leur état précédent.')) {
       return;
     }
     
     try {
       await axios.delete(`${API_URL}/api/super-admin/results/${resultId}`, { headers });
-      toast.success('Résultat supprimé');
+      toast.success('Résultat supprimé avec succès');
       fetchResults();
     } catch (error) {
-      toast.error('Erreur lors de la suppression');
+      toast.error(error.response?.data?.detail || 'Erreur lors de la suppression');
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      lottery_id: '',
+      lottery_name: '',
+      draw_date: new Date().toISOString().split('T')[0],
+      draw_time: 'Midi',
+      winning_numbers: '',
+      winning_numbers_second: '',
+      winning_numbers_third: ''
+    });
   };
 
   const filteredResults = results.filter(r => 
     r.lottery_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.winning_numbers?.includes(searchTerm)
+    (typeof r.winning_numbers === 'string' && r.winning_numbers.includes(searchTerm))
   );
 
   const drawTimes = ['Matin', 'Midi', 'Soir', 'Nuit'];
+
+  const formatWinningNumbers = (wn) => {
+    if (!wn) return '--';
+    if (typeof wn === 'object') {
+      const nums = [wn.first, wn.second, wn.third].filter(n => n);
+      return nums.join(' - ') || '--';
+    }
+    return wn;
+  };
 
   return (
     <div className="space-y-6">
@@ -138,14 +196,14 @@ const SuperAdminResultsPage = () => {
             <Trophy className="w-7 h-7 text-amber-400" />
             Résultats des Loteries
           </h1>
-          <p className="text-slate-400">Publiez les résultats et gérez les gagnants</p>
+          <p className="text-slate-400">Publiez et gérez les résultats officiels</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={() => setShowAddModal(true)} className="bg-amber-600 hover:bg-amber-700">
             <Plus className="w-4 h-4 mr-2" />
             Publier Résultat
           </Button>
-          <Button onClick={fetchResults} variant="outline" className="border-slate-700">
+          <Button onClick={fetchResults} variant="outline" className="border-slate-700 text-white">
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Actualiser
           </Button>
@@ -158,21 +216,27 @@ const SuperAdminResultsPage = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
-              placeholder="Rechercher par loterie ou numéros..."
+              placeholder="Rechercher une loterie..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 bg-slate-800 border-slate-700 text-white"
             />
           </div>
         </div>
-        <div>
+        <div className="relative">
+          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
             type="date"
             value={filterDate}
             onChange={(e) => setFilterDate(e.target.value)}
-            className="bg-slate-800 border-slate-700 text-white"
+            className="pl-10 bg-slate-800 border-slate-700 text-white w-48"
           />
         </div>
+        {filterDate && (
+          <Button variant="outline" className="border-slate-700 text-slate-400" onClick={() => setFilterDate('')}>
+            <X className="w-4 h-4 mr-1" /> Effacer
+          </Button>
+        )}
       </div>
 
       {/* Results Table */}
@@ -193,7 +257,7 @@ const SuperAdminResultsPage = () => {
               {filteredResults.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center text-slate-400 py-8">
-                    Aucun résultat publié
+                    {loading ? 'Chargement...' : 'Aucun résultat publié'}
                   </td>
                 </tr>
               ) : (
@@ -211,11 +275,23 @@ const SuperAdminResultsPage = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-amber-400 font-bold text-lg tracking-wider">
-                        {typeof result.winning_numbers === 'object' 
-                          ? result.winning_numbers.first || JSON.stringify(result.winning_numbers)
-                          : result.winning_numbers}
-                      </span>
+                      <div className="flex gap-2">
+                        {(() => {
+                          const nums = typeof result.winning_numbers === 'object'
+                            ? [result.winning_numbers.first, result.winning_numbers.second, result.winning_numbers.third].filter(n => n)
+                            : [result.winning_numbers];
+                          return nums.map((num, idx) => (
+                            <span 
+                              key={idx}
+                              className={`px-3 py-1 rounded-lg font-bold text-white ${
+                                idx === 0 ? 'bg-emerald-500' : idx === 1 ? 'bg-amber-400 text-black' : 'bg-blue-500'
+                              }`}
+                            >
+                              {num}
+                            </span>
+                          ));
+                        })()}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className="px-2 py-1 text-xs bg-emerald-500/20 text-emerald-400 rounded-full">
@@ -223,14 +299,26 @@ const SuperAdminResultsPage = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleDelete(result.result_id)}
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center justify-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleEdit(result)}
+                          className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                          title="Modifier"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDelete(result.result_id)}
+                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -246,12 +334,11 @@ const SuperAdminResultsPage = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-amber-400">
               <Trophy className="w-5 h-5" />
-              Publier un Résultat
+              Publier un Nouveau Résultat
             </DialogTitle>
           </DialogHeader>
           
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Lottery Selection */}
             <div>
               <Label className="text-slate-300">Loterie *</Label>
               <select
@@ -269,7 +356,6 @@ const SuperAdminResultsPage = () => {
               </select>
             </div>
 
-            {/* Date and Time */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-slate-300 flex items-center gap-2">
@@ -293,61 +379,133 @@ const SuperAdminResultsPage = () => {
                   value={formData.draw_time}
                   onChange={(e) => setFormData({...formData, draw_time: e.target.value})}
                   className="w-full mt-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white"
-                  required
                 >
-                  {drawTimes.map(time => (
-                    <option key={time} value={time}>{time}</option>
-                  ))}
+                  {drawTimes.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
             </div>
 
-            {/* Winning Numbers */}
-            <div>
-              <Label className="text-slate-300 flex items-center gap-2">
-                <Hash className="w-4 h-4 text-amber-400" />
-                Numéros Gagnants (1er Prix) *
-              </Label>
-              <Input
-                value={formData.winning_numbers}
-                onChange={(e) => setFormData({...formData, winning_numbers: e.target.value})}
-                className="bg-slate-800 border-slate-700 text-white text-lg font-bold tracking-wider"
-                placeholder="Ex: 12-34-56 ou 1234"
-                required
-              />
-              <p className="text-xs text-slate-500 mt-1">Format: 12-34-56 ou 123456</p>
-            </div>
-
-            {/* Secondary Prizes (optional) */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-3">
               <div>
-                <Label className="text-slate-300">2ème Prix (optionnel)</Label>
+                <Label className="text-slate-300">1er Numéro Gagnant * (60x)</Label>
                 <Input
+                  placeholder="Ex: 555"
+                  value={formData.winning_numbers}
+                  onChange={(e) => setFormData({...formData, winning_numbers: e.target.value})}
+                  className="bg-slate-800 border-slate-700 text-white text-lg font-bold"
+                  required
+                />
+              </div>
+              <div>
+                <Label className="text-slate-300">2ème Numéro (20x) - Optionnel</Label>
+                <Input
+                  placeholder="Ex: 123"
                   value={formData.winning_numbers_second}
                   onChange={(e) => setFormData({...formData, winning_numbers_second: e.target.value})}
                   className="bg-slate-800 border-slate-700 text-white"
-                  placeholder="Ex: 78-90-12"
                 />
               </div>
               <div>
-                <Label className="text-slate-300">3ème Prix (optionnel)</Label>
+                <Label className="text-slate-300">3ème Numéro (10x) - Optionnel</Label>
                 <Input
+                  placeholder="Ex: 789"
                   value={formData.winning_numbers_third}
                   onChange={(e) => setFormData({...formData, winning_numbers_third: e.target.value})}
                   className="bg-slate-800 border-slate-700 text-white"
-                  placeholder="Ex: 34-56-78"
                 />
               </div>
             </div>
 
-            {/* Submit */}
+            <div className="bg-slate-800 p-3 rounded-lg text-sm text-slate-400">
+              <strong className="text-amber-400">Note:</strong> La publication calculera automatiquement les gagnants avec les multiplicateurs: 1er=60x, 2ème=20x, 3ème=10x
+            </div>
+
             <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => setShowAddModal(false)} className="border-slate-700">
+              <Button type="button" variant="outline" onClick={() => setShowAddModal(false)} className="border-slate-700 text-white">
                 Annuler
               </Button>
               <Button type="submit" className="bg-amber-600 hover:bg-amber-700">
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Publier Résultat
+                <Trophy className="w-4 h-4 mr-2" />
+                Publier
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Result Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-blue-400">
+              <Edit2 className="w-5 h-5" />
+              Modifier le Résultat
+            </DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleUpdate} className="space-y-4">
+            <div className="bg-slate-800 p-3 rounded-lg">
+              <p className="text-slate-400 text-sm">Loterie</p>
+              <p className="text-white font-bold">{editingResult?.lottery_name}</p>
+              <p className="text-slate-400 text-sm mt-1">Date: {editingResult?.draw_date}</p>
+            </div>
+
+            <div>
+              <Label className="text-slate-300 flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                Tirage
+              </Label>
+              <select
+                value={formData.draw_time}
+                onChange={(e) => setFormData({...formData, draw_time: e.target.value})}
+                className="w-full mt-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white"
+              >
+                {drawTimes.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <Label className="text-slate-300">1er Numéro Gagnant * (60x)</Label>
+                <Input
+                  placeholder="Ex: 555"
+                  value={formData.winning_numbers}
+                  onChange={(e) => setFormData({...formData, winning_numbers: e.target.value})}
+                  className="bg-slate-800 border-slate-700 text-white text-lg font-bold"
+                  required
+                />
+              </div>
+              <div>
+                <Label className="text-slate-300">2ème Numéro (20x) - Optionnel</Label>
+                <Input
+                  placeholder="Ex: 123"
+                  value={formData.winning_numbers_second}
+                  onChange={(e) => setFormData({...formData, winning_numbers_second: e.target.value})}
+                  className="bg-slate-800 border-slate-700 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-slate-300">3ème Numéro (10x) - Optionnel</Label>
+                <Input
+                  placeholder="Ex: 789"
+                  value={formData.winning_numbers_third}
+                  onChange={(e) => setFormData({...formData, winning_numbers_third: e.target.value})}
+                  className="bg-slate-800 border-slate-700 text-white"
+                />
+              </div>
+            </div>
+
+            <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-lg text-sm text-amber-400">
+              <strong>Attention:</strong> La modification recalculera automatiquement tous les gagnants.
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setShowEditModal(false)} className="border-slate-700 text-white">
+                Annuler
+              </Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                <Save className="w-4 h-4 mr-2" />
+                Enregistrer
               </Button>
             </div>
           </form>
