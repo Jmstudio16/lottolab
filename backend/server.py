@@ -800,6 +800,57 @@ async def verify_ticket_by_code(ticket_code: str):
         "total_amount": ticket.get("total_amount")
     }
 
+
+@api_router.post("/init/create-super-admin")
+async def create_super_admin_endpoint(secret_key: str = "LOTTOLAB_INIT_2026"):
+    """
+    Emergency endpoint to create Super Admin if login fails.
+    This is a one-time use endpoint for production deployment recovery.
+    Secret key required for security.
+    """
+    if secret_key != "LOTTOLAB_INIT_2026":
+        raise HTTPException(status_code=403, detail="Invalid secret key")
+    
+    from utils import generate_id, get_current_timestamp
+    from auth import get_password_hash
+    
+    now = get_current_timestamp()
+    
+    # Check if jefferson@jmstudio.com already exists
+    existing_jefferson = await db.users.find_one({"email": "jefferson@jmstudio.com"})
+    if existing_jefferson:
+        # Update password
+        await db.users.update_one(
+            {"email": "jefferson@jmstudio.com"},
+            {"$set": {
+                "password_hash": get_password_hash("JMStudio@2026!"),
+                "status": "ACTIVE",
+                "updated_at": now
+            }}
+        )
+        return {"message": "Super Admin jefferson@jmstudio.com updated - password reset to JMStudio@2026!"}
+    
+    # Create new Super Admin
+    super_admin = {
+        "user_id": generate_id("user_"),
+        "email": "jefferson@jmstudio.com",
+        "password_hash": get_password_hash("JMStudio@2026!"),
+        "name": "Jefferson Admin",
+        "role": "SUPER_ADMIN",
+        "status": "ACTIVE",
+        "created_at": now,
+        "updated_at": now
+    }
+    
+    await db.users.insert_one(super_admin)
+    
+    return {
+        "message": "Super Admin created successfully!",
+        "email": "jefferson@jmstudio.com",
+        "password": "JMStudio@2026!",
+        "warning": "Please change this password immediately after login!"
+    }
+
 # Initialize all routes with database
 set_db(db)
 set_super_admin_global_db(db)
@@ -950,13 +1001,25 @@ async def initialize_super_admin_if_empty():
         from auth import get_password_hash
         import json
         
-        super_admin_id = generate_id("user_")
         now = get_current_timestamp()
         
-        super_admin = {
-            "user_id": super_admin_id,
-            "email": "admin@lottolab.tech",  # Default email for production
-            "password_hash": get_password_hash("LottoLab@2026!"),  # Default password
+        # Create primary Super Admin (jefferson@jmstudio.com)
+        super_admin_1 = {
+            "user_id": generate_id("user_"),
+            "email": "jefferson@jmstudio.com",
+            "password_hash": get_password_hash("JMStudio@2026!"),
+            "name": "Jefferson Admin",
+            "role": "SUPER_ADMIN",
+            "status": "ACTIVE",
+            "created_at": now,
+            "updated_at": now
+        }
+        
+        # Create backup Super Admin (admin@lottolab.tech)
+        super_admin_2 = {
+            "user_id": generate_id("user_"),
+            "email": "admin@lottolab.tech",
+            "password_hash": get_password_hash("LottoLab@2026!"),
             "name": "Super Administrateur",
             "role": "SUPER_ADMIN",
             "status": "ACTIVE",
@@ -964,11 +1027,11 @@ async def initialize_super_admin_if_empty():
             "updated_at": now
         }
         
-        await db.users.insert_one(super_admin)
-        logger.info(f"[INIT] ✅ Super Admin created successfully!")
-        logger.info(f"[INIT] Email: admin@lottolab.tech")
-        logger.info(f"[INIT] Password: LottoLab@2026!")
-        logger.info(f"[INIT] ⚠️  IMPORTANT: Change the password after first login!")
+        await db.users.insert_many([super_admin_1, super_admin_2])
+        logger.info(f"[INIT] ✅ Super Admins created successfully!")
+        logger.info(f"[INIT] Primary: jefferson@jmstudio.com / JMStudio@2026!")
+        logger.info(f"[INIT] Backup: admin@lottolab.tech / LottoLab@2026!")
+        logger.info(f"[INIT] ⚠️  IMPORTANT: Change passwords after first login!")
         
         # Create default system settings if not exist
         settings_exist = await db.system_settings.count_documents({})
