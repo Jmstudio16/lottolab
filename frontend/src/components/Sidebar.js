@@ -37,7 +37,6 @@ const SuperAdminMenu = [
   { path: '/super/lottery-flags', label: 'Config Drapeaux', icon: Flag },
   { path: '/super/global-schedules', label: 'Global Schedules', icon: Clock },
   { path: '/super/publish-results', label: 'Publier Résultats', icon: Trophy },
-  { path: '/super/result-management', label: 'Gestion Résultats', icon: Award },
   { path: '/super/companies', label: 'Companies', icon: Building2 },
   { path: '/super/users', label: 'Users', icon: Users },
   { path: '/super/plans', label: 'Plans & Licenses', icon: Package },

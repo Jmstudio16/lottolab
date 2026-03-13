@@ -1,11 +1,36 @@
-# LOTTOLAB SaaS Enterprise - Version 6.5.0
+# LOTTOLAB SaaS Enterprise - Version 6.6.0
 
-## Release: SYSTÈME COMPLET SYNCHRONISÉ 100%
+## Release: DESIGN RÉSULTATS PROFESSIONNELS + SYNCHRONISATION COMPLÈTE
 Date: 2026-03-13
 
 ---
 
-## MAJOR UPDATE (Version 6.5.0)
+## MAJOR UPDATE (Version 6.6.0)
+
+### ✅ 1. NOUVEAU DESIGN PAGE RÉSULTATS
+- Design professionnel avec cartes de loteries
+- **Numéros colorés** : Vert (1er), Jaune (2ème), Bleu (3ème)
+- Emojis par état : 🗽 NY, 🌴 Florida, 🍑 Georgia, etc.
+- Groupement par date : "Aujourd'hui", "Hier", dates complètes
+- Recherche et vérification de ticket intégrées
+- Pages mises à jour :
+  - `VendeurResultats.jsx`
+  - `SupervisorResultsPage.jsx`
+  - `CompanyResultsPage.js`
+
+### ✅ 2. MENU SUPER ADMIN SIMPLIFIÉ
+- **RETIRÉ** : "Gestion Résultats"
+- **GARDÉ** : "Publier Résultats" uniquement
+- Le Super Admin contrôle le système, pas les ventes
+
+### ✅ 3. SYNCHRONISATION RÉSULTATS GLOBALE
+- **Une seule source** : `global_results` collection
+- Super Admin publie → TOUS les rôles voient IMMÉDIATEMENT
+- Design identique sur toutes les pages (Vendeur, Supervisor, Company Admin)
+
+---
+
+## FONCTIONNALITÉS VERSION 6.5.0
 
 ### ✅ 1. SYSTÈME DE CALCUL AUTOMATIQUE DES GAINS
 - **Multiplicateurs** :

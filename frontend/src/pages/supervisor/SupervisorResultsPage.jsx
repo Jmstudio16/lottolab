@@ -1,201 +1,237 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/api/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { 
-  Trophy, RefreshCw, Calendar, Search, Clock,
-  CheckCircle, XCircle, AlertCircle
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Trophy, RefreshCw, Search, Calendar } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-';
-  return new Date(dateStr).toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
+// Lottery logo and flag mapping
+const getLotteryInfo = (lotteryName) => {
+  if (!lotteryName) return { flag: '🎰', color: 'from-purple-500 to-purple-700' };
+  const nameLower = lotteryName.toLowerCase();
+  
+  if (nameLower.includes('ny') || nameLower.includes('new york')) 
+    return { flag: '🗽', color: 'from-blue-600 to-blue-800' };
+  if (nameLower.includes('florida') || nameLower.includes('fl')) 
+    return { flag: '🌴', color: 'from-orange-500 to-orange-700' };
+  if (nameLower.includes('georgia') || nameLower.includes('ga')) 
+    return { flag: '🍑', color: 'from-red-500 to-red-700' };
+  if (nameLower.includes('california') || nameLower.includes('ca')) 
+    return { flag: '☀️', color: 'from-yellow-500 to-yellow-600' };
+  if (nameLower.includes('texas') || nameLower.includes('tx')) 
+    return { flag: '🤠', color: 'from-red-600 to-red-800' };
+  if (nameLower.includes('michigan') || nameLower.includes('mi')) 
+    return { flag: '🏔️', color: 'from-blue-500 to-green-600' };
+  if (nameLower.includes('illinois') || nameLower.includes('il')) 
+    return { flag: '🏙️', color: 'from-blue-600 to-blue-700' };
+  if (nameLower.includes('pennsylvania') || nameLower.includes('pa')) 
+    return { flag: '🔔', color: 'from-blue-700 to-yellow-600' };
+  if (nameLower.includes('ohio') || nameLower.includes('oh')) 
+    return { flag: '⭐', color: 'from-red-600 to-blue-700' };
+  if (nameLower.includes('arkansas') || nameLower.includes('ar')) 
+    return { flag: '💎', color: 'from-red-500 to-blue-600' };
+  if (nameLower.includes('connecticut') || nameLower.includes('ct')) 
+    return { flag: '🌲', color: 'from-blue-600 to-blue-700' };
+  
+  return { flag: '🎰', color: 'from-purple-500 to-purple-700' };
 };
 
-const formatTime = (dateStr) => {
-  if (!dateStr) return '';
-  return new Date(dateStr).toLocaleTimeString('fr-FR', {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
-
-// Format winning numbers
-const formatWinningNumbers = (wn) => {
-  if (!wn) return '-';
-  if (typeof wn === 'object') {
-    const nums = [];
-    if (wn.first) nums.push(wn.first);
-    if (wn.second) nums.push(wn.second);
-    if (wn.third) nums.push(wn.third);
-    if (wn.bonus) nums.push(`(${wn.bonus})`);
-    return nums.join(' - ');
-  }
+// Parse winning numbers
+const parseWinningNumbers = (wn) => {
+  if (!wn) return ['--', '--', '--'];
   if (Array.isArray(wn)) {
-    return wn.join(' - ');
+    const nums = wn.slice(0, 3);
+    while (nums.length < 3) nums.push('--');
+    return nums;
   }
-  return String(wn);
+  if (typeof wn === 'object') {
+    return [wn.first || '--', wn.second || '--', wn.third || '--'];
+  }
+  if (typeof wn === 'string') {
+    const nums = wn.split(/[-,\s]+/).filter(n => n.trim());
+    while (nums.length < 3) nums.push('--');
+    return nums.slice(0, 3);
+  }
+  return ['--', '--', '--'];
 };
 
-export const SupervisorResultsPage = () => {
-  const { token } = useAuth();
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const headers = { Authorization: `Bearer ${token}` };
-
-  const fetchResults = async () => {
-    try {
-      setLoading(true);
-      const res = await axios.get(`${API_URL}/api/supervisor/results?limit=100`, { headers });
-      setResults(res.data || []);
-    } catch (error) {
-      console.error('Error fetching results:', error);
-      // Try fallback to company results
-      try {
-        const fallback = await axios.get(`${API_URL}/api/results?limit=100`, { headers });
-        setResults(fallback.data || []);
-      } catch (e) {
-        toast.error('Erreur lors du chargement des résultats');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchResults();
-  }, [token]);
-
-  const filteredResults = results.filter(r =>
-    r.lottery_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.draw_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.state_code?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // Group results by date
-  const groupedByDate = filteredResults.reduce((acc, result) => {
-    const date = result.draw_date || result.created_at?.split('T')[0] || 'Inconnu';
-    if (!acc[date]) acc[date] = [];
-    acc[date].push(result);
-    return acc;
-  }, {});
-
+// Number box component
+const NumberBox = ({ number, position }) => {
+  const colors = ['bg-emerald-500', 'bg-amber-400', 'bg-blue-500'];
   return (
-    <div className="space-y-4 sm:space-y-6" data-testid="supervisor-results-page">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2 sm:gap-3">
-            <Trophy className="w-6 h-6 sm:w-7 sm:h-7 text-amber-400" />
-            Résultats des Tirages
-          </h1>
-          <p className="text-sm text-slate-400">Consultation des résultats (lecture seule)</p>
-        </div>
-        <Button onClick={fetchResults} variant="outline" className="border-slate-700 w-fit">
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Actualiser
-        </Button>
-      </div>
-
-      {/* Info Banner */}
-      <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 sm:p-4">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="text-sm text-blue-300 font-medium">Mode Lecture Seule</p>
-            <p className="text-xs text-blue-300/70 mt-1">
-              Seul le Super Admin peut ajouter ou modifier les résultats des tirages.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-        <Input
-          placeholder="Rechercher une loterie..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 bg-slate-800 border-slate-700 text-white"
-        />
-      </div>
-
-      {/* Results by Date */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <RefreshCw className="w-8 h-8 text-amber-400 animate-spin" />
-        </div>
-      ) : Object.keys(groupedByDate).length === 0 ? (
-        <div className="text-center py-12 text-slate-400">
-          <Trophy className="w-16 h-16 mx-auto mb-4 opacity-30" />
-          <p className="text-lg">Aucun résultat disponible</p>
-          <p className="text-sm mt-2">Les résultats apparaîtront ici après les tirages</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {Object.entries(groupedByDate)
-            .sort(([a], [b]) => b.localeCompare(a))
-            .map(([date, dateResults]) => (
-              <div key={date} className="space-y-3">
-                {/* Date Header */}
-                <div className="flex items-center gap-3">
-                  <Calendar className="w-5 h-5 text-slate-400" />
-                  <h2 className="text-lg font-semibold text-white">{formatDate(date)}</h2>
-                  <span className="text-sm text-slate-400">({dateResults.length} résultat{dateResults.length > 1 ? 's' : ''})</span>
-                </div>
-
-                {/* Results Grid */}
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {dateResults.map((result, idx) => (
-                    <div
-                      key={result.result_id || idx}
-                      className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 hover:border-amber-500/30 transition-colors"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="min-w-0 flex-1">
-                          <h3 className="font-semibold text-white truncate">{result.lottery_name}</h3>
-                          <p className="text-xs text-slate-400">{result.draw_name || result.state_code}</p>
-                        </div>
-                        {result.status === 'PUBLISHED' || result.is_official ? (
-                          <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-                        ) : (
-                          <Clock className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                        )}
-                      </div>
-
-                      {/* Winning Numbers */}
-                      <div className="bg-gradient-to-r from-amber-500/20 to-amber-600/10 rounded-lg p-3 mb-3">
-                        <p className="text-xs text-amber-300 mb-1">Numéros Gagnants</p>
-                        <p className="text-xl sm:text-2xl font-bold font-mono text-amber-400">
-                          {formatWinningNumbers(result.winning_numbers)}
-                        </p>
-                      </div>
-
-                      {/* Time */}
-                      <div className="flex items-center gap-2 text-xs text-slate-400">
-                        <Clock className="w-4 h-4" />
-                        <span>Tirage: {result.draw_time || formatTime(result.created_at) || '-'}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-        </div>
-      )}
+    <div className={`${colors[position] || 'bg-slate-500'} w-11 h-13 sm:w-14 sm:h-16 flex items-center justify-center rounded-lg shadow-lg transform hover:scale-105 transition-transform`}>
+      <span className="text-white font-bold text-lg sm:text-xl drop-shadow">{number}</span>
     </div>
   );
 };
 
-export default SupervisorResultsPage;
+// Lottery result card
+const LotteryResultCard = ({ result }) => {
+  const { flag, color } = getLotteryInfo(result.lottery_name);
+  const numbers = parseWinningNumbers(result.winning_numbers);
+  const drawTime = result.draw_time || result.draw_name || 'Tirage';
+  const drawDate = result.draw_date;
+  
+  // Format date
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    if (dateStr === today) return "Aujourd'hui";
+    if (dateStr === yesterday) return "Hier";
+    return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  };
+  
+  return (
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200 hover:shadow-xl transition-all duration-300 hover:border-blue-300">
+      <div className="p-4">
+        {/* Header with logo/flag and lottery name */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className={`w-14 h-14 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center text-2xl shadow-md`}>
+            {flag}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-slate-800 text-sm truncate">{result.lottery_name}</h3>
+            <p className="text-xs text-slate-500">
+              {formatDate(drawDate)} • {drawTime}
+            </p>
+          </div>
+        </div>
+        
+        {/* Winning numbers */}
+        <div className="flex gap-2 justify-center">
+          {numbers.map((num, idx) => (
+            <NumberBox key={idx} number={num} position={idx} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const SupervisorResultsPage = () => {
+  const { token } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [results, setResults] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const headers = { Authorization: `Bearer ${token}` };
+
+  const fetchResults = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API_URL}/api/supervisor/results?limit=100`, { headers });
+      // Handle both array and object response
+      const data = Array.isArray(res.data) ? res.data : (res.data.results || []);
+      setResults(data);
+    } catch (error) {
+      toast.error('Erreur lors du chargement');
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchResults();
+  }, [fetchResults]);
+
+  // Filter results by search
+  const filteredResults = results.filter(r => 
+    !searchTerm || 
+    r.lottery_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    r.draw_date?.includes(searchTerm)
+  );
+
+  // Group by date
+  const groupedResults = {};
+  filteredResults.forEach(result => {
+    const date = result.draw_date || 'unknown';
+    if (!groupedResults[date]) groupedResults[date] = [];
+    groupedResults[date].push(result);
+  });
+
+  const sortedDates = Object.keys(groupedResults).sort((a, b) => b.localeCompare(a));
+
+  const formatDateHeader = (dateStr) => {
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    if (dateStr === today) return "Aujourd'hui";
+    if (dateStr === yesterday) return "Hier";
+    return new Date(dateStr).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 p-4 sm:p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl">
+                <Trophy className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">Derniers Résultats</h1>
+                <p className="text-sm text-slate-500">Résultats officiels des loteries</p>
+              </div>
+            </div>
+            <Button 
+              onClick={fetchResults} 
+              disabled={loading}
+              className="bg-blue-500 hover:bg-blue-600"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Actualiser
+            </Button>
+          </div>
+          
+          {/* Search */}
+          <div className="mt-4">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Input
+                placeholder="Rechercher une loterie..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Results grouped by date */}
+        {loading ? (
+          <div className="text-center py-12">
+            <RefreshCw className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
+            <p className="text-slate-500">Chargement des résultats...</p>
+          </div>
+        ) : sortedDates.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-2xl shadow-lg">
+            <Trophy className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <p className="text-slate-500">Aucun résultat disponible</p>
+          </div>
+        ) : (
+          sortedDates.map(date => (
+            <div key={date} className="space-y-4">
+              <h2 className="text-lg font-bold text-slate-700 flex items-center gap-2 capitalize">
+                <Calendar className="w-5 h-5 text-blue-500" />
+                {formatDateHeader(date)}
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {groupedResults[date].map((result, idx) => (
+                  <LotteryResultCard key={result.result_id || idx} result={result} />
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Named export for App.js compatibility
