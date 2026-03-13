@@ -223,7 +223,7 @@ export const CompanySuccursalesPage = () => {
     
     try {
       const res = await axios.get(
-        `${API_URL}/api/company-admin/check-pos-serial/${encodeURIComponent(serialNumber.trim())}`,
+        `${API_URL}/api/company/check-pos-serial/${encodeURIComponent(serialNumber.trim())}`,
         { headers }
       );
       setPosCheckStatus({ 
@@ -232,10 +232,11 @@ export const CompanySuccursalesPage = () => {
         message: res.data.available ? 'Numéro disponible' : 'Numéro déjà utilisé'
       });
     } catch (error) {
+      console.error('POS serial check error:', error);
       setPosCheckStatus({ 
         checking: false, 
-        valid: false, 
-        message: 'Erreur de vérification'
+        valid: null, 
+        message: 'Erreur de vérification - réessayez'
       });
     }
   };

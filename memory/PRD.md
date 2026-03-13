@@ -32,10 +32,16 @@ Date: 2026-03-12
 ### ✅ 3. Numéro de Série POS (PRIORITÉ 3)
 - Champ ajouté dans le formulaire de création d'agent: "Numéro de série POS"
 - Validation en temps réel de l'unicité (debounced 500ms)
-- Endpoint de vérification: `GET /api/company-admin/check-pos-serial/{serial}`
+- Endpoint de vérification: `GET /api/company/check-pos-serial/{serial}` (corrigé 2026-03-13)
 - Le numéro est sauvegardé dans `users.pos_serial_number` et `pos_devices`
 - Affiché sur le ticket d'impression et le profil agent
-- Modifié: `succursale_routes.py`, `CompanySuccursalesPage.jsx`
+- Modifié: `succursale_routes.py`, `CompanySuccursalesPage.jsx`, `company_admin_routes.py`
+
+### ✅ 4. Correction Bug Vérification POS (2026-03-13)
+- **Problème**: Frontend utilisait `/api/company-admin/check-pos-serial/` au lieu de `/api/company/check-pos-serial/`
+- **Symptôme**: "Erreur de vérification" affichée lors de la saisie du numéro de série
+- **Correction**: Mise à jour de l'URL dans `CompanySuccursalesPage.jsx` ligne 226
+- **Statut**: ✅ Corrigé et testé
 
 ---
 
