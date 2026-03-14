@@ -775,9 +775,12 @@ async def get_results_global(
     return results
 
 
-@api_router.get("/verify-ticket/{ticket_code}")
+@api_router.get("/ticket/verify/{ticket_code}")
 async def verify_ticket_by_code(ticket_code: str):
-    """Public endpoint to verify a ticket by its code"""
+    """
+    Public endpoint to verify a ticket by its code.
+    No authentication required - for customer use.
+    """
     ticket = await db.lottery_transactions.find_one(
         {"$or": [
             {"ticket_code": ticket_code},
@@ -788,16 +791,64 @@ async def verify_ticket_by_code(ticket_code: str):
     )
     
     if not ticket:
-        raise HTTPException(status_code=404, detail="Ticket non trouvé")
+        raise HTTPException(status_code=404, detail="Ticket non trouvé. Vérifiez le code et réessayez.")
+    
+    # Get result if exists
+    result = None
+    if ticket.get("draw_date"):
+        result = await db.global_results.find_one(
+            {
+                "lottery_id": ticket.get("lottery_id"),
+                "draw_date": ticket.get("draw_date")
+            },
+            {"_id": 0, "winning_numbers": 1}
+        )
+    
+    # Format plays for display
+    plays = ticket.get("plays", [])
+    formatted_plays = []
+    for play in plays:
+        formatted_plays.append({
+            "numbers": play.get("numbers"),
+            "bet_type": play.get("bet_type"),
+            "amount": play.get("amount")
+        })
+    
+    # Determine display status
+    status = ticket.get("status", "UNKNOWN")
+    payment_status = ticket.get("payment_status", "UNPAID")
+    
+    display_status = status
+    if status == "WINNER" and payment_status == "PAID":
+        display_status = "PAYÉ"
+    elif status == "WINNER":
+        display_status = "GAGNANT"
+    elif status == "LOSER":
+        display_status = "PERDANT"
+    elif status == "VALIDATED":
+        display_status = "EN ATTENTE"
+    elif status in ["VOID", "DELETED", "CANCELLED"]:
+        display_status = "ANNULÉ"
     
     return {
+        "found": True,
         "ticket_id": ticket.get("ticket_id"),
         "ticket_code": ticket.get("ticket_code"),
-        "status": ticket.get("status"),
-        "win_amount": ticket.get("win_amount", 0),
+        "verification_code": ticket.get("verification_code"),
         "lottery_name": ticket.get("lottery_name"),
         "draw_date": ticket.get("draw_date"),
-        "total_amount": ticket.get("total_amount")
+        "draw_name": ticket.get("draw_name"),
+        "plays": formatted_plays,
+        "total_amount": ticket.get("total_amount", 0),
+        "status": status,
+        "display_status": display_status,
+        "is_winner": ticket.get("status") == "WINNER",
+        "winnings": ticket.get("winnings", 0) or ticket.get("win_amount", 0),
+        "payment_status": payment_status,
+        "paid_at": ticket.get("paid_at"),
+        "winning_numbers": result.get("winning_numbers") if result else None,
+        "created_at": ticket.get("created_at"),
+        "currency": "HTG"
     }
 
 

@@ -99,6 +99,13 @@ import SuperOnlineTicketsPage from '@/pages/super/SuperOnlineTicketsPage';
 import SuperOnlineKYCPage from '@/pages/super/SuperOnlineKYCPage';
 import SuperOnlineSettingsPage from '@/pages/super/SuperOnlineSettingsPage';
 
+// Public Pages
+import PublicVerifyPage from '@/pages/PublicVerifyPage';
+
+// Company Admin Additional Pages
+import CompanyBalanceManagementPage from '@/pages/CompanyBalanceManagementPage';
+import CompanyDeletedTicketsPage from '@/pages/CompanyDeletedTicketsPage';
+
 const RoleBasedRedirect = () => {
   const { user, loading } = useAuth();
 
@@ -200,6 +207,10 @@ const SaaSApp = () => {
                 
                 {/* Root redirect */}
                 <Route path="/" element={<RoleBasedRedirect />} />
+
+                {/* ================== PUBLIC ROUTES (NO AUTH) ================== */}
+                <Route path="/verify/:ticketCode" element={<PublicVerifyPage />} />
+                <Route path="/verify" element={<PublicVerifyPage />} />
 
                 {/* ================== LOTO PAM PUBLIC ROUTES ================== */}
                 <Route path="/lotopam" element={<LotoPamHomePage />} />
@@ -544,6 +555,22 @@ const SaaSApp = () => {
                   element={
                     <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
                       <CompanyWinningTicketsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/company/balance-management"
+                  element={
+                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
+                      <CompanyBalanceManagementPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/company/deleted-tickets"
+                  element={
+                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
+                      <CompanyDeletedTicketsPage />
                     </ProtectedRoute>
                   }
                 />

@@ -22,9 +22,14 @@ const VendeurPayerGagnants = () => {
   const fetchTicketsToPay = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_URL}/api/vendeur/tickets-to-pay`, { headers });
-      setTickets(res.data.tickets || []);
-      setTotalToPay(res.data.total_to_pay || 0);
+      const res = await axios.get(`${API_URL}/api/vendeur/winning-tickets`, { headers });
+      // Handle different response formats
+      const ticketsData = res.data.tickets || res.data || [];
+      const unpaidTickets = Array.isArray(ticketsData) 
+        ? ticketsData.filter(t => t.payment_status !== 'PAID')
+        : [];
+      setTickets(unpaidTickets);
+      setTotalToPay(unpaidTickets.reduce((sum, t) => sum + (t.winnings || t.win_amount || 0), 0));
     } catch (error) {
       toast.error('Erreur lors du chargement');
     }
@@ -42,7 +47,7 @@ const VendeurPayerGagnants = () => {
     
     setPayingTicket(ticketId);
     try {
-      await axios.post(`${API_URL}/api/vendeur/pay-winner`, { ticket_id: ticketId }, { headers });
+      await axios.post(`${API_URL}/api/vendeur/pay-winner/${ticketId}`, {}, { headers });
       toast.success(`Ticket ${ticketCode} payé avec succès!`);
       fetchTicketsToPay();
     } catch (error) {

@@ -1257,3 +1257,229 @@ async def get_vendeur_notifications(
     notifications.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     
     return notifications[:limit]
+
+
+
+# ============================================================================
+# WINNER PAYMENT SYSTEM - PAIEMENT DES TICKETS GAGNANTS
+# ============================================================================
+
+class PayWinnerRequest(BaseModel):
+    ticket_id: str
+    payment_method: str = "CASH"
+    notes: Optional[str] = None
+
+
+@vendeur_router.post("/pay-winner/{ticket_id}")
+async def pay_winner_ticket(
+    ticket_id: str,
+    current_vendeur: dict = Depends(get_current_vendeur)
+):
+    """
+    Pay a winning ticket to the customer.
+    - Deducts the winning amount from vendor balance
+    - Marks ticket as PAID
+    - Records the transaction
+    """
+    vendeur_id = current_vendeur.get("user_id")
+    vendeur_name = current_vendeur.get("full_name") or current_vendeur.get("email")
+    company_id = current_vendeur.get("company_id")
+    succursale_id = current_vendeur.get("succursale_id")
+    now = get_current_timestamp()
+    
+    # Find the winning ticket
+    ticket = await db.lottery_transactions.find_one(
+        {
+            "ticket_id": ticket_id,
+            "company_id": company_id,
+            "status": "WINNER"
+        },
+        {"_id": 0}
+    )
+    
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket gagnant non trouvé ou déjà payé")
+    
+    # Check if already paid
+    if ticket.get("payment_status") == "PAID":
+        raise HTTPException(status_code=400, detail="Ce ticket a déjà été payé")
+    
+    winning_amount = ticket.get("winnings") or ticket.get("win_amount") or 0
+    if winning_amount <= 0:
+        raise HTTPException(status_code=400, detail="Montant du gain invalide")
+    
+    # Get vendor balance
+    balance_doc = await db.agent_balances.find_one(
+        {"agent_id": vendeur_id},
+        {"_id": 0}
+    )
+    
+    current_balance = balance_doc.get("available_balance", 0) if balance_doc else 0
+    
+    # Check if vendor has enough balance
+    if current_balance < winning_amount:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Solde insuffisant. Solde actuel: {current_balance:,.0f} HTG. Montant à payer: {winning_amount:,.0f} HTG"
+        )
+    
+    # Deduct from vendor balance
+    new_balance = current_balance - winning_amount
+    
+    await db.agent_balances.update_one(
+        {"agent_id": vendeur_id},
+        {
+            "$set": {
+                "available_balance": new_balance,
+                "updated_at": now
+            },
+            "$inc": {
+                "total_payouts": winning_amount
+            }
+        },
+        upsert=True
+    )
+    
+    # Record balance transaction
+    balance_transaction = {
+        "transaction_id": generate_id("bal_txn_"),
+        "agent_id": vendeur_id,
+        "agent_name": vendeur_name,
+        "company_id": company_id,
+        "succursale_id": succursale_id,
+        "type": "WINNER_PAYOUT",
+        "amount": -winning_amount,
+        "balance_before": current_balance,
+        "balance_after": new_balance,
+        "reference_id": ticket_id,
+        "reference_type": "TICKET",
+        "description": f"Paiement ticket gagnant #{ticket.get('ticket_code', '')}",
+        "performed_by": vendeur_id,
+        "performed_by_name": vendeur_name,
+        "performed_by_role": "VENDEUR",
+        "created_at": now
+    }
+    await db.balance_transactions.insert_one(balance_transaction)
+    
+    # Update ticket to PAID
+    await db.lottery_transactions.update_one(
+        {"ticket_id": ticket_id},
+        {
+            "$set": {
+                "payment_status": "PAID",
+                "paid_at": now,
+                "paid_by": vendeur_id,
+                "paid_by_name": vendeur_name,
+                "paid_amount": winning_amount,
+                "payment_method": "CASH"
+            }
+        }
+    )
+    
+    # Create notification for company admin
+    notification = {
+        "id": generate_id("notif_"),
+        "company_id": company_id,
+        "type": "PAYMENT",
+        "title": "Ticket gagnant payé",
+        "message": f"Ticket #{ticket.get('ticket_code', '')} payé par {vendeur_name} - {winning_amount:,.0f} HTG",
+        "read": False,
+        "created_at": now,
+        "metadata": {
+            "ticket_id": ticket_id,
+            "amount": winning_amount,
+            "vendeur_id": vendeur_id
+        }
+    }
+    await db.company_notifications.insert_one(notification)
+    
+    return {
+        "success": True,
+        "message": f"Ticket payé avec succès - {winning_amount:,.0f} HTG",
+        "ticket_id": ticket_id,
+        "ticket_code": ticket.get("ticket_code"),
+        "amount_paid": winning_amount,
+        "new_balance": new_balance,
+        "paid_at": now
+    }
+
+
+@vendeur_router.get("/paid-tickets")
+async def get_paid_tickets(
+    current_vendeur: dict = Depends(get_current_vendeur),
+    limit: int = 50
+):
+    """Get list of tickets paid by this vendor"""
+    vendeur_id = current_vendeur.get("user_id")
+    
+    tickets = await db.lottery_transactions.find(
+        {
+            "paid_by": vendeur_id,
+            "payment_status": "PAID"
+        },
+        {"_id": 0}
+    ).sort("paid_at", -1).limit(limit).to_list(limit)
+    
+    total_paid = sum(t.get("paid_amount", 0) or t.get("winnings", 0) for t in tickets)
+    
+    return {
+        "tickets": tickets,
+        "summary": {
+            "total_count": len(tickets),
+            "total_paid": total_paid
+        }
+    }
+
+
+# ============================================================================
+# VENDOR BALANCE MANAGEMENT - GESTION SOLDE VENDEUR
+# ============================================================================
+
+@vendeur_router.get("/balance")
+async def get_vendor_balance(current_vendeur: dict = Depends(get_current_vendeur)):
+    """Get current vendor balance"""
+    vendeur_id = current_vendeur.get("user_id")
+    
+    balance_doc = await db.agent_balances.find_one(
+        {"agent_id": vendeur_id},
+        {"_id": 0}
+    )
+    
+    if not balance_doc:
+        # Initialize balance if not exists
+        balance_doc = {
+            "agent_id": vendeur_id,
+            "company_id": current_vendeur.get("company_id"),
+            "available_balance": 0,
+            "total_deposits": 0,
+            "total_withdrawals": 0,
+            "total_sales": 0,
+            "total_payouts": 0,
+            "created_at": get_current_timestamp()
+        }
+        await db.agent_balances.insert_one(balance_doc)
+    
+    return {
+        "agent_id": vendeur_id,
+        "available_balance": balance_doc.get("available_balance", 0),
+        "total_deposits": balance_doc.get("total_deposits", 0),
+        "total_withdrawals": balance_doc.get("total_withdrawals", 0),
+        "total_sales": balance_doc.get("total_sales", 0),
+        "total_payouts": balance_doc.get("total_payouts", 0)
+    }
+
+
+@vendeur_router.get("/balance/history")
+async def get_balance_history(
+    current_vendeur: dict = Depends(get_current_vendeur),
+    limit: int = 50
+):
+    """Get vendor balance transaction history"""
+    vendeur_id = current_vendeur.get("user_id")
+    
+    transactions = await db.balance_transactions.find(
+        {"agent_id": vendeur_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    return transactions

@@ -1627,3 +1627,311 @@ async def create_company_notification(
     
     await db.company_notifications.insert_one(notification)
     return notification
+
+
+# ============================================================================
+# VENDOR BALANCE MANAGEMENT - FOR COMPANY ADMIN & SUPERVISOR
+# ============================================================================
+
+from pydantic import BaseModel
+
+class BalanceAdjustmentRequest(BaseModel):
+    agent_id: str
+    amount: float
+    type: str  # DEPOSIT or WITHDRAWAL
+    notes: Optional[str] = None
+
+
+@company_operational_router.get("/vendors/balances")
+async def get_all_vendor_balances(current_user: dict = Depends(get_company_user)):
+    """Get all vendor balances for the company"""
+    company_id = current_user["company_id"]
+    
+    # Get all agents for this company
+    agents = await db.users.find(
+        {"company_id": company_id, "role": {"$in": ["AGENT_POS", "VENDEUR"]}},
+        {"_id": 0, "user_id": 1, "full_name": 1, "email": 1, "succursale_id": 1}
+    ).to_list(500)
+    
+    agent_ids = [a["user_id"] for a in agents]
+    
+    # Get all balances
+    balances = await db.agent_balances.find(
+        {"agent_id": {"$in": agent_ids}},
+        {"_id": 0}
+    ).to_list(500)
+    
+    balance_map = {b["agent_id"]: b for b in balances}
+    
+    result = []
+    for agent in agents:
+        balance = balance_map.get(agent["user_id"], {})
+        result.append({
+            "agent_id": agent["user_id"],
+            "agent_name": agent.get("full_name") or agent.get("email"),
+            "succursale_id": agent.get("succursale_id"),
+            "available_balance": balance.get("available_balance", 0),
+            "total_deposits": balance.get("total_deposits", 0),
+            "total_withdrawals": balance.get("total_withdrawals", 0),
+            "total_sales": balance.get("total_sales", 0),
+            "total_payouts": balance.get("total_payouts", 0)
+        })
+    
+    return result
+
+
+@company_operational_router.post("/vendors/{agent_id}/balance/credit")
+async def credit_vendor_balance(
+    agent_id: str,
+    amount: float,
+    notes: str = "Dépôt",
+    current_user: dict = Depends(get_company_user)
+):
+    """Credit (add) money to vendor balance"""
+    company_id = current_user["company_id"]
+    admin_id = current_user["user_id"]
+    admin_name = current_user.get("full_name") or current_user.get("email")
+    admin_role = current_user.get("role")
+    now = get_current_timestamp()
+    
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Le montant doit être positif")
+    
+    # Verify agent belongs to company
+    agent = await db.users.find_one(
+        {"user_id": agent_id, "company_id": company_id},
+        {"_id": 0, "full_name": 1, "email": 1}
+    )
+    if not agent:
+        raise HTTPException(status_code=404, detail="Vendeur non trouvé")
+    
+    agent_name = agent.get("full_name") or agent.get("email")
+    
+    # Get current balance
+    balance_doc = await db.agent_balances.find_one({"agent_id": agent_id}, {"_id": 0})
+    current_balance = balance_doc.get("available_balance", 0) if balance_doc else 0
+    new_balance = current_balance + amount
+    
+    # Update balance
+    await db.agent_balances.update_one(
+        {"agent_id": agent_id},
+        {
+            "$set": {
+                "agent_id": agent_id,
+                "company_id": company_id,
+                "available_balance": new_balance,
+                "updated_at": now
+            },
+            "$inc": {
+                "total_deposits": amount
+            }
+        },
+        upsert=True
+    )
+    
+    # Record transaction
+    transaction = {
+        "transaction_id": generate_id("bal_txn_"),
+        "agent_id": agent_id,
+        "agent_name": agent_name,
+        "company_id": company_id,
+        "type": "DEPOSIT",
+        "amount": amount,
+        "balance_before": current_balance,
+        "balance_after": new_balance,
+        "description": notes,
+        "performed_by": admin_id,
+        "performed_by_name": admin_name,
+        "performed_by_role": admin_role,
+        "created_at": now
+    }
+    await db.balance_transactions.insert_one(transaction)
+    
+    return {
+        "success": True,
+        "message": f"Dépôt de {amount:,.0f} HTG effectué",
+        "agent_id": agent_id,
+        "agent_name": agent_name,
+        "amount": amount,
+        "new_balance": new_balance
+    }
+
+
+@company_operational_router.post("/vendors/{agent_id}/balance/debit")
+async def debit_vendor_balance(
+    agent_id: str,
+    amount: float,
+    notes: str = "Retrait",
+    current_user: dict = Depends(get_company_user)
+):
+    """Debit (withdraw) money from vendor balance"""
+    company_id = current_user["company_id"]
+    admin_id = current_user["user_id"]
+    admin_name = current_user.get("full_name") or current_user.get("email")
+    admin_role = current_user.get("role")
+    now = get_current_timestamp()
+    
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Le montant doit être positif")
+    
+    # Verify agent belongs to company
+    agent = await db.users.find_one(
+        {"user_id": agent_id, "company_id": company_id},
+        {"_id": 0, "full_name": 1, "email": 1}
+    )
+    if not agent:
+        raise HTTPException(status_code=404, detail="Vendeur non trouvé")
+    
+    agent_name = agent.get("full_name") or agent.get("email")
+    
+    # Get current balance
+    balance_doc = await db.agent_balances.find_one({"agent_id": agent_id}, {"_id": 0})
+    current_balance = balance_doc.get("available_balance", 0) if balance_doc else 0
+    
+    if current_balance < amount:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Solde insuffisant. Solde actuel: {current_balance:,.0f} HTG"
+        )
+    
+    new_balance = current_balance - amount
+    
+    # Update balance
+    await db.agent_balances.update_one(
+        {"agent_id": agent_id},
+        {
+            "$set": {
+                "available_balance": new_balance,
+                "updated_at": now
+            },
+            "$inc": {
+                "total_withdrawals": amount
+            }
+        }
+    )
+    
+    # Record transaction
+    transaction = {
+        "transaction_id": generate_id("bal_txn_"),
+        "agent_id": agent_id,
+        "agent_name": agent_name,
+        "company_id": company_id,
+        "type": "WITHDRAWAL",
+        "amount": -amount,
+        "balance_before": current_balance,
+        "balance_after": new_balance,
+        "description": notes,
+        "performed_by": admin_id,
+        "performed_by_name": admin_name,
+        "performed_by_role": admin_role,
+        "created_at": now
+    }
+    await db.balance_transactions.insert_one(transaction)
+    
+    return {
+        "success": True,
+        "message": f"Retrait de {amount:,.0f} HTG effectué",
+        "agent_id": agent_id,
+        "agent_name": agent_name,
+        "amount": amount,
+        "new_balance": new_balance
+    }
+
+
+@company_operational_router.get("/vendors/{agent_id}/balance/history")
+async def get_vendor_balance_history(
+    agent_id: str,
+    current_user: dict = Depends(get_company_user),
+    limit: int = 100
+):
+    """Get balance transaction history for a vendor"""
+    company_id = current_user["company_id"]
+    
+    # Verify agent belongs to company
+    agent = await db.users.find_one(
+        {"user_id": agent_id, "company_id": company_id},
+        {"_id": 0}
+    )
+    if not agent:
+        raise HTTPException(status_code=404, detail="Vendeur non trouvé")
+    
+    transactions = await db.balance_transactions.find(
+        {"agent_id": agent_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    return transactions
+
+
+# ============================================================================
+# PAID TICKETS - VIEW ALL PAID WINNING TICKETS
+# ============================================================================
+
+@company_operational_router.get("/paid-tickets")
+async def get_all_paid_tickets(
+    current_user: dict = Depends(get_company_user),
+    limit: int = 100
+):
+    """Get all paid winning tickets for the company"""
+    company_id = current_user["company_id"]
+    
+    tickets = await db.lottery_transactions.find(
+        {
+            "company_id": company_id,
+            "payment_status": "PAID"
+        },
+        {"_id": 0}
+    ).sort("paid_at", -1).limit(limit).to_list(limit)
+    
+    total_paid = sum(t.get("paid_amount", 0) or t.get("winnings", 0) for t in tickets)
+    
+    return {
+        "tickets": tickets,
+        "summary": {
+            "total_count": len(tickets),
+            "total_paid": total_paid
+        }
+    }
+
+
+# ============================================================================
+# DELETED TICKETS AUDIT - FICHE SUPPRIMÉE
+# ============================================================================
+
+@company_operational_router.get("/deleted-tickets")
+async def get_deleted_tickets(
+    current_user: dict = Depends(get_company_user),
+    limit: int = 100
+):
+    """Get all deleted/voided tickets for audit"""
+    company_id = current_user["company_id"]
+    
+    tickets = await db.lottery_transactions.find(
+        {
+            "company_id": company_id,
+            "status": {"$in": ["VOID", "DELETED", "CANCELLED"]}
+        },
+        {"_id": 0}
+    ).sort("voided_at", -1).limit(limit).to_list(limit)
+    
+    # Enrich with branch names
+    succursale_ids = list(set([t.get("succursale_id") for t in tickets if t.get("succursale_id")]))
+    branches = await db.branches.find(
+        {"succursale_id": {"$in": succursale_ids}},
+        {"_id": 0, "succursale_id": 1, "name": 1}
+    ).to_list(100)
+    branch_map = {b["succursale_id"]: b.get("name", "N/A") for b in branches}
+    
+    for ticket in tickets:
+        ticket["succursale_name"] = branch_map.get(ticket.get("succursale_id"), "N/A")
+    
+    total_deleted = sum(t.get("total_amount", 0) for t in tickets)
+    
+    return {
+        "tickets": tickets,
+        "summary": {
+            "total_count": len(tickets),
+            "total_amount": total_deleted
+        }
+    }
+
