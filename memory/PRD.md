@@ -1,7 +1,31 @@
-# LOTTOLAB SaaS Enterprise - Version 9.0.0
+# LOTTOLAB SaaS Enterprise - Version 9.0.1
 
-## 🎉 RELEASE: 4 AMÉLIORATIONS PRIORITAIRES COMPLÈTES
+## 🎉 FIX: Déploiement Production lottolab.tech
 Date: 2026-03-14
+
+### ✅ Correction du problème de login sur domaine personnalisé
+- **Problème**: Login fonctionnait en preview mais pas sur lottolab.tech
+- **Cause**: Frontend appelait `window.location.origin` au lieu de `api.lottolab.tech`
+- **Solution**: Détection automatique du backend basée sur le hostname
+  - `lottolab.tech` / `www.lottolab.tech` → `https://api.lottolab.tech`
+  - Preview Emergent → même origine
+  - Localhost → `http://localhost:8001`
+- **Fichiers modifiés**: 
+  - `/app/frontend/src/api/client.js` - Logique de détection améliorée
+  - `/app/frontend/src/api/auth.js` - Logs de debug ajoutés
+- **Fichiers créés**:
+  - `/app/frontend/.env.production` - Variable `REACT_APP_BACKEND_URL`
+  - `/app/frontend/netlify.toml` - Config build Netlify
+  - `/app/DEPLOYMENT_GUIDE.md` - Guide complet de déploiement
+
+### Architecture de déploiement
+- **Frontend**: lottolab.tech (Netlify)
+- **Backend**: api.lottolab.tech (VPS DigitalOcean + Nginx + PM2)
+
+---
+
+## VERSION 9.0.0 - 4 AMÉLIORATIONS PRIORITAIRES COMPLÈTES
+Date: 2026-03-13
 
 ---
 

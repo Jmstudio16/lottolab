@@ -1,0 +1,26 @@
+# Netlify configuration for LOTTOLAB
+# Frontend: lottolab.tech
+# Backend: api.lottolab.tech
+
+[build]
+  command = "yarn build"
+  publish = "build"
+
+[build.environment]
+  REACT_APP_BACKEND_URL = "https://api.lottolab.tech"
+  NODE_VERSION = "18"
+
+# Handle SPA routing - all routes go to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
