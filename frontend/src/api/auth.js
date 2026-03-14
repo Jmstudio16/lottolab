@@ -31,14 +31,26 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, password) => {
-    const response = await apiClient.post('/auth/login', { email, password });
-    const { token, user: userData, redirect_path } = response.data;
-    
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
-    
-    return redirect_path;
+    try {
+      console.log('[Auth] Attempting login to:', apiClient.defaults.baseURL);
+      const response = await apiClient.post('/auth/login', { email, password });
+      const { token, user: userData, redirect_path } = response.data;
+      
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+      
+      console.log('[Auth] Login successful for:', userData.email);
+      return redirect_path;
+    } catch (error) {
+      console.error('[Auth] Login failed:', {
+        url: apiClient.defaults.baseURL + '/auth/login',
+        status: error.response?.status,
+        message: error.response?.data?.detail || error.message,
+        networkError: !error.response
+      });
+      throw error;
+    }
   };
 
   const logout = () => {

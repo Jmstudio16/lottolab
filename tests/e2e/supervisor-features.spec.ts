@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 import { loginAsSupervisor, dismissToasts, removeEmergentBadge } from '../fixtures/helpers';
 
-const BASE_URL = 'https://ticket-sync-engine-1.preview.emergentagent.com';
+const BASE_URL = 'https://lotto-system.preview.emergentagent.com';
 
 test.describe('Supervisor Features', () => {
   test.beforeEach(async ({ page }) => {

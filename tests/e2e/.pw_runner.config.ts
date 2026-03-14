@@ -11,7 +11,7 @@ export default defineConfig({
     ['json', { outputFile: '/root/.emergent/automation_output/20260312_054344/results.json' }],
   ],
   use: {
-    baseURL: 'https://ticket-sync-engine-1.preview.emergentagent.com',
+    baseURL: 'https://lotto-system.preview.emergentagent.com',
     screenshot: 'only-on-failure',
     trace: 'off',
     headless: true,

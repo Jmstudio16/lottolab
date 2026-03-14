@@ -2,6 +2,7 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, WebSock
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -105,8 +106,13 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 @api_router.post("/auth/login", response_model=LoginResponse)
 @limiter.limit("10/minute")  # 10 login attempts per minute per IP
 async def login(request: Request, credentials: LoginRequest):
+    # Log incoming request for debugging
+    origin = request.headers.get("origin", "no-origin")
+    logger.info(f"[LOGIN] Attempt from origin: {origin}, email: {credentials.email}")
+    
     user_doc = await db.users.find_one({"email": credentials.email}, {"_id": 0})
     if not user_doc:
+        logger.warning(f"[LOGIN] User not found: {credentials.email}")
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     if not verify_password(credentials.password, user_doc.get("password_hash", "")):
@@ -1030,13 +1036,32 @@ async def websocket_admin_endpoint(websocket: WebSocket, user_id: str):
         ws_manager.disconnect_admin(websocket, user_id)
 
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS Configuration - Allow any origin dynamically
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
+
+class DynamicCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: StarletteRequest, call_next):
+        origin = request.headers.get("origin", "*")
+        
+        # Handle preflight requests
+        if request.method == "OPTIONS":
+            response = Response(status_code=200)
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Accept, Origin, X-Requested-With"
+            response.headers["Access-Control-Max-Age"] = "86400"
+            return response
+        
+        response = await call_next(request)
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Accept, Origin, X-Requested-With"
+        return response
+
+app.add_middleware(DynamicCORSMiddleware)
 
 # Mount static files for company logos
 UPLOAD_DIR = "/app/backend/uploads"
