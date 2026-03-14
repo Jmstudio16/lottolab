@@ -15,6 +15,8 @@ class CompanyStatus(str, Enum):
     ACTIVE = "ACTIVE"
     SUSPENDED = "SUSPENDED"
     TRIAL = "TRIAL"
+    DELETED = "DELETED"
+    EXPIRED = "EXPIRED"
 
 class AgentStatus(str, Enum):
     PENDING = "PENDING"
