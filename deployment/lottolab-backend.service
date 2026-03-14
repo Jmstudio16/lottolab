@@ -1,0 +1,21 @@
+[Unit]
+Description=LOTTOLAB Backend API
+After=network.target mongodb.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/lottolab-backend
+Environment="PATH=/var/www/lottolab-backend/venv/bin"
+ExecStart=/var/www/lottolab-backend/venv/bin/uvicorn server:app --host 127.0.0.1 --port 8001
+Restart=always
+RestartSec=5
+
+# Logs
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=lottolab-backend
+
+[Install]
+WantedBy=multi-user.target
