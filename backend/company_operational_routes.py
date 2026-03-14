@@ -1316,3 +1316,314 @@ async def set_company_agent_device_permission(
     
     return {"message": f"Permission updated: {permission}"}
 
+
+
+# ============================================================================
+# NOTIFICATIONS - COMPANY ADMIN NOTIFICATIONS SYSTEM
+# ============================================================================
+
+@company_operational_router.get("/notifications")
+async def get_company_notifications(
+    current_user: dict = Depends(get_company_user),
+    limit: int = 50,
+    unread_only: bool = False
+):
+    """
+    Get notifications for Company Admin.
+    Notifications include:
+    - New lottery results published
+    - Winning tickets detected
+    - Tickets deleted by vendors
+    - System messages
+    """
+    company_id = current_user["company_id"]
+    
+    query = {"company_id": company_id}
+    if unread_only:
+        query["read"] = False
+    
+    # Get notifications from company_notifications collection
+    notifications = await db.company_notifications.find(
+        query, {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # If no notifications exist, generate some based on recent activity
+    if not notifications:
+        notifications = await generate_company_notifications(company_id)
+    
+    return notifications
+
+
+async def generate_company_notifications(company_id: str):
+    """Generate notifications based on recent company activity"""
+    notifications = []
+    now = get_current_timestamp()
+    
+    # Get recent winning tickets
+    winners = await db.lottery_transactions.find(
+        {"company_id": company_id, "status": "WINNER"},
+        {"_id": 0, "ticket_id": 1, "ticket_code": 1, "winnings": 1, "lottery_name": 1, "created_at": 1}
+    ).sort("created_at", -1).limit(5).to_list(5)
+    
+    for winner in winners:
+        notifications.append({
+            "id": generate_id("notif_"),
+            "company_id": company_id,
+            "type": "WINNER",
+            "title": "Ticket gagnant détecté!",
+            "message": f"Ticket #{winner.get('ticket_code', 'N/A')} a gagné {winner.get('winnings', 0):,.0f} HTG - {winner.get('lottery_name', '')}",
+            "read": False,
+            "created_at": winner.get("created_at", now),
+            "metadata": {"ticket_id": winner.get("ticket_id")}
+        })
+    
+    # Get recent results
+    results = await db.global_results.find(
+        {}, {"_id": 0, "lottery_name": 1, "winning_numbers": 1, "draw_date": 1, "created_at": 1}
+    ).sort("created_at", -1).limit(3).to_list(3)
+    
+    for result in results:
+        wn = result.get("winning_numbers", {})
+        nums_str = ""
+        if isinstance(wn, dict):
+            nums = [str(wn.get("first", "")), str(wn.get("second", "")), str(wn.get("third", ""))]
+            nums_str = " - ".join([n for n in nums if n])
+        elif isinstance(wn, list):
+            nums_str = " - ".join([str(n) for n in wn])
+        
+        notifications.append({
+            "id": generate_id("notif_"),
+            "company_id": company_id,
+            "type": "RESULT",
+            "title": "Nouveau résultat publié",
+            "message": f"{result.get('lottery_name', 'Loterie')} - Numéros: {nums_str}",
+            "read": True,
+            "created_at": result.get("created_at", now),
+            "metadata": {"draw_date": result.get("draw_date")}
+        })
+    
+    # Get deleted tickets
+    deleted = await db.lottery_transactions.find(
+        {"company_id": company_id, "status": {"$in": ["VOID", "DELETED", "CANCELLED"]}},
+        {"_id": 0, "ticket_code": 1, "agent_name": 1, "total_amount": 1, "created_at": 1}
+    ).sort("created_at", -1).limit(3).to_list(3)
+    
+    for ticket in deleted:
+        notifications.append({
+            "id": generate_id("notif_"),
+            "company_id": company_id,
+            "type": "TICKET",
+            "title": "Ticket supprimé",
+            "message": f"Ticket #{ticket.get('ticket_code', 'N/A')} ({ticket.get('total_amount', 0):,.0f} HTG) supprimé par {ticket.get('agent_name', 'vendeur')}",
+            "read": True,
+            "created_at": ticket.get("created_at", now),
+            "metadata": {}
+        })
+    
+    # Sort by date descending
+    notifications.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    
+    return notifications[:20]
+
+
+@company_operational_router.put("/notifications/{notification_id}/read")
+async def mark_notification_read(
+    notification_id: str,
+    current_user: dict = Depends(get_company_user)
+):
+    """Mark a notification as read"""
+    company_id = current_user["company_id"]
+    
+    result = await db.company_notifications.update_one(
+        {"id": notification_id, "company_id": company_id},
+        {"$set": {"read": True, "read_at": get_current_timestamp()}}
+    )
+    
+    return {"message": "Notification marquée comme lue"}
+
+
+@company_operational_router.put("/notifications/mark-all-read")
+async def mark_all_notifications_read(current_user: dict = Depends(get_company_user)):
+    """Mark all notifications as read"""
+    company_id = current_user["company_id"]
+    
+    await db.company_notifications.update_many(
+        {"company_id": company_id, "read": False},
+        {"$set": {"read": True, "read_at": get_current_timestamp()}}
+    )
+    
+    return {"message": "Toutes les notifications marquées comme lues"}
+
+
+# ============================================================================
+# STATISTICS - COMPREHENSIVE COMPANY STATISTICS
+# ============================================================================
+
+@company_operational_router.get("/statistics/comprehensive")
+async def get_comprehensive_statistics(
+    current_user: dict = Depends(get_company_user),
+    date_from: str = None,
+    date_to: str = None
+):
+    """
+    Get comprehensive company statistics including:
+    - Total tickets sold
+    - Total sales amount
+    - Total winning payouts
+    - Total deleted tickets
+    - Sales by vendor
+    - Sales by branch (succursale)
+    - Daily/weekly/monthly breakdown
+    """
+    company_id = current_user["company_id"]
+    now = datetime.now(timezone.utc)
+    
+    # Default to today if no dates provided
+    if not date_from:
+        date_from = now.replace(hour=0, minute=0, second=0).isoformat()
+    if not date_to:
+        date_to = now.isoformat()
+    
+    # Build base query
+    base_query = {
+        "company_id": company_id,
+        "created_at": {"$gte": date_from, "$lte": date_to}
+    }
+    
+    # ========== OVERALL STATISTICS ==========
+    tickets = await db.lottery_transactions.find(base_query, {"_id": 0}).to_list(10000)
+    
+    total_tickets = len(tickets)
+    total_sales = sum(t.get("total_amount", 0) for t in tickets)
+    
+    winners = [t for t in tickets if t.get("status") in ["WINNER", "WON"]]
+    losers = [t for t in tickets if t.get("status") in ["LOSER", "LOST"]]
+    pending = [t for t in tickets if t.get("status") in ["VALIDATED", "PENDING", "PENDING_RESULT"]]
+    deleted = [t for t in tickets if t.get("status") in ["VOID", "DELETED", "CANCELLED"]]
+    
+    total_winnings = sum(t.get("winnings", 0) or t.get("win_amount", 0) or 0 for t in winners)
+    total_deleted_amount = sum(t.get("total_amount", 0) for t in deleted)
+    
+    # ========== SALES BY VENDOR ==========
+    vendor_sales = {}
+    for ticket in tickets:
+        agent_id = ticket.get("agent_id") or ticket.get("vendeur_id") or "unknown"
+        agent_name = ticket.get("agent_name") or "Vendeur"
+        
+        if agent_id not in vendor_sales:
+            vendor_sales[agent_id] = {
+                "agent_id": agent_id,
+                "agent_name": agent_name,
+                "total_tickets": 0,
+                "total_sales": 0,
+                "winning_tickets": 0,
+                "total_winnings": 0,
+                "deleted_tickets": 0
+            }
+        
+        vendor_sales[agent_id]["total_tickets"] += 1
+        vendor_sales[agent_id]["total_sales"] += ticket.get("total_amount", 0)
+        
+        if ticket.get("status") in ["WINNER", "WON"]:
+            vendor_sales[agent_id]["winning_tickets"] += 1
+            vendor_sales[agent_id]["total_winnings"] += ticket.get("winnings", 0) or ticket.get("win_amount", 0) or 0
+        
+        if ticket.get("status") in ["VOID", "DELETED", "CANCELLED"]:
+            vendor_sales[agent_id]["deleted_tickets"] += 1
+    
+    # ========== SALES BY BRANCH ==========
+    branch_sales = {}
+    for ticket in tickets:
+        branch_id = ticket.get("succursale_id") or ticket.get("branch_id") or "default"
+        branch_name = ticket.get("succursale_name") or ticket.get("branch_name") or "Principale"
+        
+        if branch_id not in branch_sales:
+            branch_sales[branch_id] = {
+                "branch_id": branch_id,
+                "branch_name": branch_name,
+                "total_tickets": 0,
+                "total_sales": 0,
+                "winning_tickets": 0,
+                "total_winnings": 0
+            }
+        
+        branch_sales[branch_id]["total_tickets"] += 1
+        branch_sales[branch_id]["total_sales"] += ticket.get("total_amount", 0)
+        
+        if ticket.get("status") in ["WINNER", "WON"]:
+            branch_sales[branch_id]["winning_tickets"] += 1
+            branch_sales[branch_id]["total_winnings"] += ticket.get("winnings", 0) or ticket.get("win_amount", 0) or 0
+    
+    # ========== DAILY BREAKDOWN ==========
+    daily_stats = {}
+    for ticket in tickets:
+        date = ticket.get("created_at", "")[:10]
+        if date not in daily_stats:
+            daily_stats[date] = {"date": date, "tickets": 0, "sales": 0, "winnings": 0}
+        daily_stats[date]["tickets"] += 1
+        daily_stats[date]["sales"] += ticket.get("total_amount", 0)
+        if ticket.get("status") in ["WINNER", "WON"]:
+            daily_stats[date]["winnings"] += ticket.get("winnings", 0) or ticket.get("win_amount", 0) or 0
+    
+    # ========== LOTTERY BREAKDOWN ==========
+    lottery_stats = {}
+    for ticket in tickets:
+        lottery_id = ticket.get("lottery_id", "unknown")
+        lottery_name = ticket.get("lottery_name", "Loterie")
+        
+        if lottery_id not in lottery_stats:
+            lottery_stats[lottery_id] = {
+                "lottery_id": lottery_id,
+                "lottery_name": lottery_name,
+                "total_tickets": 0,
+                "total_sales": 0
+            }
+        
+        lottery_stats[lottery_id]["total_tickets"] += 1
+        lottery_stats[lottery_id]["total_sales"] += ticket.get("total_amount", 0)
+    
+    return {
+        "period": {"from": date_from, "to": date_to},
+        "summary": {
+            "total_tickets": total_tickets,
+            "total_sales": total_sales,
+            "total_winnings": total_winnings,
+            "profit_loss": total_sales - total_winnings,
+            "winning_tickets": len(winners),
+            "losing_tickets": len(losers),
+            "pending_tickets": len(pending),
+            "deleted_tickets": len(deleted),
+            "deleted_amount": total_deleted_amount
+        },
+        "by_vendor": sorted(vendor_sales.values(), key=lambda x: x["total_sales"], reverse=True),
+        "by_branch": sorted(branch_sales.values(), key=lambda x: x["total_sales"], reverse=True),
+        "by_lottery": sorted(lottery_stats.values(), key=lambda x: x["total_sales"], reverse=True),
+        "daily_breakdown": sorted(daily_stats.values(), key=lambda x: x["date"], reverse=True)
+    }
+
+
+# ============================================================================
+# NOTIFICATION CREATION HELPER - Used by other services
+# ============================================================================
+
+async def create_company_notification(
+    company_id: str,
+    notification_type: str,
+    title: str,
+    message: str,
+    metadata: dict = None
+):
+    """Helper function to create a company notification"""
+    notification = {
+        "id": generate_id("notif_"),
+        "company_id": company_id,
+        "type": notification_type,
+        "title": title,
+        "message": message,
+        "read": False,
+        "created_at": get_current_timestamp(),
+        "metadata": metadata or {}
+    }
+    
+    await db.company_notifications.insert_one(notification)
+    return notification

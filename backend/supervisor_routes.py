@@ -4,10 +4,10 @@ Supervisor Routes - Manages supervisor access to their agents
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List
 from motor.motor_asyncio import AsyncIOMotorClient
 from models import UserRole
-from utils import get_current_timestamp
+from utils import get_current_timestamp, generate_id
 from auth import decode_token
 import os
 
@@ -976,3 +976,103 @@ async def supervisor_delete_ticket(
         "ticket_id": ticket_id,
         "refunded_amount": total_amount
     }
+
+
+
+# ============================================================================
+# NOTIFICATIONS - SUPERVISOR NOTIFICATIONS
+# ============================================================================
+
+@supervisor_router.get("/notifications")
+async def get_supervisor_notifications(
+    current_user: dict = Depends(get_current_user),
+    limit: int = 30
+):
+    """Get notifications for supervisor - winning tickets, deleted tickets, new results"""
+    current_user = require_supervisor(current_user)
+    
+    company_id = current_user.get("company_id")
+    succursale_id = current_user.get("succursale_id")
+    supervisor_id = current_user.get("user_id")
+    
+    notifications = []
+    now = get_current_timestamp()
+    
+    # Get agent IDs under this supervisor
+    agent_ids = []
+    agents = await db.users.find(
+        {
+            "company_id": company_id,
+            "role": UserRole.AGENT_POS,
+            "$or": [
+                {"succursale_id": succursale_id},
+                {"supervisor_id": supervisor_id}
+            ]
+        },
+        {"user_id": 1}
+    ).to_list(100)
+    agent_ids = [a["user_id"] for a in agents]
+    
+    # Get recent winning tickets from agents
+    if agent_ids:
+        winners = await db.lottery_transactions.find(
+            {
+                "agent_id": {"$in": agent_ids},
+                "status": "WINNER"
+            },
+            {"_id": 0}
+        ).sort("created_at", -1).limit(10).to_list(10)
+        
+        for winner in winners:
+            notifications.append({
+                "id": generate_id("notif_"),
+                "type": "WINNER",
+                "title": "Ticket gagnant!",
+                "message": f"Ticket #{winner.get('ticket_code', 'N/A')} - {winner.get('winnings', 0):,.0f} HTG par {winner.get('agent_name', 'vendeur')}",
+                "read": False,
+                "created_at": winner.get("created_at", now)
+            })
+        
+        # Get deleted tickets
+        deleted = await db.lottery_transactions.find(
+            {
+                "agent_id": {"$in": agent_ids},
+                "status": {"$in": ["VOID", "DELETED", "CANCELLED"]}
+            },
+            {"_id": 0}
+        ).sort("voided_at", -1).limit(5).to_list(5)
+        
+        for ticket in deleted:
+            notifications.append({
+                "id": generate_id("notif_"),
+                "type": "TICKET",
+                "title": "Ticket supprimé",
+                "message": f"Ticket #{ticket.get('ticket_code', 'N/A')} ({ticket.get('total_amount', 0):,.0f} HTG) supprimé",
+                "read": True,
+                "created_at": ticket.get("voided_at") or ticket.get("created_at", now)
+            })
+    
+    # Get recent results
+    results = await db.global_results.find(
+        {}, {"_id": 0}
+    ).sort("created_at", -1).limit(3).to_list(3)
+    
+    for result in results:
+        wn = result.get("winning_numbers", {})
+        nums_str = ""
+        if isinstance(wn, dict):
+            nums = [str(wn.get("first", "")), str(wn.get("second", "")), str(wn.get("third", ""))]
+            nums_str = " - ".join([n for n in nums if n])
+        notifications.append({
+            "id": generate_id("notif_"),
+            "type": "RESULT",
+            "title": "Nouveau résultat",
+            "message": f"{result.get('lottery_name', 'Loterie')} - {nums_str}",
+            "read": True,
+            "created_at": result.get("created_at", now)
+        })
+    
+    # Sort by date
+    notifications.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    
+    return notifications[:limit]

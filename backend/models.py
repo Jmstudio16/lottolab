@@ -839,6 +839,8 @@ class CompanyConfiguration(BaseModel):
     auto_print_ticket: bool = True
     receipt_header: Optional[str] = None
     receipt_footer: Optional[str] = None
+    # Blocked numbers
+    blocked_numbers: Optional[List[str]] = None
     created_at: str
     updated_at: Optional[str] = None
 
@@ -857,6 +859,7 @@ class CompanyConfigurationUpdate(BaseModel):
     auto_print_ticket: Optional[bool] = None
     receipt_header: Optional[str] = None
     receipt_footer: Optional[str] = None
+    blocked_numbers: Optional[List[str]] = None
 
 # ============ ELIMINATION REQUEST ============
 class EliminationRequest(BaseModel):

@@ -46,30 +46,56 @@ export const CompanyConfigurationPage = () => {
 
   const fetchStatistics = async () => {
     try {
-      const [dashRes, ticketsRes] = await Promise.all([
-        axios.get(`${API_URL}/api/company/dashboard`, { headers }),
-        axios.get(`${API_URL}/api/company/tickets?limit=1000`, { headers })
-      ]);
-      
-      // Calculate statistics
-      const tickets = ticketsRes.data.tickets || [];
-      const winners = tickets.filter(t => t.status === 'WINNER' || t.status === 'WON');
-      const losers = tickets.filter(t => t.status === 'LOST' || t.status === 'LOSER');
-      const totalSales = tickets.reduce((sum, t) => sum + (t.total_amount || 0), 0);
-      const totalWinnings = winners.reduce((sum, t) => sum + (t.winnings || 0), 0);
+      // Use the comprehensive statistics endpoint
+      const statsRes = await axios.get(`${API_URL}/api/company/statistics/comprehensive`, { headers });
+      const data = statsRes.data;
       
       setStatistics({
-        ...dashRes.data,
-        totalTickets: tickets.length,
-        winnersCount: winners.length,
-        losersCount: losers.length,
-        pendingCount: tickets.filter(t => t.status === 'VALIDATED' || t.status === 'PENDING').length,
-        totalSales,
-        totalWinnings,
-        profitLoss: totalSales - totalWinnings
+        totalTickets: data.summary?.total_tickets || 0,
+        winnersCount: data.summary?.winning_tickets || 0,
+        losersCount: data.summary?.losing_tickets || 0,
+        pendingCount: data.summary?.pending_tickets || 0,
+        deletedCount: data.summary?.deleted_tickets || 0,
+        totalSales: data.summary?.total_sales || 0,
+        totalWinnings: data.summary?.total_winnings || 0,
+        profitLoss: data.summary?.profit_loss || 0,
+        deletedAmount: data.summary?.deleted_amount || 0,
+        byVendor: data.by_vendor || [],
+        byBranch: data.by_branch || [],
+        byLottery: data.by_lottery || [],
+        dailyBreakdown: data.daily_breakdown || []
       });
     } catch (error) {
       console.error('Error fetching statistics:', error);
+      // Fallback: calculate from tickets
+      try {
+        const ticketsRes = await axios.get(`${API_URL}/api/company/tickets?limit=1000`, { headers });
+        const tickets = ticketsRes.data || [];
+        const winners = tickets.filter(t => t.status === 'WINNER' || t.status === 'WON');
+        const losers = tickets.filter(t => t.status === 'LOST' || t.status === 'LOSER');
+        const deleted = tickets.filter(t => t.status === 'VOID' || t.status === 'DELETED' || t.status === 'CANCELLED');
+        const totalSales = tickets.reduce((sum, t) => sum + (t.total_amount || 0), 0);
+        const totalWinnings = winners.reduce((sum, t) => sum + (t.winnings || t.win_amount || 0), 0);
+        const deletedAmount = deleted.reduce((sum, t) => sum + (t.total_amount || 0), 0);
+        
+        setStatistics({
+          totalTickets: tickets.length,
+          winnersCount: winners.length,
+          losersCount: losers.length,
+          pendingCount: tickets.filter(t => t.status === 'VALIDATED' || t.status === 'PENDING' || t.status === 'PENDING_RESULT').length,
+          deletedCount: deleted.length,
+          totalSales,
+          totalWinnings,
+          profitLoss: totalSales - totalWinnings,
+          deletedAmount,
+          byVendor: [],
+          byBranch: [],
+          byLottery: [],
+          dailyBreakdown: []
+        });
+      } catch (e) {
+        toast.error('Erreur lors du chargement des statistiques');
+      }
     }
   };
 
@@ -595,6 +621,94 @@ export const CompanyConfigurationPage = () => {
                   <div className="text-center p-4 bg-slate-800/50 rounded-lg">
                     <p className="text-3xl font-bold text-blue-400">{statistics.pendingCount || 0}</p>
                     <p className="text-slate-400">En Attente</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Sales by Vendor */}
+            {statistics && statistics.byVendor && statistics.byVendor.length > 0 && (
+              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-purple-400" />
+                  Ventes par Vendeur
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left text-slate-400 text-sm border-b border-slate-800">
+                        <th className="px-4 py-3">Vendeur</th>
+                        <th className="px-4 py-3 text-right">Tickets</th>
+                        <th className="px-4 py-3 text-right">Ventes</th>
+                        <th className="px-4 py-3 text-right">Gagnants</th>
+                        <th className="px-4 py-3 text-right">Gains Payés</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {statistics.byVendor.slice(0, 10).map((vendor, idx) => (
+                        <tr key={vendor.agent_id || idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                          <td className="px-4 py-3 text-white">{vendor.agent_name || 'Vendeur'}</td>
+                          <td className="px-4 py-3 text-right text-slate-300">{vendor.total_tickets || 0}</td>
+                          <td className="px-4 py-3 text-right text-emerald-400">{(vendor.total_sales || 0).toLocaleString()} HTG</td>
+                          <td className="px-4 py-3 text-right text-amber-400">{vendor.winning_tickets || 0}</td>
+                          <td className="px-4 py-3 text-right text-red-400">{(vendor.total_winnings || 0).toLocaleString()} HTG</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Sales by Branch */}
+            {statistics && statistics.byBranch && statistics.byBranch.length > 0 && (
+              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-cyan-400" />
+                  Ventes par Succursale
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left text-slate-400 text-sm border-b border-slate-800">
+                        <th className="px-4 py-3">Succursale</th>
+                        <th className="px-4 py-3 text-right">Tickets</th>
+                        <th className="px-4 py-3 text-right">Ventes</th>
+                        <th className="px-4 py-3 text-right">Gagnants</th>
+                        <th className="px-4 py-3 text-right">Gains Payés</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {statistics.byBranch.map((branch, idx) => (
+                        <tr key={branch.branch_id || idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                          <td className="px-4 py-3 text-white">{branch.branch_name || 'Principale'}</td>
+                          <td className="px-4 py-3 text-right text-slate-300">{branch.total_tickets || 0}</td>
+                          <td className="px-4 py-3 text-right text-emerald-400">{(branch.total_sales || 0).toLocaleString()} HTG</td>
+                          <td className="px-4 py-3 text-right text-amber-400">{branch.winning_tickets || 0}</td>
+                          <td className="px-4 py-3 text-right text-red-400">{(branch.total_winnings || 0).toLocaleString()} HTG</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Deleted Tickets Summary */}
+            {statistics && (statistics.deletedCount > 0 || statistics.deletedAmount > 0) && (
+              <div className="bg-slate-900/50 border border-red-500/30 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Ban className="w-5 h-5 text-red-400" />
+                  Tickets Supprimés
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="text-center p-4 bg-red-500/10 rounded-lg">
+                    <p className="text-3xl font-bold text-red-400">{statistics.deletedCount || 0}</p>
+                    <p className="text-slate-400">Nombre de tickets supprimés</p>
+                  </div>
+                  <div className="text-center p-4 bg-red-500/10 rounded-lg">
+                    <p className="text-3xl font-bold text-red-400">{(statistics.deletedAmount || 0).toLocaleString()} HTG</p>
+                    <p className="text-slate-400">Montant total supprimé</p>
                   </div>
                 </div>
               </div>

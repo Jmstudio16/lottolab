@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = 'https://pam-ticket-system.preview.emergentagent.com';
+const BASE_URL = 'https://ticket-sync-engine-1.preview.emergentagent.com';
 
 test.describe('Iteration 23 - Haiti Lottery Renamed & Lottery Flags Features', () => {
   

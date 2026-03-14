@@ -1195,3 +1195,65 @@ async def delete_ticket(
         "ticket_id": ticket_id,
         "refunded_amount": total_amount
     }
+
+
+
+# ============================================================================
+# NOTIFICATIONS - VENDEUR NOTIFICATIONS
+# ============================================================================
+
+@vendeur_router.get("/notifications")
+async def get_vendeur_notifications(
+    current_user: dict = Depends(get_current_vendeur),
+    limit: int = 20
+):
+    """Get notifications for vendeur - winning tickets, results"""
+    vendeur_id = current_user.get("user_id")
+    company_id = current_user.get("company_id")
+    
+    notifications = []
+    now = get_current_timestamp()
+    
+    # Get my winning tickets
+    winners = await db.lottery_transactions.find(
+        {
+            "agent_id": vendeur_id,
+            "status": "WINNER"
+        },
+        {"_id": 0}
+    ).sort("created_at", -1).limit(5).to_list(5)
+    
+    for winner in winners:
+        notifications.append({
+            "id": generate_id("notif_"),
+            "type": "WINNER",
+            "title": "Vous avez un ticket gagnant!",
+            "message": f"Ticket #{winner.get('ticket_code', 'N/A')} - Gain: {winner.get('winnings', 0):,.0f} HTG",
+            "read": False,
+            "created_at": winner.get("created_at", now)
+        })
+    
+    # Get recent results for lotteries I sell
+    results = await db.global_results.find(
+        {}, {"_id": 0}
+    ).sort("created_at", -1).limit(5).to_list(5)
+    
+    for result in results:
+        wn = result.get("winning_numbers", {})
+        nums_str = ""
+        if isinstance(wn, dict):
+            nums = [str(wn.get("first", "")), str(wn.get("second", "")), str(wn.get("third", ""))]
+            nums_str = " - ".join([n for n in nums if n])
+        notifications.append({
+            "id": generate_id("notif_"),
+            "type": "RESULT",
+            "title": "Nouveau résultat",
+            "message": f"{result.get('lottery_name', 'Loterie')} - Numéros: {nums_str}",
+            "read": True,
+            "created_at": result.get("created_at", now)
+        })
+    
+    # Sort by date
+    notifications.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    
+    return notifications[:limit]

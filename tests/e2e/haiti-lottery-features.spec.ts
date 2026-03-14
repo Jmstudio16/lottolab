@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 
-const BASE_URL = process.env.REACT_APP_BACKEND_URL || 'https://pam-ticket-system.preview.emergentagent.com';
+const BASE_URL = process.env.REACT_APP_BACKEND_URL || 'https://ticket-sync-engine-1.preview.emergentagent.com';
 
 // Test credentials
 const VENDEUR_EMAIL = 'agent.marie@lotopam.com';
