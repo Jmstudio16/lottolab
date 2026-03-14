@@ -62,6 +62,24 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer()
 
+# Health check endpoint (no auth required)
+@api_router.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring"""
+    try:
+        # Test database connection
+        await db.command("ping")
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    
+    return {
+        "status": "healthy",
+        "database": db_status,
+        "version": "9.0.0",
+        "timestamp": get_current_timestamp()
+    }
+
 # Add exception handlers
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
