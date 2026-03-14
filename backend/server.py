@@ -45,7 +45,7 @@ from results_routes import results_router, set_results_db
 from validation_routes import validation_router, set_validation_db, activate_all_lotteries_for_company
 from branch_lottery_routes import branch_lottery_router, set_branch_lottery_db
 from vendeur.vendeur_routes import vendeur_router, set_vendeur_db
-from export_routes import export_router, set_export_db
+from export_routes import export_router
 from lottery_results_routes import results_router, set_results_db
 
 ROOT_DIR = Path(__file__).parent
@@ -923,7 +923,6 @@ set_results_db(db)
 set_validation_db(db)
 set_branch_lottery_db(db)
 set_vendeur_db(db)
-set_export_db(db)
 set_results_db(db)
 
 # Initialize staff endpoints with dependency

@@ -105,6 +105,7 @@ import PublicVerifyPage from '@/pages/PublicVerifyPage';
 // Company Admin Additional Pages
 import CompanyBalanceManagementPage from '@/pages/CompanyBalanceManagementPage';
 import CompanyDeletedTicketsPage from '@/pages/CompanyDeletedTicketsPage';
+import CompanyExportsPage from '@/pages/CompanyExportsPage';
 
 const RoleBasedRedirect = () => {
   const { user, loading } = useAuth();
@@ -571,6 +572,14 @@ const SaaSApp = () => {
                   element={
                     <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
                       <CompanyDeletedTicketsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/company/exports"
+                  element={
+                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
+                      <CompanyExportsPage />
                     </ProtectedRoute>
                   }
                 />

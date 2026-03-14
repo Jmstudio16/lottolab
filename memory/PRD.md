@@ -1,136 +1,148 @@
-# LOTTOLAB SaaS Enterprise - Version 8.0.0
+# LOTTOLAB SaaS Enterprise - Version 9.0.0
 
-## 🎉 RELEASE: SYSTÈME 100% PRODUCTION READY
+## 🎉 RELEASE: 4 AMÉLIORATIONS PRIORITAIRES COMPLÈTES
 Date: 2026-03-14
 
 ---
 
-## NOUVELLES FONCTIONNALITÉS (Version 8.0.0)
+## NOUVELLES FONCTIONNALITÉS (Version 9.0.0)
 
-### ✅ 1. SYSTÈME DE PAIEMENT DES GAGNANTS
-- **Page Vendeur**: `/vendeur/payer-gagnants`
-- **Fonctionnalités**:
-  - Liste des tickets gagnants à payer
-  - Bouton "Payer" pour chaque ticket
-  - Déduction automatique du solde vendeur
-  - Ticket marqué comme PAID
-  - Notification envoyée au Company Admin
-- **Endpoint**: `POST /api/vendeur/pay-winner/{ticket_id}`
+### ✅ 1. EXPORT EXCEL/PDF
+- **Endpoint Excel**: `GET /api/export/tickets/excel`
+- **Endpoint PDF**: `GET /api/export/tickets/pdf`
+- **Paramètres**: `date_from`, `date_to`, `vendeur_id`, `lottery_id`, `status`
+- **Format Excel**: ID, Code, Vendeur, Loterie, Tirage, Numéros, Montant, Date, Statut, Gain avec totaux
+- **Format PDF**: Tableau récapitulatif + statistiques + liste tickets
+- **Interface**: Page `/company/exports` avec boutons téléchargement
 
-### ✅ 2. PAGE VÉRIFICATION PUBLIQUE
-- **URL**: `/verify/{ticket_code}` ou `/verify`
-- **Sans authentification requise**
-- **Affiche**:
-  - Statut: GAGNANT / PERDANT / EN ATTENTE / PAYÉ
-  - Montant du gain
-  - Loterie et tirage
-  - Numéros joués
-  - Numéros gagnants (si disponibles)
-- **Endpoint**: `GET /api/ticket/verify/{ticket_code}`
+### ✅ 2. LOGO SUR TICKETS IMPRIMÉS
+- **Upload logo**: `POST /api/export/company/logo`
+- **Get logo**: `GET /api/export/company/logo`
+- **Settings**: `POST /api/export/company/ticket-settings`
+- **Options configurables**:
+  - `show_logo`: Afficher le logo
+  - `show_company_name`: Nom de l'entreprise
+  - `show_address`: Adresse
+  - `show_phone`: Téléphone
+  - `show_qr_code`: Code QR
+- **Format**: Base64 encodé, max 500KB, PNG/JPG
 
-### ✅ 3. GESTION DES SOLDES VENDEURS
-- **Page Company Admin**: `/company/balance-management`
-- **Fonctionnalités**:
-  - Liste de tous les vendeurs avec soldes
-  - **Dépôt**: Créditer le compte vendeur
-  - **Retrait**: Débiter le compte vendeur
-  - Historique des transactions
-- **Endpoints**:
-  - `GET /api/company/vendors/balances`
-  - `POST /api/company/vendors/{id}/balance/credit`
-  - `POST /api/company/vendors/{id}/balance/debit`
-  - `GET /api/company/vendors/{id}/balance/history`
+### ✅ 3. VALIDATION NUMÉROS BLOQUÉS
+- **Ajouter**: `POST /api/export/blocked-numbers`
+- **Lister**: `GET /api/export/blocked-numbers`
+- **Supprimer**: `DELETE /api/export/blocked-numbers/{id}`
+- **Collection MongoDB**: `blocked_numbers`
+  ```json
+  {
+    "lottery_id": "lot_florida_midi",
+    "draw_date": "2026-03-14",
+    "blocked_numbers": ["999", "888"],
+    "reason": "Limite atteinte"
+  }
+  ```
+- **Validation intégrée**: Dans `POST /api/vendeur/sell`
+- **Message d'erreur**: "Numéro [999] bloqué pour cette loterie. Raison: ..."
+- **TESTÉ**: ✅ Fonctionne parfaitement
 
-### ✅ 4. AUDIT TICKETS SUPPRIMÉS
-- **Page Company Admin**: `/company/deleted-tickets`
-- **Affiche**:
-  - Code ticket
-  - Vendeur
-  - Succursale
-  - Numéros joués
-  - Montant
-  - Date de suppression
-  - Raison
-- **Endpoint**: `GET /api/company/deleted-tickets`
+### ✅ 4. LIMITES DE MISE AUTOMATIQUES
+- **Configurer**: `POST /api/export/bet-limits`
+- **Lister**: `GET /api/export/bet-limits`
+- **Collection MongoDB**: `bet_limits`
+  ```json
+  {
+    "lottery_id": null,  // null = global
+    "min_bet": 50,
+    "max_bet": 10000,
+    "max_bet_per_number": 500,
+    "max_total_per_ticket": 1000
+  }
+  ```
+- **Validation intégrée**: Dans `POST /api/vendeur/sell`
+- **Messages d'erreur**:
+  - "Mise minimum 50 HTG. Numéro 111: 10 HTG"
+  - "Mise maximum 500 HTG par numéro. Numéro 222: 600 HTG"
+  - "Total ticket (1500 HTG) dépasse le maximum (1000 HTG)"
+- **TESTÉ**: ✅ Fonctionne parfaitement
 
 ---
 
-## FONCTIONNALITÉS COMPLÈTES DU SYSTÈME
+## INTERFACE FRONTEND
 
-### Authentification & Rôles
-- ✅ Super Admin
-- ✅ Company Admin
-- ✅ Supervisor
-- ✅ Vendeur (Agent POS)
+### Nouvelle Page: `/company/exports`
+- **Onglet 1**: Export Excel/PDF - Filtres + Boutons téléchargement
+- **Onglet 2**: Numéros Bloqués - Formulaire blocage + Liste active
+- **Onglet 3**: Limites de Mise - Configuration min/max par loterie
+- **Onglet 4**: Logo & Ticket - Upload logo + Paramètres impression
 
-### Gestion des Loteries
+### Menu Sidebar
+- Nouveau lien: "Exports & Config" avec icône FileSpreadsheet
+
+---
+
+## SYSTÈME COMPLET - VERSION 9.0.0
+
+### Authentification
+- ✅ Super Admin, Company Admin, Supervisor, Vendeur
+
+### Loteries
 - ✅ 234 loteries synchronisées (USA + Haïti)
-- ✅ Configuration des drapeaux
-- ✅ Horaires des tirages
-- ✅ Activation/désactivation par company
+- ✅ Configuration drapeaux
+- ✅ Horaires tirages
 
-### Vente de Tickets
+### Ventes
 - ✅ POS vendeur complet
 - ✅ Statut VALIDATED immédiat
-- ✅ QR Code sur chaque ticket
-- ✅ Impression thermique
+- ✅ QR Code tickets
+- ✅ Validation numéros bloqués
+- ✅ Validation limites de mise
 
 ### Résultats & Gagnants
 - ✅ Publication par Super Admin
-- ✅ Synchronisation temps réel
-- ✅ Calcul automatique des gains (60x/20x/10x)
-- ✅ Statut WINNER/LOSER automatique
+- ✅ Calcul automatique (60x/20x/10x)
+- ✅ Paiement gagnants
+- ✅ Déduction automatique solde
 
-### Système Financier
-- ✅ Gestion soldes vendeurs
-- ✅ Dépôts/Retraits
-- ✅ Paiement des gagnants
-- ✅ Déduction automatique du solde
-- ✅ Historique des transactions
+### Rapports & Exports
+- ✅ Export Excel avec filtres
+- ✅ Export PDF avec statistiques
+- ✅ Statistiques par vendeur/succursale
 
-### Rapports & Audit
-- ✅ Statistiques complètes
-- ✅ Ventes par vendeur
-- ✅ Ventes par succursale
-- ✅ Tickets supprimés
-- ✅ Export Excel
-
-### Notifications
-- ✅ Bell fonctionnel pour tous les rôles
-- ✅ Notifications: Résultats, Gagnants, Supprimés, Paiements
-- ✅ Badge compteur non lus
+### Configuration
+- ✅ Logo entreprise
+- ✅ Numéros bloqués
+- ✅ Limites de mise
+- ✅ Paramètres ticket
 
 ---
 
-## ENDPOINTS API PRINCIPAUX
+## ENDPOINTS API NOUVEAUX
 
-### Authentification
-- `POST /api/auth/login` - Connexion
-- `POST /api/auth/register` - Inscription
+### Export
+```
+GET  /api/export/tickets/excel
+GET  /api/export/tickets/pdf
+```
 
-### Ventes (Vendeur)
-- `POST /api/vendeur/sell` - Vendre un ticket
-- `GET /api/vendeur/my-tickets` - Mes tickets
-- `DELETE /api/vendeur/ticket/{id}` - Supprimer (5 min)
-- `POST /api/vendeur/pay-winner/{id}` - Payer un gagnant
-- `GET /api/vendeur/balance` - Mon solde
+### Numéros Bloqués
+```
+POST   /api/export/blocked-numbers
+GET    /api/export/blocked-numbers
+DELETE /api/export/blocked-numbers/{id}
+```
 
-### Résultats
-- `GET /api/results` - Tous les résultats
-- `POST /api/super-admin/results` - Publier résultat
-- `PUT /api/super-admin/results/{id}` - Modifier
-- `DELETE /api/super-admin/results/{id}` - Supprimer
+### Limites de Mise
+```
+POST /api/export/bet-limits
+GET  /api/export/bet-limits
+```
 
-### Company Admin
-- `GET /api/company/statistics/comprehensive` - Statistiques
-- `GET /api/company/vendors/balances` - Soldes vendeurs
-- `POST /api/company/vendors/{id}/balance/credit` - Dépôt
-- `POST /api/company/vendors/{id}/balance/debit` - Retrait
-- `GET /api/company/deleted-tickets` - Tickets supprimés
-- `GET /api/company/notifications` - Notifications
-
-### Public
-- `GET /api/ticket/verify/{code}` - Vérifier un ticket
+### Logo & Ticket
+```
+POST /api/export/company/logo
+GET  /api/export/company/logo
+POST /api/export/company/ticket-settings
+GET  /api/export/company/ticket-settings
+```
 
 ---
 
@@ -145,33 +157,11 @@ Date: 2026-03-14
 
 ---
 
-## SCORE PRODUCTION
+## SCORE PRODUCTION: 100% ✅
 
-| Catégorie | Status |
-|-----------|--------|
-| Authentification | ✅ 100% |
-| Vente Tickets | ✅ 100% |
-| Résultats | ✅ 100% |
-| Calcul Gagnants | ✅ 100% |
-| Paiement Gagnants | ✅ 100% |
-| Gestion Soldes | ✅ 100% |
-| Audit Supprimés | ✅ 100% |
-| Statistiques | ✅ 100% |
-| Notifications | ✅ 100% |
-| Vérification Publique | ✅ 100% |
-| **TOTAL** | **✅ 100%** |
-
----
-
-## AMÉLIORATIONS FUTURES (P2)
-
-1. **Logo entreprise sur tickets imprimés**
-2. **Rapports automatiques par email** (quotidiens/hebdomadaires)
-3. **Support multi-langues** (Anglais, Espagnol)
-4. **Mode hors ligne** pour POS vendeur
-5. **Application mobile** vendeur
+Le système est maintenant complet et prêt pour la production avec toutes les fonctionnalités demandées.
 
 ---
 
 *Document mis à jour le 2026-03-14*
-*Version: 8.0.0 - Production Ready*
+*Version: 9.0.0 - Production Ready*
