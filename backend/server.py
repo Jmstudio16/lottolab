@@ -66,18 +66,42 @@ security = HTTPBearer()
 # Health check endpoint (no auth required)
 @api_router.get("/health")
 async def health_check():
-    """Health check endpoint for monitoring"""
+    """Health check endpoint for monitoring - validates MongoDB permissions"""
+    from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
+    
+    db_status = "unknown"
+    permissions_ok = False
+    
     try:
         # Test database connection
         await db.command("ping")
         db_status = "connected"
+        
+        # Test read permission on users collection
+        await db.users.find_one({}, {"_id": 1})
+        
+        # Test read permission on companies collection  
+        await db.companies.find_one({}, {"_id": 1})
+        
+        permissions_ok = True
+        
+    except OperationFailure as e:
+        db_status = f"auth_error: code={e.code}"
+        permissions_ok = False
+    except ServerSelectionTimeoutError as e:
+        db_status = "connection_timeout"
+        permissions_ok = False
     except Exception as e:
         db_status = f"error: {str(e)}"
+        permissions_ok = False
+    
+    status = "healthy" if db_status == "connected" and permissions_ok else "degraded"
     
     return {
-        "status": "healthy",
+        "status": status,
         "database": db_status,
-        "version": "9.0.0",
+        "permissions": "ok" if permissions_ok else "insufficient",
+        "version": "9.0.1",
         "timestamp": get_current_timestamp()
     }
 
