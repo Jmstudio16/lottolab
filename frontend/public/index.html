@@ -38,6 +38,60 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Barlow:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
         <title>LOTTOLAB - Gestion de Loterie Professionnelle</title>
+        
+        <!-- JSON-LD Structured Data -->
+        <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            "name": "LOTTOLAB",
+            "url": "https://lottolab.tech",
+            "description": "Plateforme SaaS professionnelle de gestion de loterie multi-entreprises. Gérez vos ventes, tirages, résultats et paiements.",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "offers": {
+                "@type": "Offer",
+                "price": "49",
+                "priceCurrency": "USD"
+            },
+            "author": {
+                "@type": "Organization",
+                "name": "JM Studio",
+                "url": "https://lottolab.tech"
+            }
+        }
+        </script>
+        <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "LOTTOLAB",
+            "url": "https://lottolab.tech",
+            "logo": "https://lottolab.tech/logo.png",
+            "description": "Plateforme de gestion de loterie professionnelle",
+            "sameAs": [],
+            "contactPoint": {
+                "@type": "ContactPoint",
+                "telephone": "+509-XXXX-XXXX",
+                "contactType": "customer service",
+                "availableLanguage": ["French", "English", "Creole"]
+            }
+        }
+        </script>
+        <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "LOTTOLAB",
+            "url": "https://lottolab.tech",
+            "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://lottolab.tech/verify/{search_term_string}",
+                "query-input": "required name=search_term_string"
+            }
+        }
+        </script>
+        
         <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
     </head>
     <body>

@@ -10,6 +10,7 @@ import '@/i18n';
 
 // Super Admin Pages
 import { LoginPage } from '@/pages/LoginPage';
+import LandingPage from '@/pages/LandingPage';
 import { SuperDashboardPage } from '@/pages/SuperDashboardPage';
 import { SuperCompaniesPage } from '@/pages/SuperCompaniesPage';
 import { SuperUsersPage } from '@/pages/SuperUsersPage';
@@ -205,6 +206,7 @@ const SaaSApp = () => {
               <Routes>
                 {/* Public Routes */}
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/home" element={<LandingPage />} />
                 
                 {/* Root redirect */}
                 <Route path="/" element={<RoleBasedRedirect />} />
