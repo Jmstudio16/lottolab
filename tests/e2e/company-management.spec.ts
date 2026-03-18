@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = 'https://lotto-system.preview.emergentagent.com';
+const BASE_URL = 'https://lotto-server.preview.emergentagent.com';
 
 // Credentials
 const SUPER_ADMIN = { email: 'jefferson@jmstudio.com', password: 'JMStudio@2026!' };

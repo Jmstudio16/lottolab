@@ -9,7 +9,7 @@ import requests
 import os
 from datetime import datetime, timezone
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://lotto-system.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://lotto-server.preview.emergentagent.com')
 
 # Test credentials
 SUPER_ADMIN_EMAIL = "jefferson@jmstudio.com"
