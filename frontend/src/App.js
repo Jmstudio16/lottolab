@@ -7,6 +7,7 @@ import { LotoPamAuthProvider } from '@/context/LotoPamAuthContext';
 import { Toaster } from 'sonner';
 import '@/App.css';
 import '@/i18n';
+import WhatsAppButton from '@/components/WhatsAppButton';
 
 // Super Admin Pages
 import { LoginPage } from '@/pages/LoginPage';
@@ -203,6 +204,10 @@ const SaaSApp = () => {
                   duration: 3000,
                 }}
               />
+              
+              {/* Global WhatsApp Button */}
+              <WhatsAppButton />
+              
               <Routes>
                 {/* Public Routes */}
                 <Route path="/login" element={<LoginPage />} />

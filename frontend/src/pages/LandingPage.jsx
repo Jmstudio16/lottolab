@@ -25,6 +25,59 @@ import {
   Headphones,
   Star
 } from 'lucide-react';
+import WhatsAppButton from '../components/WhatsAppButton';
+
+// Lottery Ball Component
+const LotteryBall = ({ number, color, style }) => (
+  <div
+    className={`lottery-ball absolute rounded-full flex items-center justify-center font-black text-white shadow-lg ${color}`}
+    style={style}
+  >
+    {number}
+  </div>
+);
+
+// Animated Lottery Balls Background
+const LotteryBallsBackground = () => {
+  const balls = [
+    { number: 7, color: 'bg-red-500', size: 60, left: '5%', delay: 0 },
+    { number: 21, color: 'bg-blue-500', size: 50, left: '15%', delay: 1 },
+    { number: 33, color: 'bg-green-500', size: 55, left: '25%', delay: 2 },
+    { number: 45, color: 'bg-yellow-500', size: 45, left: '35%', delay: 0.5 },
+    { number: 12, color: 'bg-purple-500', size: 65, left: '45%', delay: 1.5 },
+    { number: 8, color: 'bg-pink-500', size: 50, left: '55%', delay: 2.5 },
+    { number: 56, color: 'bg-orange-500', size: 55, left: '65%', delay: 0.8 },
+    { number: 3, color: 'bg-cyan-500', size: 48, left: '75%', delay: 1.8 },
+    { number: 19, color: 'bg-amber-500', size: 58, left: '85%', delay: 2.2 },
+    { number: 27, color: 'bg-emerald-500', size: 52, left: '95%', delay: 0.3 },
+    { number: 42, color: 'bg-rose-500', size: 46, left: '10%', delay: 1.2 },
+    { number: 66, color: 'bg-indigo-500', size: 54, left: '30%', delay: 2.8 },
+    { number: 88, color: 'bg-teal-500', size: 44, left: '50%', delay: 0.7 },
+    { number: 15, color: 'bg-violet-500', size: 56, left: '70%', delay: 1.7 },
+    { number: 99, color: 'bg-lime-500', size: 50, left: '90%', delay: 2.4 },
+  ];
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {balls.map((ball, index) => (
+        <LotteryBall
+          key={index}
+          number={ball.number}
+          color={ball.color}
+          style={{
+            width: ball.size,
+            height: ball.size,
+            fontSize: ball.size * 0.35,
+            left: ball.left,
+            animation: `floatBall ${8 + index % 4}s ease-in-out infinite`,
+            animationDelay: `${ball.delay}s`,
+            top: `${-100 - (index * 50)}px`,
+          }}
+        />
+      ))}
+    </div>
+  );
+};
 
 // Animation hook for scroll reveal
 const useScrollReveal = () => {
@@ -216,6 +269,25 @@ const LandingPage = () => {
           0% { transform: translateX(-100%); }
           100% { transform: translateX(100%); }
         }
+        @keyframes floatBall {
+          0% { 
+            transform: translateY(-100px) rotate(0deg); 
+            opacity: 0;
+          }
+          10% { opacity: 0.8; }
+          90% { opacity: 0.8; }
+          100% { 
+            transform: translateY(100vh) rotate(360deg); 
+            opacity: 0;
+          }
+        }
+        .lottery-ball {
+          box-shadow: 
+            inset -5px -5px 15px rgba(0,0,0,0.3),
+            inset 5px 5px 15px rgba(255,255,255,0.3),
+            0 5px 20px rgba(0,0,0,0.3);
+          border: 2px solid rgba(255,255,255,0.3);
+        }
         .animate-fadeInUp { animation: fadeInUp 0.8s ease-out forwards; }
         .animate-float { animation: float 3s ease-in-out infinite; }
         .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
@@ -243,7 +315,17 @@ const LandingPage = () => {
           background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
           animation: shine 3s infinite;
         }
+        
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+          .lottery-ball {
+            opacity: 0.5;
+          }
+        }
       `}</style>
+
+      {/* Lottery Balls Animation Background */}
+      <LotteryBallsBackground />
 
       {/* Header */}
       <header className={`fixed w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-slate-900/95 backdrop-blur-lg shadow-xl' : ''}`}>
@@ -627,6 +709,9 @@ const LandingPage = () => {
           </div>
         </div>
       </footer>
+
+      {/* WhatsApp Floating Button */}
+      <WhatsAppButton />
     </div>
   );
 };
