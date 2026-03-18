@@ -1,0 +1,17 @@
+# LOTTOLAB - Robots.txt
+# https://lottolab.tech
+
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /verify
+
+# Disallow admin and private areas
+Disallow: /super-admin/
+Disallow: /company-admin/
+Disallow: /supervisor/
+Disallow: /vendeur/
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://lottolab.tech/sitemap.xml
