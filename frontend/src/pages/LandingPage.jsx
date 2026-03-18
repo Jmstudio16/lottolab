@@ -22,7 +22,8 @@ import {
   Receipt,
   TrendingUp,
   Lock,
-  Headphones
+  Headphones,
+  Star
 } from 'lucide-react';
 
 // Animation hook for scroll reveal
@@ -123,6 +124,74 @@ const LandingPage = () => {
     { value: 99.9, suffix: '%', label: 'Disponibilité' }
   ];
 
+  const pricingPlans = [
+    {
+      name: 'Basic',
+      subtitle: 'Pour démarrer',
+      price: '$5',
+      priceUnit: '/POS/mois',
+      features: [
+        '5 Succursales',
+        '50 Vendeurs maximum',
+        'Tickets illimités',
+        'Rapports de base',
+        'Support email'
+      ],
+      color: 'slate',
+      popular: false
+    },
+    {
+      name: 'Business',
+      subtitle: 'Pour les entreprises en croissance',
+      price: '$50',
+      priceUnit: '/mois',
+      features: [
+        '10 Succursales',
+        '150 Vendeurs maximum',
+        'Tickets illimités',
+        'Rapports avancés',
+        'Export Excel/PDF',
+        'Support prioritaire'
+      ],
+      color: 'amber',
+      popular: true
+    },
+    {
+      name: 'Mini Entreprise',
+      subtitle: 'Croissance rapide',
+      price: '$300',
+      priceUnit: '/mois',
+      features: [
+        '50 Succursales',
+        '300 Vendeurs maximum',
+        'Tickets illimités',
+        'Rapports complets',
+        'API accès',
+        'Support dédié',
+        'Formation incluse'
+      ],
+      color: 'purple',
+      popular: false
+    },
+    {
+      name: 'Enterprise',
+      subtitle: 'Solution complète',
+      price: '$500',
+      priceUnit: '/mois',
+      features: [
+        'Succursales illimitées',
+        'Vendeurs illimités',
+        'Tickets illimités',
+        'API personnalisée',
+        'Formation sur site',
+        'Support 24/7 dédié',
+        'Personnalisation totale'
+      ],
+      color: 'emerald',
+      popular: false
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white overflow-x-hidden">
       {/* CSS Animations */}
@@ -143,6 +212,10 @@ const LandingPage = () => {
           0%, 100% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }
         }
+        @keyframes shine {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
         .animate-fadeInUp { animation: fadeInUp 0.8s ease-out forwards; }
         .animate-float { animation: float 3s ease-in-out infinite; }
         .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
@@ -156,26 +229,33 @@ const LandingPage = () => {
           backdrop-filter: blur(10px);
           border: 1px solid rgba(255, 255, 255, 0.1);
         }
+        .card-shine {
+          position: relative;
+          overflow: hidden;
+        }
+        .card-shine::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+          animation: shine 3s infinite;
+        }
       `}</style>
 
       {/* Header */}
       <header className={`fixed w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-slate-900/95 backdrop-blur-lg shadow-xl' : ''}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex justify-between items-center">
             {/* Logo */}
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center animate-pulse-glow">
-                  <Ticket className="w-7 h-7 text-white" />
-                </div>
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-slate-900"></div>
-              </div>
-              <div>
-                <span className="text-2xl font-black tracking-tight bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
-                  LOTTOLAB
-                </span>
-                <p className="text-xs text-slate-400 -mt-1">Lottery Management System</p>
-              </div>
+            <div className="flex items-center">
+              <img 
+                src="/logo-lottolab.jpg" 
+                alt="LOTTOLAB" 
+                className="h-14 md:h-16 w-auto object-contain"
+              />
             </div>
 
             {/* Navigation */}
@@ -202,7 +282,7 @@ const LandingPage = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-4 overflow-hidden">
+      <section className="relative pt-28 pb-20 px-4 overflow-hidden">
         {/* Background Effects */}
         <div className="absolute inset-0">
           <div className="absolute top-20 left-10 w-72 h-72 bg-amber-500/20 rounded-full blur-3xl"></div>
@@ -212,6 +292,15 @@ const LandingPage = () => {
 
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center">
+            {/* Logo Hero */}
+            <div className="flex justify-center mb-8 reveal">
+              <img 
+                src="/logo-lottolab.jpg" 
+                alt="LOTTOLAB by JM Studio" 
+                className="h-32 md:h-40 lg:h-48 w-auto object-contain drop-shadow-2xl animate-float"
+              />
+            </div>
+
             {/* Badge */}
             <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-full px-4 py-2 mb-8 reveal">
               <span className="relative flex h-3 w-3">
@@ -346,114 +435,65 @@ const LandingPage = () => {
               Choisissez votre plan
             </h2>
             <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-              Des tarifs adaptés à la taille de votre entreprise. <strong className="text-white">$5 par POS/mois</strong>
+              Des tarifs adaptés à la taille de votre entreprise
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {/* Basic Plan */}
-            <div className="reveal glass rounded-3xl p-8 hover:bg-white/10 transition-all duration-300 hover:-translate-y-2">
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-white mb-2">Basic</h3>
-                <p className="text-slate-400 mb-4">Pour démarrer</p>
-                <div className="flex items-baseline justify-center gap-1">
-                  <span className="text-5xl font-black text-white">$5</span>
-                  <span className="text-slate-400">/POS/mois</span>
-                </div>
-              </div>
-              <ul className="space-y-4 mb-8">
-                {[
-                  '5 Succursales',
-                  '50 Vendeurs maximum',
-                  'Tickets illimités',
-                  'Rapports de base',
-                  'Support email'
-                ].map((feature, i) => (
-                  <li key={i} className="flex items-center gap-3 text-slate-300">
-                    <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                to="/login"
-                className="block text-center py-4 rounded-xl font-bold bg-slate-700 hover:bg-slate-600 text-white transition"
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            {pricingPlans.map((plan, index) => (
+              <div 
+                key={index}
+                className={`reveal card-shine glass rounded-3xl p-6 transition-all duration-300 hover:-translate-y-2 ${
+                  plan.popular ? 'border-2 border-amber-500 relative' : ''
+                }`}
+                style={{animationDelay: `${index * 0.1}s`}}
               >
-                Commencer
-              </Link>
-            </div>
-
-            {/* Business Plan - Popular */}
-            <div className="reveal relative glass rounded-3xl p-8 border-2 border-amber-500 hover:bg-white/10 transition-all duration-300 hover:-translate-y-2" style={{animationDelay: '0.1s'}}>
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-lg">
-                  POPULAIRE
-                </span>
-              </div>
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-white mb-2">Business</h3>
-                <p className="text-slate-400 mb-4">Pour les entreprises en croissance</p>
-                <div className="flex items-baseline justify-center gap-1">
-                  <span className="text-5xl font-black bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">$5</span>
-                  <span className="text-slate-400">/POS/mois</span>
+                {plan.popular && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-lg flex items-center gap-1">
+                      <Star className="w-4 h-4" fill="white" />
+                      POPULAIRE
+                    </span>
+                  </div>
+                )}
+                
+                <div className="text-center mb-6">
+                  <h3 className="text-xl font-bold text-white mb-1">{plan.name}</h3>
+                  <p className="text-slate-400 text-sm mb-4">{plan.subtitle}</p>
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span className={`text-4xl font-black ${plan.popular ? 'bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent' : 'text-white'}`}>
+                      {plan.price}
+                    </span>
+                    <span className="text-slate-400 text-sm">{plan.priceUnit}</span>
+                  </div>
                 </div>
+                
+                <ul className="space-y-3 mb-6">
+                  {plan.features.map((feature, i) => (
+                    <li key={i} className="flex items-center gap-2 text-slate-300 text-sm">
+                      <CheckCircle className={`w-4 h-4 flex-shrink-0 ${
+                        plan.popular ? 'text-amber-500' : 
+                        plan.color === 'purple' ? 'text-purple-500' :
+                        plan.color === 'emerald' ? 'text-emerald-500' :
+                        'text-green-500'
+                      }`} />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+                
+                <Link
+                  to="/login"
+                  className={`block text-center py-3 rounded-xl font-bold transition ${
+                    plan.popular 
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-lg shadow-amber-500/30' 
+                      : 'bg-slate-700 hover:bg-slate-600 text-white'
+                  }`}
+                >
+                  Commencer
+                </Link>
               </div>
-              <ul className="space-y-4 mb-8">
-                {[
-                  '10 Succursales',
-                  '150 Vendeurs maximum',
-                  'Tickets illimités',
-                  'Rapports avancés',
-                  'Export Excel/PDF',
-                  'Support prioritaire'
-                ].map((feature, i) => (
-                  <li key={i} className="flex items-center gap-3 text-slate-300">
-                    <CheckCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                to="/login"
-                className="block text-center py-4 rounded-xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white transition shadow-lg shadow-amber-500/30"
-              >
-                Commencer
-              </Link>
-            </div>
-
-            {/* Enterprise Plan */}
-            <div className="reveal glass rounded-3xl p-8 hover:bg-white/10 transition-all duration-300 hover:-translate-y-2" style={{animationDelay: '0.2s'}}>
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-white mb-2">Enterprise</h3>
-                <p className="text-slate-400 mb-4">Solution complète</p>
-                <div className="flex items-baseline justify-center gap-1">
-                  <span className="text-5xl font-black text-white">$500</span>
-                  <span className="text-slate-400">/mois</span>
-                </div>
-              </div>
-              <ul className="space-y-4 mb-8">
-                {[
-                  'Succursales illimitées',
-                  'Vendeurs illimités',
-                  'Tickets illimités',
-                  'API personnalisée',
-                  'Formation sur site',
-                  'Support 24/7 dédié',
-                  'Personnalisation'
-                ].map((feature, i) => (
-                  <li key={i} className="flex items-center gap-3 text-slate-300">
-                    <CheckCircle className="w-5 h-5 text-purple-500 flex-shrink-0" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <a
-                href="#contact"
-                className="block text-center py-4 rounded-xl font-bold bg-slate-700 hover:bg-slate-600 text-white transition"
-              >
-                Nous contacter
-              </a>
-            </div>
+            ))}
           </div>
         </div>
       </section>
@@ -484,6 +524,13 @@ const LandingPage = () => {
       <section id="contact" className="py-24 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="reveal glass rounded-3xl p-12 text-center">
+            {/* Logo */}
+            <img 
+              src="/logo-lottolab.jpg" 
+              alt="LOTTOLAB" 
+              className="h-24 w-auto mx-auto mb-8 object-contain"
+            />
+            
             <h2 className="text-3xl md:text-4xl font-black mb-6">
               Prêt à transformer votre business ?
             </h2>
@@ -535,14 +582,11 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center">
-                  <Ticket className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-xl font-black bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
-                  LOTTOLAB
-                </span>
-              </div>
+              <img 
+                src="/logo-lottolab.jpg" 
+                alt="LOTTOLAB" 
+                className="h-12 w-auto object-contain mb-4"
+              />
               <p className="text-slate-400 text-sm">
                 La plateforme de gestion de loterie la plus complète pour les entreprises.
               </p>
