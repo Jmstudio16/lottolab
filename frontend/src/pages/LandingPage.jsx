@@ -252,7 +252,7 @@ const LandingPage = () => {
             {/* Logo */}
             <div className="flex items-center">
               <img 
-                src="/logo-lottolab.jpg" 
+                src="/logo-lottolab.png" 
                 alt="LOTTOLAB" 
                 className="h-14 md:h-16 w-auto object-contain"
               />
@@ -295,7 +295,7 @@ const LandingPage = () => {
             {/* Logo Hero */}
             <div className="flex justify-center mb-8 reveal">
               <img 
-                src="/logo-lottolab.jpg" 
+                src="/logo-lottolab.png" 
                 alt="LOTTOLAB by JM Studio" 
                 className="h-32 md:h-40 lg:h-48 w-auto object-contain drop-shadow-2xl animate-float"
               />
@@ -444,15 +444,16 @@ const LandingPage = () => {
               <div 
                 key={index}
                 className={`reveal card-shine glass rounded-3xl p-6 transition-all duration-300 hover:-translate-y-2 ${
-                  plan.popular ? 'border-2 border-amber-500 relative' : ''
+                  plan.popular ? 'border-2 border-amber-500 relative bg-gradient-to-b from-amber-500/20 to-transparent scale-105 shadow-2xl shadow-amber-500/30' : ''
                 }`}
                 style={{animationDelay: `${index * 0.1}s`}}
               >
                 {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-lg flex items-center gap-1">
-                      <Star className="w-4 h-4" fill="white" />
+                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 z-10">
+                    <span className="bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-500 text-slate-900 px-6 py-2 rounded-full text-base font-black shadow-xl shadow-amber-500/50 flex items-center gap-2 animate-pulse whitespace-nowrap">
+                      <Star className="w-5 h-5" fill="currentColor" />
                       POPULAIRE
+                      <Star className="w-5 h-5" fill="currentColor" />
                     </span>
                   </div>
                 )}
@@ -526,7 +527,7 @@ const LandingPage = () => {
           <div className="reveal glass rounded-3xl p-12 text-center">
             {/* Logo */}
             <img 
-              src="/logo-lottolab.jpg" 
+              src="/logo-lottolab.png" 
               alt="LOTTOLAB" 
               className="h-24 w-auto mx-auto mb-8 object-contain"
             />
@@ -583,7 +584,7 @@ const LandingPage = () => {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <img 
-                src="/logo-lottolab.jpg" 
+                src="/logo-lottolab.png" 
                 alt="LOTTOLAB" 
                 className="h-12 w-auto object-contain mb-4"
               />
