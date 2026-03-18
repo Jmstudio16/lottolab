@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Ticket, 
@@ -9,35 +9,190 @@ import {
   BarChart3,
   CheckCircle,
   ArrowRight,
-  Star
+  Phone,
+  Mail,
+  Globe,
+  Clock,
+  CreditCard,
+  Settings,
+  PieChart,
+  Smartphone,
+  Building2,
+  UserCheck,
+  Receipt,
+  TrendingUp,
+  Lock,
+  Headphones
 } from 'lucide-react';
 
+// Animation hook for scroll reveal
+const useScrollReveal = () => {
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('animate-fadeInUp');
+            entry.target.style.opacity = '1';
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    document.querySelectorAll('.reveal').forEach((el) => {
+      el.style.opacity = '0';
+      observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+};
+
+// Animated counter component
+const AnimatedCounter = ({ end, duration = 2000, suffix = '' }) => {
+  const [count, setCount] = useState(0);
+  
+  useEffect(() => {
+    let startTime;
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      setCount(Math.floor(progress * end));
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
+  }, [end, duration]);
+  
+  return <span>{count}{suffix}</span>;
+};
+
 const LandingPage = () => {
+  useScrollReveal();
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const features = [
+    {
+      icon: Ticket,
+      title: "Gestion des Tickets",
+      description: "Créez, vendez et suivez les tickets en temps réel. Impression automatique des reçus thermiques.",
+      color: "from-amber-400 to-orange-500"
+    },
+    {
+      icon: Trophy,
+      title: "Tirages Automatiques",
+      description: "Configurez vos tirages et le système calcule automatiquement les gagnants avec multiplicateurs personnalisés.",
+      color: "from-emerald-400 to-green-500"
+    },
+    {
+      icon: Shield,
+      title: "Sécurité Maximale",
+      description: "Authentification JWT, chiffrement des données, rôles utilisateurs et audit complet des actions.",
+      color: "from-blue-400 to-indigo-500"
+    },
+    {
+      icon: Building2,
+      title: "Multi-Succursales",
+      description: "Gérez plusieurs succursales et points de vente depuis une seule plateforme centralisée.",
+      color: "from-purple-400 to-violet-500"
+    },
+    {
+      icon: BarChart3,
+      title: "Rapports Détaillés",
+      description: "Statistiques en temps réel, exports Excel/PDF, et tableaux de bord personnalisés par rôle.",
+      color: "from-pink-400 to-rose-500"
+    },
+    {
+      icon: Smartphone,
+      title: "Compatible POS",
+      description: "Application optimisée pour les terminaux de point de vente Android. Interface tactile intuitive.",
+      color: "from-cyan-400 to-teal-500"
+    }
+  ];
+
+  const stats = [
+    { value: 500, suffix: '+', label: 'Entreprises' },
+    { value: 10000, suffix: '+', label: 'Vendeurs Actifs' },
+    { value: 1, suffix: 'M+', label: 'Tickets/Mois' },
+    { value: 99.9, suffix: '%', label: 'Disponibilité' }
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white overflow-x-hidden">
+      {/* CSS Animations */}
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+        @keyframes pulse-glow {
+          0%, 100% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
+          50% { box-shadow: 0 0 40px rgba(245, 158, 11, 0.8); }
+        }
+        @keyframes gradient-x {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        .animate-fadeInUp { animation: fadeInUp 0.8s ease-out forwards; }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+        .animate-gradient { 
+          background-size: 200% 200%;
+          animation: gradient-x 3s ease infinite;
+        }
+        .reveal { transition: opacity 0.6s ease, transform 0.6s ease; }
+        .glass { 
+          background: rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+      `}</style>
+
       {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-50">
+      <header className={`fixed w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-slate-900/95 backdrop-blur-lg shadow-xl' : ''}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center">
-                <Ticket className="w-6 h-6 text-white" />
+            {/* Logo */}
+            <div className="flex items-center space-x-3">
+              <div className="relative">
+                <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center animate-pulse-glow">
+                  <Ticket className="w-7 h-7 text-white" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-slate-900"></div>
               </div>
-              <span className="text-2xl font-bold text-gray-900">LOTTOLAB</span>
+              <div>
+                <span className="text-2xl font-black tracking-tight bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
+                  LOTTOLAB
+                </span>
+                <p className="text-xs text-slate-400 -mt-1">Lottery Management System</p>
+              </div>
             </div>
+
+            {/* Navigation */}
             <nav className="hidden md:flex items-center space-x-8">
-              <a href="#features" className="text-gray-600 hover:text-amber-600 transition">Fonctionnalités</a>
-              <a href="#how-it-works" className="text-gray-600 hover:text-amber-600 transition">Comment ça marche</a>
-              <a href="#pricing" className="text-gray-600 hover:text-amber-600 transition">Tarifs</a>
-              <a href="#faq" className="text-gray-600 hover:text-amber-600 transition">FAQ</a>
+              <a href="#features" className="text-slate-300 hover:text-amber-400 transition font-medium">Fonctionnalités</a>
+              <a href="#pricing" className="text-slate-300 hover:text-amber-400 transition font-medium">Tarifs</a>
+              <a href="#contact" className="text-slate-300 hover:text-amber-400 transition font-medium">Contact</a>
             </nav>
+
+            {/* CTA Buttons */}
             <div className="flex items-center space-x-4">
-              <Link to="/login" className="text-gray-600 hover:text-amber-600 font-medium">
+              <Link to="/login" className="text-slate-300 hover:text-white font-medium transition">
                 Connexion
               </Link>
               <Link 
                 to="/login" 
-                className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg font-medium transition"
+                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white px-6 py-2.5 rounded-xl font-bold transition transform hover:scale-105 shadow-lg shadow-amber-500/25"
               >
                 Commencer
               </Link>
@@ -47,318 +202,383 @@ const LandingPage = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 px-4">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-            Gérez votre loterie avec
-            <span className="text-amber-500"> LOTTOLAB</span>
-          </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            La plateforme SaaS professionnelle pour la gestion de loterie multi-entreprises. 
-            Ventes, tirages, résultats et paiements automatisés en temps réel.
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link 
-              to="/login" 
-              className="bg-amber-500 hover:bg-amber-600 text-white px-8 py-4 rounded-lg font-bold text-lg transition flex items-center justify-center gap-2"
-            >
-              Démarrer Gratuitement <ArrowRight className="w-5 h-5" />
-            </Link>
-            <a 
-              href="#features" 
-              className="border-2 border-gray-300 hover:border-amber-500 text-gray-700 px-8 py-4 rounded-lg font-bold text-lg transition"
-            >
-              En savoir plus
-            </a>
-          </div>
-          <div className="mt-12 flex justify-center items-center gap-8 text-sm text-gray-500">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-500" />
-              <span>Essai gratuit 14 jours</span>
+      <section className="relative pt-32 pb-20 px-4 overflow-hidden">
+        {/* Background Effects */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-amber-500/20 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-orange-500/20 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto relative z-10">
+          <div className="text-center">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-full px-4 py-2 mb-8 reveal">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+              </span>
+              <span className="text-amber-400 font-medium">Disponible maintenant sur POS Android</span>
             </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-500" />
-              <span>Sans carte bancaire</span>
+
+            {/* Main Heading */}
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black mb-6 reveal">
+              <span className="text-white">La Solution</span>
+              <br />
+              <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 bg-clip-text text-transparent animate-gradient">
+                Complète de Loterie
+              </span>
+            </h1>
+
+            {/* Subtitle */}
+            <p className="text-xl md:text-2xl text-slate-300 mb-10 max-w-3xl mx-auto reveal" style={{animationDelay: '0.2s'}}>
+              Plateforme SaaS professionnelle pour gérer vos <strong className="text-white">ventes</strong>, 
+              <strong className="text-white"> tirages</strong>, <strong className="text-white">résultats</strong> et 
+              <strong className="text-white"> paiements</strong> en temps réel.
+            </p>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16 reveal" style={{animationDelay: '0.4s'}}>
+              <Link 
+                to="/login" 
+                className="group bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white px-8 py-4 rounded-2xl font-bold text-lg transition transform hover:scale-105 shadow-xl shadow-amber-500/30 flex items-center justify-center gap-3"
+              >
+                Commencer Aujourd'hui
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition" />
+              </Link>
+              <a 
+                href="#features" 
+                className="glass hover:bg-white/10 text-white px-8 py-4 rounded-2xl font-bold text-lg transition flex items-center justify-center gap-2"
+              >
+                <Globe className="w-5 h-5" />
+                Découvrir
+              </a>
             </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-500" />
-              <span>Support 24/7</span>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto reveal" style={{animationDelay: '0.6s'}}>
+              {stats.map((stat, index) => (
+                <div key={index} className="glass rounded-2xl p-6 text-center hover:bg-white/10 transition">
+                  <div className="text-3xl md:text-4xl font-black text-amber-400 mb-1">
+                    <AnimatedCounter end={stat.value} suffix={stat.suffix} />
+                  </div>
+                  <div className="text-slate-400 text-sm">{stat.label}</div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Fonctionnalités Puissantes
+      <section id="features" className="py-24 px-4 relative">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16 reveal">
+            <span className="text-amber-400 font-semibold tracking-wider uppercase">Fonctionnalités</span>
+            <h2 className="text-3xl md:text-5xl font-black mt-4 mb-6">
+              Tout ce dont vous avez besoin
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Tout ce dont vous avez besoin pour gérer votre entreprise de loterie
+            <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+              Une plateforme complète pour transformer votre entreprise de loterie
             </p>
           </div>
+
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              {
-                icon: Ticket,
-                title: "Gestion des Tickets",
-                description: "Créez, vendez et suivez les tickets en temps réel. Impression automatique des reçus."
-              },
-              {
-                icon: Trophy,
-                title: "Tirages Automatiques",
-                description: "Configurez vos tirages et laissez le système calculer automatiquement les gagnants."
-              },
-              {
-                icon: Shield,
-                title: "Sécurité Maximale",
-                description: "Authentification JWT, rôles utilisateurs, et audit complet de toutes les actions."
-              },
-              {
-                icon: Users,
-                title: "Multi-Entreprises",
-                description: "Gérez plusieurs entreprises, succursales et vendeurs depuis une seule plateforme."
-              },
-              {
-                icon: BarChart3,
-                title: "Rapports Détaillés",
-                description: "Statistiques en temps réel, exports Excel/PDF, et tableaux de bord personnalisés."
-              },
-              {
-                icon: Zap,
-                title: "Performance Optimale",
-                description: "Interface rapide et réactive, même avec des millions de tickets."
-              }
-            ].map((feature, index) => (
-              <div key={index} className="bg-amber-50 p-8 rounded-2xl hover:shadow-lg transition">
-                <div className="w-14 h-14 bg-amber-500 rounded-xl flex items-center justify-center mb-6">
-                  <feature.icon className="w-7 h-7 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h3>
-                <p className="text-gray-600">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How it Works */}
-      <section id="how-it-works" className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Comment ça marche ?
-            </h2>
-            <p className="text-xl text-gray-600">
-              Commencez en 3 étapes simples
-            </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                step: "1",
-                title: "Créez votre compte",
-                description: "Inscrivez-vous gratuitement et configurez votre entreprise de loterie en quelques minutes."
-              },
-              {
-                step: "2",
-                title: "Configurez vos jeux",
-                description: "Définissez vos types de loterie, les multiplicateurs de gains et les horaires de tirage."
-              },
-              {
-                step: "3",
-                title: "Commencez à vendre",
-                description: "Vos vendeurs peuvent immédiatement créer des tickets et servir vos clients."
-              }
-            ].map((item, index) => (
-              <div key={index} className="text-center">
-                <div className="w-16 h-16 bg-amber-500 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-6">
-                  {item.step}
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{item.title}</h3>
-                <p className="text-gray-600">{item.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Tarifs Simples et Transparents
-            </h2>
-            <p className="text-xl text-gray-600">
-              Choisissez le plan adapté à votre entreprise
-            </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {[
-              {
-                name: "Starter",
-                price: "49",
-                features: ["1 succursale", "5 vendeurs", "1000 tickets/mois", "Support email"]
-              },
-              {
-                name: "Business",
-                price: "149",
-                popular: true,
-                features: ["5 succursales", "25 vendeurs", "10000 tickets/mois", "Support prioritaire", "Rapports avancés"]
-              },
-              {
-                name: "Enterprise",
-                price: "399",
-                features: ["Illimité", "Vendeurs illimités", "Tickets illimités", "Support 24/7", "API personnalisée", "Formation incluse"]
-              }
-            ].map((plan, index) => (
+            {features.map((feature, index) => (
               <div 
                 key={index} 
-                className={`p-8 rounded-2xl border-2 ${plan.popular ? 'border-amber-500 bg-amber-50 relative' : 'border-gray-200'}`}
+                className="reveal group glass rounded-3xl p-8 hover:bg-white/10 transition-all duration-300 hover:-translate-y-2"
+                style={{animationDelay: `${index * 0.1}s`}}
               >
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-amber-500 text-white px-4 py-1 rounded-full text-sm font-medium">
-                      Plus populaire
-                    </span>
-                  </div>
-                )}
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-                <div className="mb-6">
-                  <span className="text-4xl font-bold text-gray-900">${plan.price}</span>
-                  <span className="text-gray-500">/mois</span>
+                <div className={`w-16 h-16 bg-gradient-to-br ${feature.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition shadow-lg`}>
+                  <feature.icon className="w-8 h-8 text-white" />
                 </div>
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2 text-gray-600">
-                      <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  to="/login"
-                  className={`block text-center py-3 rounded-lg font-medium transition ${
-                    plan.popular 
-                      ? 'bg-amber-500 hover:bg-amber-600 text-white' 
-                      : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
-                  }`}
-                >
-                  Commencer
-                </Link>
+                <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
+                <p className="text-slate-400 leading-relaxed">{feature.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* FAQ */}
-      <section id="faq" className="py-20 bg-gray-50">
-        <div className="max-w-3xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Questions Fréquentes
+      {/* How It Works */}
+      <section className="py-24 px-4 bg-slate-800/50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16 reveal">
+            <span className="text-amber-400 font-semibold tracking-wider uppercase">Comment ça marche</span>
+            <h2 className="text-3xl md:text-5xl font-black mt-4 mb-6">
+              Démarrez en 3 étapes
             </h2>
           </div>
-          <div className="space-y-4">
+
+          <div className="grid md:grid-cols-3 gap-8 relative">
+            {/* Connection Line */}
+            <div className="hidden md:block absolute top-24 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500"></div>
+            
             {[
-              {
-                q: "Comment fonctionne l'essai gratuit ?",
-                a: "Vous avez 14 jours pour tester toutes les fonctionnalités sans engagement. Aucune carte bancaire n'est requise."
-              },
-              {
-                q: "Puis-je changer de plan à tout moment ?",
-                a: "Oui, vous pouvez upgrader ou downgrader votre plan à tout moment. Les changements sont effectifs immédiatement."
-              },
-              {
-                q: "Comment sont calculés les gains ?",
-                a: "Le système calcule automatiquement les gains selon vos multiplicateurs configurés (par défaut 60x pour 2 numéros, 20x pour 3 numéros)."
-              },
-              {
-                q: "Les données sont-elles sécurisées ?",
-                a: "Absolument. Nous utilisons un chiffrement de niveau bancaire et toutes les données sont sauvegardées quotidiennement."
-              },
-              {
-                q: "Proposez-vous une formation ?",
-                a: "Oui, tous les plans incluent une formation de base. Le plan Enterprise inclut une formation personnalisée sur site."
-              }
+              { step: '01', title: 'Créez votre compte', desc: 'Inscrivez-vous et configurez votre entreprise en quelques minutes.', icon: UserCheck },
+              { step: '02', title: 'Configurez vos jeux', desc: 'Définissez vos loteries, multiplicateurs et horaires de tirage.', icon: Settings },
+              { step: '03', title: 'Commencez à vendre', desc: 'Vos vendeurs peuvent immédiatement créer des tickets sur POS.', icon: Receipt }
             ].map((item, index) => (
-              <details 
-                key={index} 
-                className="bg-white p-6 rounded-xl cursor-pointer group"
-              >
-                <summary className="font-bold text-gray-900 flex justify-between items-center">
-                  {item.q}
-                  <span className="text-amber-500 group-open:rotate-180 transition-transform">▼</span>
-                </summary>
-                <p className="mt-4 text-gray-600">{item.a}</p>
-              </details>
+              <div key={index} className="reveal text-center relative" style={{animationDelay: `${index * 0.2}s`}}>
+                <div className="relative inline-block mb-6">
+                  <div className="w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto shadow-xl shadow-amber-500/30 animate-float" style={{animationDelay: `${index * 0.5}s`}}>
+                    <item.icon className="w-10 h-10 text-white" />
+                  </div>
+                  <div className="absolute -top-3 -right-3 w-10 h-10 bg-slate-900 rounded-full flex items-center justify-center border-2 border-amber-500 font-black text-amber-400">
+                    {item.step}
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
+                <p className="text-slate-400">{item.desc}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-20 bg-amber-500">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-            Prêt à transformer votre entreprise de loterie ?
-          </h2>
-          <p className="text-xl text-amber-100 mb-8">
-            Rejoignez des centaines d'entreprises qui font confiance à LOTTOLAB
-          </p>
-          <Link 
-            to="/login" 
-            className="inline-block bg-white hover:bg-gray-100 text-amber-600 px-8 py-4 rounded-lg font-bold text-lg transition"
-          >
-            Commencer Maintenant - C'est Gratuit
-          </Link>
+      {/* Pricing Section */}
+      <section id="pricing" className="py-24 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16 reveal">
+            <span className="text-amber-400 font-semibold tracking-wider uppercase">Tarifs</span>
+            <h2 className="text-3xl md:text-5xl font-black mt-4 mb-6">
+              Choisissez votre plan
+            </h2>
+            <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+              Des tarifs adaptés à la taille de votre entreprise. <strong className="text-white">$5 par POS/mois</strong>
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Basic Plan */}
+            <div className="reveal glass rounded-3xl p-8 hover:bg-white/10 transition-all duration-300 hover:-translate-y-2">
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-bold text-white mb-2">Basic</h3>
+                <p className="text-slate-400 mb-4">Pour démarrer</p>
+                <div className="flex items-baseline justify-center gap-1">
+                  <span className="text-5xl font-black text-white">$5</span>
+                  <span className="text-slate-400">/POS/mois</span>
+                </div>
+              </div>
+              <ul className="space-y-4 mb-8">
+                {[
+                  '5 Succursales',
+                  '50 Vendeurs maximum',
+                  'Tickets illimités',
+                  'Rapports de base',
+                  'Support email'
+                ].map((feature, i) => (
+                  <li key={i} className="flex items-center gap-3 text-slate-300">
+                    <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                to="/login"
+                className="block text-center py-4 rounded-xl font-bold bg-slate-700 hover:bg-slate-600 text-white transition"
+              >
+                Commencer
+              </Link>
+            </div>
+
+            {/* Business Plan - Popular */}
+            <div className="reveal relative glass rounded-3xl p-8 border-2 border-amber-500 hover:bg-white/10 transition-all duration-300 hover:-translate-y-2" style={{animationDelay: '0.1s'}}>
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-lg">
+                  POPULAIRE
+                </span>
+              </div>
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-bold text-white mb-2">Business</h3>
+                <p className="text-slate-400 mb-4">Pour les entreprises en croissance</p>
+                <div className="flex items-baseline justify-center gap-1">
+                  <span className="text-5xl font-black bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">$5</span>
+                  <span className="text-slate-400">/POS/mois</span>
+                </div>
+              </div>
+              <ul className="space-y-4 mb-8">
+                {[
+                  '10 Succursales',
+                  '150 Vendeurs maximum',
+                  'Tickets illimités',
+                  'Rapports avancés',
+                  'Export Excel/PDF',
+                  'Support prioritaire'
+                ].map((feature, i) => (
+                  <li key={i} className="flex items-center gap-3 text-slate-300">
+                    <CheckCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                to="/login"
+                className="block text-center py-4 rounded-xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white transition shadow-lg shadow-amber-500/30"
+              >
+                Commencer
+              </Link>
+            </div>
+
+            {/* Enterprise Plan */}
+            <div className="reveal glass rounded-3xl p-8 hover:bg-white/10 transition-all duration-300 hover:-translate-y-2" style={{animationDelay: '0.2s'}}>
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-bold text-white mb-2">Enterprise</h3>
+                <p className="text-slate-400 mb-4">Solution complète</p>
+                <div className="flex items-baseline justify-center gap-1">
+                  <span className="text-5xl font-black text-white">$500</span>
+                  <span className="text-slate-400">/mois</span>
+                </div>
+              </div>
+              <ul className="space-y-4 mb-8">
+                {[
+                  'Succursales illimitées',
+                  'Vendeurs illimités',
+                  'Tickets illimités',
+                  'API personnalisée',
+                  'Formation sur site',
+                  'Support 24/7 dédié',
+                  'Personnalisation'
+                ].map((feature, i) => (
+                  <li key={i} className="flex items-center gap-3 text-slate-300">
+                    <CheckCircle className="w-5 h-5 text-purple-500 flex-shrink-0" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href="#contact"
+                className="block text-center py-4 rounded-xl font-bold bg-slate-700 hover:bg-slate-600 text-white transition"
+              >
+                Nous contacter
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust Section */}
+      <section className="py-16 px-4 bg-slate-800/50">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-8 text-center">
+            {[
+              { icon: Lock, title: 'Sécurisé', desc: 'Chiffrement SSL' },
+              { icon: Clock, title: '24/7', desc: 'Disponibilité' },
+              { icon: Headphones, title: 'Support', desc: 'Assistance rapide' },
+              { icon: TrendingUp, title: 'Performance', desc: 'Rapide et fiable' }
+            ].map((item, index) => (
+              <div key={index} className="reveal flex flex-col items-center" style={{animationDelay: `${index * 0.1}s`}}>
+                <div className="w-14 h-14 bg-amber-500/20 rounded-xl flex items-center justify-center mb-4">
+                  <item.icon className="w-7 h-7 text-amber-400" />
+                </div>
+                <h4 className="font-bold text-white">{item.title}</h4>
+                <p className="text-slate-400 text-sm">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section id="contact" className="py-24 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="reveal glass rounded-3xl p-12 text-center">
+            <h2 className="text-3xl md:text-4xl font-black mb-6">
+              Prêt à transformer votre business ?
+            </h2>
+            <p className="text-xl text-slate-300 mb-10">
+              Contactez-nous pour démarrer votre projet de loterie
+            </p>
+            
+            <div className="grid md:grid-cols-2 gap-6 mb-10">
+              <a 
+                href="tel:+16892450198" 
+                className="flex items-center justify-center gap-4 bg-slate-700/50 hover:bg-slate-700 p-6 rounded-2xl transition group"
+              >
+                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition">
+                  <Phone className="w-7 h-7 text-white" />
+                </div>
+                <div className="text-left">
+                  <p className="text-slate-400 text-sm">USA</p>
+                  <p className="text-xl font-bold text-white">+1 689 245 01 98</p>
+                </div>
+              </a>
+              
+              <a 
+                href="tel:+50938196748" 
+                className="flex items-center justify-center gap-4 bg-slate-700/50 hover:bg-slate-700 p-6 rounded-2xl transition group"
+              >
+                <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition">
+                  <Phone className="w-7 h-7 text-white" />
+                </div>
+                <div className="text-left">
+                  <p className="text-slate-400 text-sm">Haiti</p>
+                  <p className="text-xl font-bold text-white">+509 38 19 67 48</p>
+                </div>
+              </a>
+            </div>
+
+            <Link 
+              to="/login" 
+              className="inline-flex items-center gap-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white px-10 py-5 rounded-2xl font-bold text-xl transition transform hover:scale-105 shadow-xl shadow-amber-500/30"
+            >
+              Commencer Aujourd'hui
+              <ArrowRight className="w-6 h-6" />
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-12">
+      <footer className="bg-slate-900 border-t border-slate-800 py-12">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
-                  <Ticket className="w-5 h-5 text-white" />
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center">
+                  <Ticket className="w-6 h-6 text-white" />
                 </div>
-                <span className="text-xl font-bold text-white">LOTTOLAB</span>
+                <span className="text-xl font-black bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
+                  LOTTOLAB
+                </span>
               </div>
-              <p className="text-sm">
-                La plateforme de gestion de loterie la plus complète du marché.
+              <p className="text-slate-400 text-sm">
+                La plateforme de gestion de loterie la plus complète pour les entreprises.
               </p>
             </div>
+            
             <div>
               <h4 className="text-white font-bold mb-4">Produit</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#features" className="hover:text-amber-500">Fonctionnalités</a></li>
-                <li><a href="#pricing" className="hover:text-amber-500">Tarifs</a></li>
-                <li><a href="#faq" className="hover:text-amber-500">FAQ</a></li>
+              <ul className="space-y-2 text-sm text-slate-400">
+                <li><a href="#features" className="hover:text-amber-400 transition">Fonctionnalités</a></li>
+                <li><a href="#pricing" className="hover:text-amber-400 transition">Tarifs</a></li>
+                <li><Link to="/login" className="hover:text-amber-400 transition">Connexion</Link></li>
               </ul>
             </div>
-            <div>
-              <h4 className="text-white font-bold mb-4">Légal</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="/terms" className="hover:text-amber-500">Conditions d'utilisation</a></li>
-                <li><a href="/privacy" className="hover:text-amber-500">Politique de confidentialité</a></li>
-              </ul>
-            </div>
+            
             <div>
               <h4 className="text-white font-bold mb-4">Contact</h4>
-              <ul className="space-y-2 text-sm">
+              <ul className="space-y-2 text-sm text-slate-400">
+                <li>USA: +1 689 245 01 98</li>
+                <li>Haiti: +509 38 19 67 48</li>
                 <li>support@lottolab.tech</li>
-                <li>+509 XX XX XXXX</li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="text-white font-bold mb-4">Légal</h4>
+              <ul className="space-y-2 text-sm text-slate-400">
+                <li><a href="/terms" className="hover:text-amber-400 transition">Conditions d'utilisation</a></li>
+                <li><a href="/privacy" className="hover:text-amber-400 transition">Confidentialité</a></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-gray-800 pt-8 text-center text-sm">
-            <p>&copy; 2026 LOTTOLAB by JM Studio. Tous droits réservés.</p>
+          
+          <div className="border-t border-slate-800 pt-8 text-center">
+            <p className="text-slate-500 text-sm">
+              © 2026 LOTTOLAB by JM Studio. Tous droits réservés.
+            </p>
           </div>
         </div>
       </footer>
