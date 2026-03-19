@@ -7,17 +7,21 @@ export const getApiUrl = () => {
     return process.env.REACT_APP_BACKEND_URL;
   }
   
-  // Priority 2: Use current window origin (same domain deployment)
-  // This works when frontend and backend are on the same domain
+  // Priority 2: Detect environment from hostname
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
+    
+    // Production: lottolab.tech -> api.lottolab.tech
+    if (hostname === 'lottolab.tech' || hostname === 'www.lottolab.tech') {
+      return 'https://api.lottolab.tech';
+    }
     
     // Local development - use port 8001
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'http://localhost:8001';
     }
     
-    // Emergent and other deployments - use same origin
+    // Emergent preview and other deployments - use same origin
     return window.location.origin;
   }
   
@@ -29,9 +33,11 @@ export const API_URL = getApiUrl();
 
 // For debugging
 export const logApiConfig = () => {
-  console.log('API Configuration:', {
-    REACT_APP_BACKEND_URL: process.env.REACT_APP_BACKEND_URL,
-    windowOrigin: typeof window !== 'undefined' ? window.location.origin : 'N/A',
-    resolvedApiUrl: API_URL
+  console.log('[LOTTOLAB] API Configuration:', {
+    BACKEND_URL: API_URL,
+    API: `${API_URL}/api`,
+    currentOrigin: typeof window !== 'undefined' ? window.location.origin : 'N/A',
+    hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
+    envVar: process.env.REACT_APP_BACKEND_URL || 'NOT SET'
   });
 };
