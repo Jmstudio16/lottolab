@@ -11,9 +11,14 @@ export const getApiUrl = () => {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     
-    // Production: lottolab.tech -> api.lottolab.tech
+    // Production: lottolab.tech -> same origin (API is on same domain via /api)
     if (hostname === 'lottolab.tech' || hostname === 'www.lottolab.tech') {
-      return 'https://api.lottolab.tech';
+      return window.location.origin;  // Use same origin, API is at /api
+    }
+    
+    // Emergent: use same origin
+    if (hostname.includes('emergent.host') || hostname.includes('emergentagent.com')) {
+      return window.location.origin;
     }
     
     // Local development - use port 8001
@@ -21,7 +26,7 @@ export const getApiUrl = () => {
       return 'http://localhost:8001';
     }
     
-    // Emergent preview and other deployments - use same origin
+    // Default: same origin
     return window.location.origin;
   }
   
