@@ -92,6 +92,4 @@ frontend/node_modules/.cache/default-development/5.pack
 frontend/node_modules/.cache/default-development/8.pack
 frontend/node_modules/.cache/default-development/11.pack
 -e 
-# Environment files
-*.env
-*.env.*
+# Note: .env files are NOT ignored - Emergent needs them for deployment
