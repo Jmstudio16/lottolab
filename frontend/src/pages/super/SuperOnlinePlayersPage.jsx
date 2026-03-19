@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/api/auth';
@@ -21,7 +22,6 @@ const SuperOnlinePlayersPage = () => {
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const limit = 20;
-  const API_URL = process.env.REACT_APP_BACKEND_URL;
 
   useEffect(() => {
     loadPlayers();

@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bell, X, Check, AlertCircle, Trophy, DollarSign, Users, Ticket } from 'lucide-react';
 import { useAuth } from '@/api/auth';
 import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '@/config/api';
 
 const getNotificationIcon = (type) => {
   switch (type) {

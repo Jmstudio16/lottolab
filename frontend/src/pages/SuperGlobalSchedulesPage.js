@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/api/auth';
 import { AdminLayout } from '@/components/AdminLayout';
@@ -7,7 +8,6 @@ import {
   Calendar, Clock, Plus, Edit2, Trash2, Save, X, Filter, RefreshCw, Check
 } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const DAYS_OF_WEEK = [
   { value: 0, label: 'Lundi' },

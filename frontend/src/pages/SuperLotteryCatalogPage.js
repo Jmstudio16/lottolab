@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/api/auth';
 import { AdminLayout } from '@/components/AdminLayout';
@@ -10,7 +11,6 @@ import {
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 export const SuperLotteryCatalogPage = () => {
   const { token } = useAuth();

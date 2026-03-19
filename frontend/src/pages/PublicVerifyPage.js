@@ -1,9 +1,9 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { Search, CheckCircle, XCircle, Clock, AlertTriangle, Ticket, Calendar, DollarSign, Hash } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const PublicVerifyPage = () => {
   const { ticketCode: paramCode } = useParams();

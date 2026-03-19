@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/api/auth';
 import axios from 'axios';
@@ -7,7 +8,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const VendeurMesVentes = () => {
   const { token } = useAuth();

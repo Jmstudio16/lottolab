@@ -19,8 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import Logo from '@/components/Logo';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import { API_URL } from '@/config/api';
 
 const SupervisorSidebar = ({ isOpen, onClose }) => {
   const { logout, user } = useAuth();

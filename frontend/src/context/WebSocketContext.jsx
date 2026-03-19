@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 
@@ -11,7 +12,6 @@ export const WebSocketProvider = ({ children, playerId, isAdmin = false, userId 
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   
-  const API_URL = process.env.REACT_APP_BACKEND_URL;
   
   // Convert HTTP URL to WebSocket URL
   const getWsUrl = useCallback(() => {

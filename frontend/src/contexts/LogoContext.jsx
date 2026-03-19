@@ -1,7 +1,7 @@
+import { API_URL } from '@/config/api';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const LogoContext = createContext();
 

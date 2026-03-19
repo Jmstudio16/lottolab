@@ -1,8 +1,8 @@
+import { API_URL } from '@/config/api';
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const LotoPamAuthContext = createContext(null);
 

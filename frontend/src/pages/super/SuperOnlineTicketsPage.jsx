@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/api/auth';
@@ -16,7 +17,6 @@ const SuperOnlineTicketsPage = () => {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [total, setTotal] = useState(0);
-  const API_URL = process.env.REACT_APP_BACKEND_URL;
 
   useEffect(() => {
     loadTickets();

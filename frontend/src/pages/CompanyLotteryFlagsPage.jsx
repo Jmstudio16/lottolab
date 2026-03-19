@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/api/auth';
 import axios from 'axios';
@@ -10,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 // Flag images
 const HAITI_FLAG = "🇭🇹";

@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/api/auth';
 import axios from 'axios';
@@ -6,7 +7,6 @@ import { Trophy, RefreshCw, Search, CheckCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 // Lottery logo and flag mapping
 const getLotteryInfo = (lotteryName) => {

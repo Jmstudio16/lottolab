@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/api/auth';
 import axios from 'axios';
@@ -14,7 +15,6 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 export const CompanySuccursalesPage = () => {
   const { token } = useAuth();

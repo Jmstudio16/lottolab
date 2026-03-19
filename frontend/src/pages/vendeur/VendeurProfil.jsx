@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/api/auth';
 import { useNavigate } from 'react-router-dom';
@@ -9,7 +10,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const VendeurProfil = () => {
   const { user, token, logout } = useAuth();

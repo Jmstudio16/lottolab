@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -8,7 +9,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const VendeurPayWinnersPage = () => {
   const { token } = useAuth();

@@ -26,8 +26,9 @@ const LotoPamHomePage = () => {
       });
     }
 
-    // Load latest results
-    fetch(`${process.env.REACT_APP_BACKEND_URL}/api/online/results?limit=6`)
+    // Load latest results - use dynamic API URL
+    const apiUrl = process.env.REACT_APP_BACKEND_URL || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:8001' : window.location.origin);
+    fetch(`${apiUrl}/api/online/results?limit=6`)
       .then(res => res.json())
       .then(data => setResults(data.results || []))
       .catch(console.error);

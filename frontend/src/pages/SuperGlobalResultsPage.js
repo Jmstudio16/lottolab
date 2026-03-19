@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/api/auth';
 import { AdminLayout } from '@/components/AdminLayout';
@@ -8,7 +9,6 @@ import {
   Hash, Award
 } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 // Helper to parse winning numbers from either string or object format
 const getWinningNumbersArray = (result) => {

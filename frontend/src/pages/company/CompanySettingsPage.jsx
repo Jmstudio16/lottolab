@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect, useRef } from 'react';
 import { useLogoContext } from '../../contexts/LogoContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -8,7 +9,6 @@ import { useToast } from '../../hooks/use-toast';
 import { Loader2, Upload, Trash2, Building2, Phone, Mail, MapPin, Image as ImageIcon, Check } from 'lucide-react';
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const CompanySettingsPage = () => {
   const { refreshLogo, displayLogoUrl, systemLogoUrl, companyLogoUrl, companyName } = useLogoContext();

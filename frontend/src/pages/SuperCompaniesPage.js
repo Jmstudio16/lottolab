@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useEffect, useState, useRef } from 'react';
 import { AdminLayout } from '@/components/AdminLayout';
 import axios from 'axios';
@@ -13,7 +14,6 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 export const SuperCompaniesPage = () => {
   const { token } = useAuth();

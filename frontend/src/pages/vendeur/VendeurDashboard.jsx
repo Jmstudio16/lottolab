@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/api/auth';
 import axios from 'axios';
@@ -6,7 +7,6 @@ import {
   Trophy, AlertCircle, CheckCircle, XCircle, Percent
 } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const VendeurDashboard = () => {
   const { token, user } = useAuth();

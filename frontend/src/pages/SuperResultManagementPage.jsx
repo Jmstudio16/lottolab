@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/api/auth';
 import { AdminLayout } from '@/components/AdminLayout';
@@ -19,7 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 // US States with lottery info
 const US_STATES = [

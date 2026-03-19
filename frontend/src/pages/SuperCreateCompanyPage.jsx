@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/AdminLayout';
@@ -21,7 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const TIMEZONES = [
   { value: 'America/Port-au-Prince', label: 'Haiti (UTC-5)' },

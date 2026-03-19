@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/api/auth';
@@ -8,7 +9,6 @@ import {
   Banknote, Receipt
 } from 'lucide-react';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const VendeurLayout = () => {
   const { user, token, logout } = useAuth();

@@ -10,6 +10,14 @@ export const getApiUrl = () => {
   // Priority 2: Use current window origin (same domain deployment)
   // This works when frontend and backend are on the same domain
   if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    
+    // Local development - use port 8001
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:8001';
+    }
+    
+    // Emergent and other deployments - use same origin
     return window.location.origin;
   }
   

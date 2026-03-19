@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/api/auth';
 import axios from 'axios';
@@ -25,7 +26,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 export const SupervisorDashboardPage = () => {
   const { token, user } = useAuth();

@@ -1,3 +1,4 @@
+import { API_URL } from '@/config/api';
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import LotoPamLayout from '../../layouts/LotoPamLayout';
@@ -13,7 +14,6 @@ const LotoPamResultsPage = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
-  const API_URL = process.env.REACT_APP_BACKEND_URL;
 
   useEffect(() => {
     loadResults();
