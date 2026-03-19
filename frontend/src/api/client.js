@@ -1,28 +1,24 @@
 import axios from 'axios';
 
 // Universal API configuration - works on ALL environments
-// Supports: emergent.host, preview.emergentagent.com, lottolab.tech, localhost
+// IMPORTANT: Hostname detection has PRIORITY over environment variables
+// because api.lottolab.tech doesn't exist - we must use same origin
 const getBackendUrl = () => {
-  // Priority 1: Explicit environment variable
-  if (process.env.REACT_APP_BACKEND_URL && process.env.REACT_APP_BACKEND_URL.trim() !== '') {
-    return process.env.REACT_APP_BACKEND_URL;
-  }
-  
-  // Priority 2: Detect from hostname
+  // PRIORITY 1: Detect from hostname FIRST (overrides env var)
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     
-    // Production: lottolab.tech - use same origin (API at /api)
+    // Production: lottolab.tech - ALWAYS use same origin
     if (hostname === 'lottolab.tech' || hostname === 'www.lottolab.tech') {
       return window.location.origin;
     }
     
-    // Emergent Production: emergent.host - use same origin
+    // Emergent Production: emergent.host - ALWAYS use same origin
     if (hostname.includes('emergent.host')) {
       return window.location.origin;
     }
     
-    // Emergent Preview: preview.emergentagent.com - use same origin
+    // Emergent Preview: preview.emergentagent.com - ALWAYS use same origin
     if (hostname.includes('emergentagent.com')) {
       return window.location.origin;
     }
@@ -32,11 +28,15 @@ const getBackendUrl = () => {
       return 'http://localhost:8001';
     }
     
-    // Default fallback: same origin
+    // Default: same origin
     return window.location.origin;
   }
   
-  // SSR/build fallback
+  // Fallback for SSR: use env var if available
+  if (process.env.REACT_APP_BACKEND_URL && process.env.REACT_APP_BACKEND_URL.trim() !== '') {
+    return process.env.REACT_APP_BACKEND_URL;
+  }
+  
   return '';
 };
 

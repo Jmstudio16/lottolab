@@ -2,21 +2,17 @@
 // This file helps configure the app for different environments
 
 export const getApiUrl = () => {
-  // Priority 1: Use environment variable if set
-  if (process.env.REACT_APP_BACKEND_URL && process.env.REACT_APP_BACKEND_URL !== '') {
-    return process.env.REACT_APP_BACKEND_URL;
-  }
-  
-  // Priority 2: Detect environment from hostname
+  // IMPORTANT: Detect environment from hostname FIRST
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     
-    // Production: lottolab.tech -> same origin (API is on same domain via /api)
+    // Production: lottolab.tech -> ALWAYS use same origin (API is at /api)
+    // This overrides any environment variable because api.lottolab.tech doesn't exist
     if (hostname === 'lottolab.tech' || hostname === 'www.lottolab.tech') {
-      return window.location.origin;  // Use same origin, API is at /api
+      return window.location.origin;
     }
     
-    // Emergent: use same origin
+    // Emergent: ALWAYS use same origin
     if (hostname.includes('emergent.host') || hostname.includes('emergentagent.com')) {
       return window.location.origin;
     }
@@ -25,12 +21,18 @@ export const getApiUrl = () => {
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'http://localhost:8001';
     }
-    
-    // Default: same origin
+  }
+  
+  // Fallback: use environment variable or same origin
+  if (process.env.REACT_APP_BACKEND_URL && process.env.REACT_APP_BACKEND_URL !== '') {
+    return process.env.REACT_APP_BACKEND_URL;
+  }
+  
+  // Default: same origin
+  if (typeof window !== 'undefined') {
     return window.location.origin;
   }
   
-  // Fallback for SSR or build time
   return '';
 };
 
