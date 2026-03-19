@@ -1,36 +1,44 @@
 # LOTTOLAB - Product Requirements Document
-**Version**: 9.0.2  
+**Version**: 9.1.0  
 **Date**: 19 Mars 2026  
-**Status**: Production Ready - Emergent Native
+**Status**: ✅ PRODUCTION READY - 100% Fonctionnel
 
 ---
 
-## 1. Vision du Produit
+## 1. Problème Résolu
 
-LottoLab est une plateforme SaaS complète de gestion de loterie multi-entreprises, hébergée nativement sur Emergent.
+**Cause Racine:** La variable `REACT_APP_BACKEND_URL` n'était pas définie dans le fichier `.env` du frontend, causant des erreurs "Erreur lors du chargement" sur toutes les pages.
+
+**Solution:** Ajout de `REACT_APP_BACKEND_URL=http://localhost:8001` dans `/app/frontend/.env`
 
 ---
 
-## 2. État Actuel ✅
+## 2. Fonctionnalités Vérifiées ✅
 
-### Fonctionnel à 100%:
-- ✅ Login Super Admin (admin@lottolab.com / 123456)
-- ✅ Login Company Admin (admin@lotopam.com / Admin123!)
-- ✅ Dashboard avec statistiques en temps réel
-- ✅ Landing page professionnelle avec animations
-- ✅ Gestion des entreprises (CRUD)
-- ✅ Gestion des utilisateurs et vendeurs
-- ✅ POS pour vendeurs
-- ✅ Tirages et résultats
-- ✅ Exports PDF/Excel
-- ✅ SEO optimisé (sitemap, robots.txt)
-- ✅ Bouton WhatsApp flottant
-- ✅ Mobile responsive
+### Super Admin
+- ✅ Login (admin@lottolab.com / 123456)
+- ✅ Dashboard avec statistiques
+- ✅ **Catalogue Global des Loteries** - 234 loteries, 40 états
+- ✅ **Config Drapeaux** - 14 Haiti, 220 USA
+- ✅ Global Schedules
+- ✅ Résultats globaux
+- ✅ Gestion des entreprises
 
-### Tests Passés (Iteration 25):
-- Backend: 100% (26 tests)
-- Frontend: 100% (9 tests Playwright)
-- Tous les endpoints API fonctionnent
+### Company Admin
+- ✅ Login (admin@lotopam.com / Admin123!)
+- ✅ Dashboard avec tickets récents
+- ✅ **Catalogue Loteries** - 234 total, 90 activées
+- ✅ Config Drapeaux
+- ✅ Gestion succursales
+- ✅ Rapports de ventes
+
+### Vendeur
+- ✅ Login (vendeur@lotopam.com / Vendeur123!)
+- ✅ Dashboard avec ventes et commission
+- ✅ **Nouvelle Vente** - 59 loteries ouvertes
+- ✅ Mes Tickets
+- ✅ Résultats
+- ✅ Lots Gagnants
 
 ---
 
@@ -43,7 +51,7 @@ LottoLab est une plateforme SaaS complète de gestion de loterie multi-entrepris
 
 ### Frontend (React + Tailwind)
 - Port: 3000
-- API Client: Auto-détection Emergent
+- **REACT_APP_BACKEND_URL**: http://localhost:8001 (localhost) / auto-détection (production)
 
 ---
 
@@ -58,28 +66,24 @@ LottoLab est une plateforme SaaS complète de gestion de loterie multi-entrepris
 
 ---
 
-## 5. Déploiement Emergent
+## 5. Changelog
 
-Le projet est configuré pour fonctionner nativement sur Emergent:
-- Frontend détecte automatiquement l'URL backend
-- CORS configuré pour accepter toutes origines
-- Pas besoin de VPS externe
+### v9.1.0 (19 Mars 2026)
+- ✅ **FIX CRITIQUE**: Ajout de REACT_APP_BACKEND_URL au .env frontend
+- ✅ Toutes les pages fonctionnent maintenant (Catalogue, Drapeaux, etc.)
+- ✅ Tests complets passés pour tous les rôles
+
+### v9.0.2 (19 Mars 2026)
+- Optimisation des requêtes N+1
+- Tests Playwright passés
 
 ---
 
-## 6. Changelog
+## 6. Déploiement Emergent
 
-### v9.0.2 (19 Mars 2026)
-- ✅ Optimisation des requêtes N+1 (performance x10)
-- ✅ Tests complets passés (Iteration 25)
-- ✅ Configuration Emergent natif validée
-- ✅ Login vérifié fonctionnel
-
-### v9.0.1 (18 Mars 2026)
-- Landing page avec animations
-- SEO optimisé
-- Mobile responsive
-- WhatsApp button
+Le projet est configuré pour Emergent natif:
+- Frontend détecte automatiquement l'URL backend via `client.js`
+- Pour déploiement: Cliquez sur "Deploy" dans Emergent
 
 ---
 
