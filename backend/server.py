@@ -388,8 +388,14 @@ async def get_company_dashboard_stats(current_user: dict = Depends(get_current_u
     now = datetime.now(timezone.utc)
     open_lotteries = 0
     company_lotteries = await db.company_lotteries.find({"company_id": company_id, "enabled": True}, {"_id": 0}).to_list(100)
+    
+    # Optimized: Batch fetch all lotteries in one query instead of N+1
+    lottery_ids = [cl["lottery_id"] for cl in company_lotteries]
+    lotteries = await db.lotteries.find({"lottery_id": {"$in": lottery_ids}}, {"_id": 0}).to_list(100)
+    lottery_map = {l["lottery_id"]: l for l in lotteries}
+    
     for cl in company_lotteries:
-        lottery = await db.lotteries.find_one({"lottery_id": cl["lottery_id"]}, {"_id": 0})
+        lottery = lottery_map.get(cl["lottery_id"])
         if lottery and lottery.get("draw_times"):
             for draw_time_str in lottery["draw_times"]:
                 try:
@@ -547,9 +553,14 @@ async def get_open_lotteries(current_user: dict = Depends(get_current_user)):
         {"_id": 0}
     ).to_list(100)
     
+    # Optimized: Batch fetch all lotteries in one query instead of N+1
+    lottery_ids = [cl["lottery_id"] for cl in company_lotteries]
+    lotteries = await db.lotteries.find({"lottery_id": {"$in": lottery_ids}}, {"_id": 0}).to_list(100)
+    lottery_map = {l["lottery_id"]: l for l in lotteries}
+    
     open_lotteries = []
     for cl in company_lotteries:
-        lottery = await db.lotteries.find_one({"lottery_id": cl["lottery_id"]}, {"_id": 0})
+        lottery = lottery_map.get(cl["lottery_id"])
         if not lottery or not lottery.get("draw_times"):
             continue
         

@@ -1,0 +1,79 @@
+{
+  "summary": "Iteration 25 - Core Features Testing Complete. All critical features working: 1) Super Admin login with admin@lottolab.com/123456 returns token and redirects to /super/dashboard, 2) Dashboard displays statistics (Total Companies, Active Companies, Total Agents, Tickets Today), 3) Health check API returns healthy status with database connected, 4) Landing page /home loads with navigation and hero content, 5) Logout redirects to /login, 6) Company Admin login works correctly.",
+  "mode": "generate",
+  "baseline_commit": "a69643290baa0200dde9c96bbdc9efcb53febee4",
+  "head_commit": "55d701732f8572f113b75dd9726c762038a9ec46",
+  "specs_created": [
+    "/app/tests/e2e/iteration25-core-flows.spec.ts",
+    "/app/backend/tests/test_iteration25_core_features.py"
+  ],
+  "specs_updated": [],
+  "quarantined_tests": [],
+  "test_report_links": [
+    "/app/tests/e2e/iteration25-core-flows.spec.ts",
+    "/app/backend/tests/test_iteration25_core_features.py",
+    "/app/test_reports/pytest/iteration25_results.xml"
+  ],
+  "regression_results": {
+    "total_specs": 35,
+    "passed": 32,
+    "failed": 0,
+    "skipped": 3
+  },
+  "issues": [],
+  "action_items": [],
+  "updated_files": [
+    "/app/tests/e2e/iteration25-core-flows.spec.ts",
+    "/app/backend/tests/test_iteration25_core_features.py"
+  ],
+  "test_results": {
+    "backend": "100% (26 tests - 23 passed, 3 skipped due to rate limiting)",
+    "frontend": "100% (9/9 Playwright tests passed)"
+  },
+  "seed_data_creation": "Used existing test users: admin@lottolab.com (Super Admin), admin@lotopam.com (Company Admin)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All iteration 25 core features are working correctly. Login works with admin@lottolab.com/123456 for Super Admin and admin@lotopam.com/Admin123! for Company Admin. Dashboard shows statistics. Landing page /home displays correctly with navigation. Rate limiting is active (10 requests/min for login) - this is expected behavior.",
+  "features_tested": {
+    "super_admin_login": {
+      "status": "PASS",
+      "details": "POST /api/auth/login with admin@lottolab.com/123456 returns token, user data with role=SUPER_ADMIN, redirect_path=/super/dashboard"
+    },
+    "super_admin_dashboard": {
+      "status": "PASS",
+      "details": "Dashboard displays Total Companies (3), Active Companies (3), Total Agents (10), Tickets Today (0), and Recent Companies table"
+    },
+    "health_check": {
+      "status": "PASS",
+      "details": "GET /api/health returns {status: 'healthy', database: 'connected', permissions: 'ok', version: '9.0.1'}"
+    },
+    "landing_page": {
+      "status": "PASS",
+      "details": "/home loads with navigation (Fonctionnalités, Tarifs, Contact, Connexion), hero content 'La Solution Complète de Loterie', WhatsApp button"
+    },
+    "logout": {
+      "status": "PASS",
+      "details": "Logout button redirects to /login page with login form displayed"
+    },
+    "company_admin_login": {
+      "status": "PASS",
+      "details": "POST /api/auth/login with admin@lotopam.com/Admin123! returns token and redirects to /company/dashboard"
+    }
+  },
+  "api_endpoints_verified": [
+    "GET /api/health - Returns healthy status with DB connected",
+    "POST /api/auth/login - Super Admin login returns token and redirect_path=/super/dashboard",
+    "POST /api/auth/login - Company Admin login returns token and redirect_path=/company/dashboard",
+    "POST /api/auth/login - Invalid credentials returns 401",
+    "GET /api/saas/dashboard-stats - Returns total_companies, active_companies, total_agents, tickets_today",
+    "GET /api/saas/companies - Returns array of companies with company_id, name, status, created_at"
+  ],
+  "notes": [
+    "Rate limiting is active on login endpoint (10 requests/minute) - this is expected security feature",
+    "Super Admin account admin@lottolab.com is working correctly with password 123456",
+    "Company Admin account admin@lotopam.com is working correctly with password Admin123!",
+    "All dashboard statistics are displaying correctly",
+    "Landing page /home has all required navigation elements and hero content",
+    "WhatsApp floating button is visible on all pages"
+  ]
+}
