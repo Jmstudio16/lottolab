@@ -293,6 +293,107 @@ export const CompanyConfigurationPage = () => {
               </div>
             </div>
 
+            {/* Ticket Text Configuration */}
+            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <Printer className="w-5 h-5 text-emerald-400" />
+                Texte sur les tickets
+              </h3>
+              
+              <div className="grid grid-cols-1 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                    Texte en haut du ticket
+                  </label>
+                  <textarea
+                    value={config.ticket_header_text || ''}
+                    onChange={(e) => setConfig({ ...config, ticket_header_text: e.target.value })}
+                    placeholder="Ex: Bienvenue chez LotoPam!"
+                    rows={2}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                    data-testid="ticket-header-text"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Ce texte apparaîtra en haut de chaque ticket imprimé</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                    Texte en bas du ticket
+                  </label>
+                  <textarea
+                    value={config.ticket_footer_text || ''}
+                    onChange={(e) => setConfig({ ...config, ticket_footer_text: e.target.value })}
+                    placeholder="Ex: Merci de votre confiance! Bonne chance!"
+                    rows={2}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                    data-testid="ticket-footer-text"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Ce texte apparaîtra en bas de chaque ticket imprimé</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Mariages Gratis Configuration */}
+            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-amber-400" />
+                Configuration Mariages Gratis
+              </h3>
+              <p className="text-slate-400 text-sm mb-4">
+                Mariages gratuits accordés automatiquement selon le montant total de la vente
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-slate-800/50 rounded-lg border border-amber-500/20">
+                  <label className="block text-sm font-medium text-amber-300 mb-1">
+                    Seuil 1 Mariage Gratis
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={config.mariage_gratis_threshold_1 || 50}
+                      onChange={(e) => setConfig({ ...config, mariage_gratis_threshold_1: parseInt(e.target.value) })}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                    />
+                    <span className="text-slate-400">HTG</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">= 1 mariage gratis</p>
+                </div>
+                
+                <div className="p-4 bg-slate-800/50 rounded-lg border border-amber-500/20">
+                  <label className="block text-sm font-medium text-amber-300 mb-1">
+                    Seuil 2 Mariages Gratis
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={config.mariage_gratis_threshold_2 || 100}
+                      onChange={(e) => setConfig({ ...config, mariage_gratis_threshold_2: parseInt(e.target.value) })}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                    />
+                    <span className="text-slate-400">HTG</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">= 2 mariages gratis</p>
+                </div>
+                
+                <div className="p-4 bg-slate-800/50 rounded-lg border border-amber-500/20">
+                  <label className="block text-sm font-medium text-amber-300 mb-1">
+                    Seuil 3 Mariages Gratis
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={config.mariage_gratis_threshold_3 || 150}
+                      onChange={(e) => setConfig({ ...config, mariage_gratis_threshold_3: parseInt(e.target.value) })}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                    />
+                    <span className="text-slate-400">HTG</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">= 3 mariages gratis</p>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
               <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <Percent className="w-5 h-5 text-emerald-400" />

@@ -205,9 +205,6 @@ const SaaSApp = () => {
                 }}
               />
               
-              {/* Global WhatsApp Button */}
-              <WhatsAppButton />
-              
               <Routes>
                 {/* Public Routes */}
                 <Route path="/login" element={<LoginPage />} />

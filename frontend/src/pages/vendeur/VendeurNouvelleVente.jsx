@@ -22,21 +22,25 @@ const VendeurNouvelleVente = () => {
   const [cart, setCart] = useState([]);
   const [currentPlay, setCurrentPlay] = useState({
     numbers: '',
+    numbers2: '', // Second number for Loto4/Loto5
     betType: 'BORLETTE',
     amount: ''
   });
   const [ticketResult, setTicketResult] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [mariageGratisCount, setMariageGratisCount] = useState(0); // Auto mariages gratis
 
   const headers = { Authorization: `Bearer ${token}` };
 
   const BET_TYPES = [
     { value: 'BORLETTE', label: 'Borlette', digits: '2-3' },
     { value: 'LOTO3', label: 'Loto 3', digits: '3' },
-    { value: 'LOTO4', label: 'Loto 4', digits: '4' },
-    { value: 'LOTO5', label: 'Loto 5', digits: '5' },
+    { value: 'LOTO4_OPT1', label: 'Loto 4 - Option 1', digits: '4', isLoto4: true },
+    { value: 'LOTO4_OPT2', label: 'Loto 4 - Option 2', digits: '4', isLoto4: true },
+    { value: 'LOTO4_OPT3', label: 'Loto 4 - Option 3', digits: '4', isLoto4: true },
+    { value: 'LOTO5_EXTRA1', label: 'Loto 5 - Extra 1 (1+2)', digits: '5', isLoto5: true },
+    { value: 'LOTO5_EXTRA2', label: 'Loto 5 - Extra 2 (1+3)', digits: '5', isLoto5: true },
     { value: 'MARIAGE', label: 'Mariage', digits: '4' },
-    { value: 'MARIAGE_GRATIS', label: 'Mariage Gratis', digits: '4', free: true },
   ];
 
   // Update time every second
@@ -183,17 +187,30 @@ const VendeurNouvelleVente = () => {
     setSelectedLottery(lottery);
   };
 
+  // Calculate mariages gratis based on total cart amount
+  const calculateMariagesGratis = (total) => {
+    if (total >= 150) return 3;
+    if (total >= 100) return 2;
+    if (total >= 50) return 1;
+    return 0;
+  };
+
   const addToCart = () => {
     if (!currentPlay.numbers || !selectedLottery) {
       toast.error('Veuillez entrer un numéro');
       return;
     }
 
-    // Validate amount (unless it's a free bet)
-    const isFree = currentPlay.betType === 'MARIAGE_GRATIS';
-    const amount = isFree ? 0 : parseFloat(currentPlay.amount) || 0;
+    // For Loto4 and Loto5 options, require second number
+    const betType = BET_TYPES.find(bt => bt.value === currentPlay.betType);
+    if ((betType?.isLoto4 || betType?.isLoto5) && !currentPlay.numbers2) {
+      toast.error('Veuillez entrer le deuxième numéro');
+      return;
+    }
+
+    const amount = parseFloat(currentPlay.amount) || 0;
     
-    if (!isFree && amount <= 0) {
+    if (amount <= 0) {
       toast.error('Veuillez entrer un montant valide');
       return;
     }
@@ -206,17 +223,23 @@ const VendeurNouvelleVente = () => {
       return;
     }
 
+    // Combine numbers for Loto4/Loto5
+    let finalNumbers = currentPlay.numbers;
+    if (betType?.isLoto4 || betType?.isLoto5) {
+      finalNumbers = `${currentPlay.numbers}-${currentPlay.numbers2}`;
+    }
+
     const newItem = {
       id: Date.now(),
       lottery_id: selectedLottery.lottery_id,
       lottery_name: selectedLottery.lottery_name,
-      numbers: currentPlay.numbers,
+      numbers: finalNumbers,
       bet_type: currentPlay.betType,
       amount: amount
     };
 
     setCart([...cart, newItem]);
-    setCurrentPlay({ ...currentPlay, numbers: '', amount: '' });
+    setCurrentPlay({ ...currentPlay, numbers: '', numbers2: '', amount: '' });
     toast.success('Numéro ajouté au panier');
   };
 
@@ -436,31 +459,6 @@ const VendeurNouvelleVente = () => {
               </div>
             )}
           </div>
-
-          {/* Closed Lotteries */}
-          {closedLotteries.length > 0 && (
-            <div>
-              <h2 className="text-base font-semibold text-slate-400 flex items-center gap-2 mb-3">
-                <XCircle className="w-5 h-5 text-slate-500" />
-                Non disponibles ({closedLotteries.length})
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[150px] overflow-y-auto pr-1">
-                {closedLotteries.slice(0, 15).map(lottery => {
-                  const status = getLotteryStatus(lottery);
-                  
-                  return (
-                    <div
-                      key={lottery.lottery_id}
-                      className="p-2 sm:p-3 rounded-xl bg-slate-800/30 border border-slate-700 opacity-60"
-                    >
-                      <p className="font-medium text-slate-400 text-xs sm:text-sm truncate">{lottery.lottery_name}</p>
-                      <p className={`text-xs mt-1 ${status.color}`}>{status.text}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Sale Form */}
@@ -503,16 +501,29 @@ const VendeurNouvelleVente = () => {
                       maxLength={5}
                       data-testid="number-input"
                     />
+                    
+                    {/* Second number input for Loto4/Loto5 */}
+                    {(BET_TYPES.find(bt => bt.value === currentPlay.betType)?.isLoto4 || 
+                      BET_TYPES.find(bt => bt.value === currentPlay.betType)?.isLoto5) && (
+                      <Input
+                        value={currentPlay.numbers2}
+                        onChange={(e) => setCurrentPlay({...currentPlay, numbers2: e.target.value.replace(/[^0-9]/g, '')})}
+                        placeholder="2ème numéro"
+                        className="bg-slate-700 border-slate-600 text-lg sm:text-xl font-mono mt-2"
+                        maxLength={5}
+                        data-testid="number-input-2"
+                      />
+                    )}
                   </div>
 
                   {/* Bet Type */}
                   <div>
                     <label className="text-sm text-slate-400 mb-2 block">Type de mise</label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {BET_TYPES.map(type => (
                         <button
                           key={type.value}
-                          onClick={() => setCurrentPlay({...currentPlay, betType: type.value})}
+                          onClick={() => setCurrentPlay({...currentPlay, betType: type.value, numbers2: ''})}
                           data-testid={`bet-type-${type.value}`}
                           className={`p-2 rounded-lg text-xs transition-all ${
                             currentPlay.betType === type.value
@@ -526,28 +537,29 @@ const VendeurNouvelleVente = () => {
                     </div>
                   </div>
 
-                  {/* Amount Input - FREE FIELD */}
+                  {/* Amount Input */}
                   <div>
                     <label className="text-sm text-slate-400 mb-1 block">Montant (HTG) *</label>
-                    {currentPlay.betType === 'MARIAGE_GRATIS' ? (
-                      <div className="p-3 bg-amber-500/20 border border-amber-500/30 rounded-lg text-center">
-                        <p className="text-amber-400 font-semibold">Mariage Gratis - 0 HTG</p>
-                        <p className="text-xs text-amber-300/70">Combinaison offerte au client</p>
+                    <Input
+                      type="number"
+                      value={currentPlay.amount}
+                      onChange={(e) => setCurrentPlay({...currentPlay, amount: e.target.value})}
+                      placeholder="Entrez le montant (ex: 50, 100, 500...)"
+                      className="bg-slate-700 border-slate-600 text-lg font-semibold"
+                      min="0"
+                      step="1"
+                      data-testid="amount-input"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Montant libre - Aucune limite</p>
+                    
+                    {/* Mariages Gratis indicator */}
+                    {totalAmount >= 50 && (
+                      <div className="mt-2 p-2 bg-amber-500/20 border border-amber-500/30 rounded-lg">
+                        <p className="text-amber-400 text-xs font-semibold">
+                          🎁 {calculateMariagesGratis(totalAmount)} Mariage(s) Gratis disponible(s)
+                        </p>
+                        <p className="text-amber-300/70 text-xs">Automatique selon total: 50HTG=1, 100HTG=2, 150HTG=3</p>
                       </div>
-                    ) : (
-                      <Input
-                        type="number"
-                        value={currentPlay.amount}
-                        onChange={(e) => setCurrentPlay({...currentPlay, amount: e.target.value})}
-                        placeholder="Entrez le montant (ex: 50, 100, 500...)"
-                        className="bg-slate-700 border-slate-600 text-lg font-semibold"
-                        min="0"
-                        step="1"
-                        data-testid="amount-input"
-                      />
-                    )}
-                    {currentPlay.betType !== 'MARIAGE_GRATIS' && (
-                      <p className="text-xs text-slate-500 mt-1">Montant libre - Aucune limite</p>
                     )}
                   </div>
 
