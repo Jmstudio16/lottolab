@@ -378,12 +378,24 @@ async def print_ticket_80mm(
     footer_text = company.get("ticket_footer_text", "") if company else ""
     currency = ticket.get("currency", "HTG")
     
-    # Get branch info
-    branch = await db.branches.find_one(
-        {"branch_id": ticket.get("branch_id")},
-        {"_id": 0, "name": 1}
-    )
-    branch_name = branch.get("name", "N/A") if branch else "N/A"
+    # Get branch/succursale info
+    branch_id = ticket.get("branch_id") or ticket.get("succursale_id")
+    branch_name = "N/A"
+    if branch_id:
+        branch = await db.branches.find_one(
+            {"branch_id": branch_id},
+            {"_id": 0, "name": 1}
+        )
+        if branch:
+            branch_name = branch.get("name", "N/A")
+        else:
+            # Try succursales collection
+            succursale = await db.succursales.find_one(
+                {"succursale_id": branch_id},
+                {"_id": 0, "name": 1}
+            )
+            if succursale:
+                branch_name = succursale.get("name", "N/A")
     
     # Get agent info
     agent = await db.users.find_one(
