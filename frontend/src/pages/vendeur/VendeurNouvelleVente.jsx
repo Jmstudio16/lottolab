@@ -192,9 +192,29 @@ const VendeurNouvelleVente = () => {
     return matchesSearch && matchesFlag;
   });
 
-  // Separate open and closed lotteries
-  const openLotteries = filteredLotteries.filter(lot => getLotteryStatus(lot).canSell);
-  const closedLotteries = filteredLotteries.filter(lot => !getLotteryStatus(lot).canSell);
+  // Separate open and closed lotteries, sort Haiti first
+  const sortByFlag = (a, b) => {
+    const flagA = a.flag_type || 'USA';
+    const flagB = b.flag_type || 'USA';
+    const nameA = a.lottery_name || '';
+    const nameB = b.lottery_name || '';
+    
+    // Haiti flag first
+    if (flagA === 'HAITI' && flagB !== 'HAITI') return -1;
+    if (flagA !== 'HAITI' && flagB === 'HAITI') return 1;
+    
+    // Within Haiti, put "Haiti" named ones first
+    if (flagA === 'HAITI' && flagB === 'HAITI') {
+      const isHaitiNameA = nameA.startsWith('Haiti');
+      const isHaitiNameB = nameB.startsWith('Haiti');
+      if (isHaitiNameA && !isHaitiNameB) return -1;
+      if (!isHaitiNameA && isHaitiNameB) return 1;
+    }
+    
+    return nameA.localeCompare(nameB);
+  };
+  const openLotteries = filteredLotteries.filter(lot => getLotteryStatus(lot).canSell).sort(sortByFlag);
+  const closedLotteries = filteredLotteries.filter(lot => !getLotteryStatus(lot).canSell).sort(sortByFlag);
 
   const selectLottery = (lottery) => {
     const status = getLotteryStatus(lottery);
