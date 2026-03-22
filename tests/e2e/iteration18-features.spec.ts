@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = 'https://vendeur-checkout.preview.emergentagent.com';
+const BASE_URL = 'https://seller-commission-ui.preview.emergentagent.com';
 
 // Credentials
 const SUPER_ADMIN = { email: 'jefferson@jmstudio.com', password: 'JMStudio@2026!' };

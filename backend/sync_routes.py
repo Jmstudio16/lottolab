@@ -227,14 +227,40 @@ async def get_full_device_config(current_agent: dict = Depends(get_current_agent
     
     # ---- 6b. MERGE SCHEDULES INTO LOTTERIES ----
     # Add open_time, close_time, draw_time to each lottery from its schedule
+    # Also calculate is_open based on current time in company timezone
+    import pytz
+    company_tz_str = company.get("timezone", "America/Port-au-Prince")
+    try:
+        company_tz = pytz.timezone(company_tz_str)
+    except:
+        company_tz = pytz.timezone("America/Port-au-Prince")
+    
+    now_local = datetime.now(company_tz)
+    current_time_str = now_local.strftime("%H:%M")
+    
     for lottery in lotteries:
         lid = lottery.get("lottery_id")
+        lottery["is_open"] = False  # Default to closed
+        
         if lid in schedule_map:
             sched = schedule_map[lid]
             lottery["open_time"] = sched.get("open_time")
             lottery["close_time"] = sched.get("close_time")
             lottery["draw_time"] = sched.get("draw_time")
             lottery["draw_name"] = sched.get("draw_name")
+            
+            # Calculate is_open
+            open_time = sched.get("open_time", "00:00")
+            close_time = sched.get("close_time", "23:59")
+            
+            if open_time and close_time:
+                # Handle overnight schedules (e.g., 22:00 - 02:00)
+                if open_time <= close_time:
+                    # Normal schedule (same day)
+                    lottery["is_open"] = open_time <= current_time_str <= close_time
+                else:
+                    # Overnight schedule
+                    lottery["is_open"] = current_time_str >= open_time or current_time_str <= close_time
     
     # ---- 7. BLOCKED NUMBERS ----
     blocked_numbers = await db.blocked_numbers.find(
@@ -530,6 +556,11 @@ async def print_ticket_universal(
     company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
     company_name = company.get("name", "LOTO PAM") if company else "LOTO PAM"
     company_logo = company.get("company_logo_url") or company.get("logo_url") if company else None
+    company_phone = company.get("phone", "") if company else ""
+    company_address = company.get("address", "") if company else ""
+    header_text = company.get("ticket_header_text", "") if company else ""
+    footer_text = company.get("ticket_footer_text", "") if company else ""
+    qr_code_enabled = company.get("qr_code_enabled", True) if company else True
     currency = ticket.get("currency", "HTG")
     
     # For the logo, we'll use a simple text-based approach since images may not load correctly
@@ -582,6 +613,33 @@ async def print_ticket_universal(
     lottery_name = ticket.get("lottery_name", "N/A")
     draw_name = ticket.get("draw_name", "")
     ticket_code = ticket.get("ticket_code", ticket_id[:12].upper())
+    verification_code = ticket.get("verification_code", "")
+    
+    # Generate QR code if enabled
+    qr_code_html = ""
+    if qr_code_enabled and verification_code:
+        try:
+            qr = qrcode.QRCode(version=1, box_size=3, border=1)
+            qr_url = f"https://lottolab.tech/api/verify-ticket/{verification_code}"
+            qr.add_data(qr_url)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+            buffer = io.BytesIO()
+            img.save(buffer, format="PNG")
+            qr_base64 = base64.b64encode(buffer.getvalue()).decode()
+            qr_code_html = f'<div class="qr-section"><img src="data:image/png;base64,{qr_base64}" class="qr-code" alt="QR" /></div>'
+        except Exception as e:
+            qr_code_html = ""
+    
+    # Build company contact info for ticket
+    contact_info_html = ""
+    if company_phone or company_address:
+        contact_parts = []
+        if company_phone:
+            contact_parts.append(f"Tél: {company_phone}")
+        if company_address:
+            contact_parts.append(company_address)
+        contact_info_html = '<div class="contact-info">' + '<br>'.join(contact_parts) + '</div>'
     
     # Build plays rows
     plays_rows = ""
@@ -732,6 +790,20 @@ async def print_ticket_universal(
             margin-top: 6px;
             font-size: 10px;
         }}
+        .contact-info {{
+            text-align: center;
+            font-size: 8px;
+            margin: 4px 0;
+            color: black;
+        }}
+        .qr-section {{
+            text-align: center;
+            margin: 8px 0;
+        }}
+        .qr-code {{
+            width: 25mm;
+            height: 25mm;
+        }}
         .print-btn {{
             display: block;
             width: 100%;
@@ -769,6 +841,8 @@ async def print_ticket_universal(
     <div class="header">
         {'<img src="' + company.get("logo_url", "") + '" class="logo-image" alt="Logo" onerror="this.style.display=' + "'none'" + '" />' if company and company.get("logo_url") else ''}
         <div class="logo-text">{company_name}</div>
+        {contact_info_html}
+        <div class="sub-header">{header_text if header_text else ''}</div>
     </div>
     
     <div class="separator">================================</div>
@@ -814,6 +888,10 @@ async def print_ticket_universal(
     
     <div class="footer">
         <div class="thank-you">MERCI DE JOUER AVEC<br>{company_name}</div>
+        <div style="margin-top:4px;font-size:7px;">
+            {footer_text if footer_text else ''}
+        </div>
+        {qr_code_html}
         <div style="margin-top:6px;font-size:7px;text-align:left;">
             Vérifiez votre ticket avant de vous déplacer.<br>
             Ce ticket doit être payé UNE SEULE FOIS<br>

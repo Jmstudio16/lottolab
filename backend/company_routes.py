@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
+from pydantic import BaseModel
 
 from models import (
     UserRole, User, UserCreate, Agent, AgentCreate, AgentUpdate, AgentStatus,
@@ -67,6 +68,138 @@ async def get_pos_devices(current_user: dict = Depends(get_current_user)):
     company_id = require_company_access(current_user)
     devices = await db.pos_devices.find({"company_id": company_id}, {"_id": 0}).to_list(1000)
     return [POSDevice(**d) for d in devices]
+
+
+# ============================================================================
+# COMPANY PROFILE / SETTINGS
+# ============================================================================
+
+class CompanyProfileUpdate(BaseModel):
+    company_name: Optional[str] = None
+    company_phone: Optional[str] = None
+    company_email: Optional[str] = None
+    company_address: Optional[str] = None
+    logo_url: Optional[str] = None
+    ticket_header_text: Optional[str] = None
+    ticket_footer_text: Optional[str] = None
+    qr_code_enabled: Optional[bool] = True
+
+
+@company_router.get("/profile")
+async def get_company_profile(current_user: dict = Depends(get_current_user)):
+    """Get company profile and settings for ticket customization"""
+    company_id = require_company_access(current_user)
+    
+    company = await db.companies.find_one(
+        {"company_id": company_id},
+        {"_id": 0}
+    )
+    
+    if not company:
+        raise HTTPException(status_code=404, detail="Compagnie non trouvée")
+    
+    return {
+        "company_id": company_id,
+        "company_name": company.get("name", ""),
+        "company_phone": company.get("phone", ""),
+        "company_email": company.get("email", ""),
+        "company_address": company.get("address", ""),
+        "company_logo_url": company.get("logo_url", ""),
+        "display_logo_url": company.get("logo_url", ""),
+        "ticket_header_text": company.get("ticket_header_text", ""),
+        "ticket_footer_text": company.get("ticket_footer_text", ""),
+        "qr_code_enabled": company.get("qr_code_enabled", True),
+        "currency": company.get("currency", "HTG"),
+        "timezone": company.get("timezone", "America/Port-au-Prince")
+    }
+
+
+@company_router.put("/profile")
+async def update_company_profile(
+    data: CompanyProfileUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update company profile and ticket settings"""
+    company_id = require_company_access(current_user, [UserRole.COMPANY_ADMIN])
+    
+    update_data = {"updated_at": get_current_timestamp()}
+    
+    if data.company_name is not None:
+        update_data["name"] = data.company_name
+    if data.company_phone is not None:
+        update_data["phone"] = data.company_phone
+    if data.company_email is not None:
+        update_data["email"] = data.company_email
+    if data.company_address is not None:
+        update_data["address"] = data.company_address
+    if data.logo_url is not None:
+        update_data["logo_url"] = data.logo_url
+    if data.ticket_header_text is not None:
+        update_data["ticket_header_text"] = data.ticket_header_text
+    if data.ticket_footer_text is not None:
+        update_data["ticket_footer_text"] = data.ticket_footer_text
+    if data.qr_code_enabled is not None:
+        update_data["qr_code_enabled"] = data.qr_code_enabled
+    
+    result = await db.companies.update_one(
+        {"company_id": company_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Compagnie non trouvée")
+    
+    return {
+        "message": "Profil mis à jour avec succès",
+        "updated_fields": list(update_data.keys())
+    }
+
+
+@company_router.post("/upload-logo")
+async def upload_company_logo(
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload company logo - accepts base64 encoded image"""
+    company_id = require_company_access(current_user, [UserRole.COMPANY_ADMIN])
+    
+    try:
+        body = await request.json()
+        logo_data = body.get("logo_data")  # Base64 encoded image
+        
+        if not logo_data:
+            raise HTTPException(status_code=400, detail="logo_data requis")
+        
+        # Store the base64 logo directly (for small logos)
+        # Or you can upload to a storage service and store the URL
+        
+        await db.companies.update_one(
+            {"company_id": company_id},
+            {"$set": {
+                "logo_url": logo_data,
+                "updated_at": get_current_timestamp()
+            }}
+        )
+        
+        return {"message": "Logo téléchargé avec succès", "logo_url": logo_data}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@company_router.delete("/delete-logo")
+async def delete_company_logo(current_user: dict = Depends(get_current_user)):
+    """Delete company logo"""
+    company_id = require_company_access(current_user, [UserRole.COMPANY_ADMIN])
+    
+    await db.companies.update_one(
+        {"company_id": company_id},
+        {"$set": {
+            "logo_url": None,
+            "updated_at": get_current_timestamp()
+        }}
+    )
+    
+    return {"message": "Logo supprimé"}
 
 @company_router.post("/pos-devices", response_model=POSDevice)
 async def create_pos_device(

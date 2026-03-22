@@ -327,9 +327,10 @@ export const SuperGlobalResultsPage = () => {
                       required
                       data-testid="draw-name"
                     >
-                      <option value="Midday">Midday (Midi)</option>
-                      <option value="Evening">Evening (Soir)</option>
-                      <option value="Night">Night (Nuit)</option>
+                      <option value="Matin">Matin (Morning)</option>
+                      <option value="Midi">Midi (Midday)</option>
+                      <option value="Soir">Soir (Evening)</option>
+                      <option value="Nuit">Nuit (Night)</option>
                     </select>
                   </div>
                 </div>

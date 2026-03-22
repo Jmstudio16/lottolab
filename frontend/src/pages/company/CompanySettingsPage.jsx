@@ -5,8 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import { Textarea } from '../../components/ui/textarea';
+import { Switch } from '../../components/ui/switch';
 import { useToast } from '../../hooks/use-toast';
-import { Loader2, Upload, Trash2, Building2, Phone, Mail, MapPin, Image as ImageIcon, Check } from 'lucide-react';
+import { Loader2, Upload, Trash2, Building2, Phone, Mail, MapPin, Image as ImageIcon, Check, QrCode, FileText } from 'lucide-react';
 import axios from 'axios';
 
 
@@ -24,7 +26,10 @@ const CompanySettingsPage = () => {
     company_name: '',
     company_phone: '',
     company_email: '',
-    company_address: ''
+    company_address: '',
+    ticket_header_text: '',
+    ticket_footer_text: '',
+    qr_code_enabled: true
   });
 
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -47,7 +52,10 @@ const CompanySettingsPage = () => {
         company_name: data.company_name || '',
         company_phone: data.company_phone || '',
         company_email: data.company_email || '',
-        company_address: data.company_address || ''
+        company_address: data.company_address || '',
+        ticket_header_text: data.ticket_header_text || '',
+        ticket_footer_text: data.ticket_footer_text || '',
+        qr_code_enabled: data.qr_code_enabled !== false
       });
       setCurrentLogoUrl(data.company_logo_url || data.display_logo_url);
       setHasCompanyLogo(!!data.company_logo_url);
@@ -430,6 +438,95 @@ const CompanySettingsPage = () => {
                 <>
                   <Check className="h-4 w-4 mr-2" />
                   Enregistrer les modifications
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Ticket Customization Section */}
+      <Card className="bg-gray-800/50 border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <FileText className="h-5 w-5 text-green-400" />
+            Personnalisation du Ticket
+          </CardTitle>
+          <CardDescription>
+            Configurez le contenu qui apparaîtra sur les tickets imprimés
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 gap-6">
+            {/* Ticket Header Text */}
+            <div className="space-y-2">
+              <Label htmlFor="ticket_header_text" className="text-gray-300 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Texte en Haut du Ticket
+              </Label>
+              <Textarea
+                id="ticket_header_text"
+                name="ticket_header_text"
+                value={settings.ticket_header_text}
+                onChange={handleInputChange}
+                className="bg-gray-700 border-gray-600 text-white min-h-[80px]"
+                placeholder="Ex: Bonne chance! / Jouez responsablement"
+                data-testid="ticket-header-text-input"
+              />
+              <p className="text-xs text-gray-500">Ce texte apparaîtra sous le logo sur le ticket imprimé</p>
+            </div>
+
+            {/* Ticket Footer Text */}
+            <div className="space-y-2">
+              <Label htmlFor="ticket_footer_text" className="text-gray-300 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Texte en Bas du Ticket
+              </Label>
+              <Textarea
+                id="ticket_footer_text"
+                name="ticket_footer_text"
+                value={settings.ticket_footer_text}
+                onChange={handleInputChange}
+                className="bg-gray-700 border-gray-600 text-white min-h-[80px]"
+                placeholder="Ex: Merci pour votre confiance!"
+                data-testid="ticket-footer-text-input"
+              />
+              <p className="text-xs text-gray-500">Ce texte apparaîtra avant les mentions légales</p>
+            </div>
+
+            {/* QR Code Toggle */}
+            <div className="flex items-center justify-between p-4 bg-gray-700/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <QrCode className="h-5 w-5 text-blue-400" />
+                <div>
+                  <Label className="text-gray-300 font-medium">Code QR sur le Ticket</Label>
+                  <p className="text-xs text-gray-500">Afficher un code QR pour la vérification du ticket</p>
+                </div>
+              </div>
+              <Switch
+                checked={settings.qr_code_enabled}
+                onCheckedChange={(checked) => setSettings(prev => ({ ...prev, qr_code_enabled: checked }))}
+                data-testid="qr-code-toggle"
+              />
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <Button
+              onClick={handleSaveSettings}
+              disabled={saving}
+              className="bg-green-600 hover:bg-green-700"
+              data-testid="save-ticket-settings-btn"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Enregistrement...
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Enregistrer les paramètres du ticket
                 </>
               )}
             </Button>

@@ -82,7 +82,7 @@
     "POST /api/tickets/check - Check ticket status"
   ],
   "notes": [
-    "Preview URL (https://jxz40m-3000.preview.emergentagent.com) showed 'Preview Unavailable' - external environment issue",
+    "Preview URL (https://seller-commission-ui.preview.emergentagent.com) showed 'Preview Unavailable' - external environment issue",
     "Frontend running correctly on localhost:3000 as confirmed by curl test",
     "All backend APIs working correctly on localhost:8001",
     "Frontend components (SupervisorLotsGagnants.jsx, CompanyLotsGagnants.jsx) have proper data-testid attributes for testing",

@@ -1,0 +1,90 @@
+{
+  "summary": "Iteration 28 - Complete testing of ticket customization features. All 10 backend tests passed. Frontend CompanySettingsPage verified with all required fields. Ticket print endpoint displays all customization (company name, phone, address, header text, footer text, QR code). 56 lotteries open out of 236 total. Vendeur commission default is 0%.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "CompanyDashboardPage",
+        "issues": ["React hydration warning: <tr> cannot be child of <span> in table - minor HTML structure issue"]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration28_ticket_customization.py",
+    "/app/test_reports/pytest/iteration28_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_iteration28_ticket_customization.py"
+  ],
+  "success_rate": {
+    "backend": "100% (10/10 tests passed)",
+    "frontend": "100% (all UI elements verified)"
+  },
+  "test_credentials": {
+    "company_admin": "admin@lotopam.com / Admin123!",
+    "vendeur": "vendeur@lotopam.com / Vendeur123!"
+  },
+  "seed_data_creation": "Used existing test data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All ticket customization features are working correctly. CompanySettingsPage at /company/profile-settings has all required fields: Logo upload, Company name, Phone, Email, Address, Ticket header text, Ticket footer text, QR code toggle. The ticket print endpoint /api/ticket/print/{ticket_id} displays all customization fields correctly including QR code. 56 lotteries are open out of 236 total enabled. Vendeur commission is 0% by default.",
+  "features_tested": {
+    "company_settings_page_ui": {
+      "status": "PASS",
+      "details": "All form fields present with data-testid attributes: company-name-input, company-phone-input, company-email-input, company-address-input, ticket-header-text-input, ticket-footer-text-input, qr-code-toggle, logo-file-input, save-settings-btn, save-ticket-settings-btn"
+    },
+    "get_company_profile_api": {
+      "status": "PASS",
+      "details": "GET /api/company/profile returns all 8 required fields: company_id, company_name, company_phone, company_email, company_address, ticket_header_text, ticket_footer_text, qr_code_enabled"
+    },
+    "put_company_profile_api": {
+      "status": "PASS",
+      "details": "PUT /api/company/profile successfully updates all fields and changes persist"
+    },
+    "qr_code_toggle": {
+      "status": "PASS",
+      "details": "QR code can be enabled/disabled via API and UI toggle"
+    },
+    "ticket_print_customization": {
+      "status": "PASS",
+      "details": "Ticket print HTML includes: company name (LOTO PAM Test), phone (Tél: +509 1234-5678), address (Port-au-Prince, Haiti), header text (Bonne chance!), footer text (Merci pour votre confiance!), QR code (base64 image), status (VALIDÉ)"
+    },
+    "ticket_verification_page": {
+      "status": "PASS",
+      "details": "Public verification page at /api/verify-ticket/{code} works correctly"
+    },
+    "vendeur_commission_default": {
+      "status": "PASS",
+      "details": "Vendeur commission is 0.0% by default (from agent_policy.commission_percent)"
+    },
+    "lotteries_count": {
+      "status": "PASS",
+      "details": "56 lotteries open out of 236 total enabled lotteries"
+    }
+  },
+  "api_endpoints_verified": [
+    "GET /api/health - Returns healthy status",
+    "POST /api/auth/login - Company Admin and Vendeur login working",
+    "GET /api/company/profile - Returns all customization fields",
+    "PUT /api/company/profile - Updates all customization fields",
+    "GET /api/ticket/print/{ticket_id} - Returns HTML with all customization",
+    "GET /api/verify-ticket/{code} - Public ticket verification page",
+    "GET /api/device/config - Returns enabled lotteries and agent policy"
+  ],
+  "ticket_customization_fields_verified": {
+    "company_name": "LOTO PAM Test",
+    "company_phone": "+509 1234-5678",
+    "company_address": "Port-au-Prince, Haiti",
+    "ticket_header_text": "Bonne chance!",
+    "ticket_footer_text": "Merci pour votre confiance!",
+    "qr_code_enabled": true,
+    "logo": "Custom logo active"
+  }
+}

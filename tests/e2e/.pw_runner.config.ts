@@ -11,7 +11,7 @@ export default defineConfig({
     ['json', { outputFile: '/root/.emergent/automation_output/20260319_172559/results.json' }],
   ],
   use: {
-    baseURL: 'https://vendeur-checkout.preview.emergentagent.com',
+    baseURL: 'https://seller-commission-ui.preview.emergentagent.com',
     screenshot: 'only-on-failure',
     trace: 'off',
     headless: true,

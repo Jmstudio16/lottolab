@@ -376,6 +376,9 @@ async def print_ticket_80mm(
         logo_html = f'<img src="{company_logo}" class="company-logo" alt="Logo" onerror="this.style.display=&apos;none&apos;" />'
     header_text = company.get("ticket_header_text", "") if company else ""
     footer_text = company.get("ticket_footer_text", "") if company else ""
+    company_phone = company.get("phone", "") if company else ""
+    company_address = company.get("address", "") if company else ""
+    qr_code_enabled = company.get("qr_code_enabled", True) if company else True
     currency = ticket.get("currency", "HTG")
     
     # Get branch/succursale info
@@ -440,6 +443,36 @@ async def print_ticket_80mm(
     
     # Ticket code
     ticket_code = ticket.get("ticket_code", ticket_id[:12].upper())
+    verification_code = ticket.get("verification_code", "")
+    
+    # Generate QR code if enabled
+    qr_code_html = ""
+    if qr_code_enabled and verification_code:
+        try:
+            import qrcode
+            import io
+            import base64
+            qr = qrcode.QRCode(version=1, box_size=3, border=1)
+            qr_url = f"https://lottolab.tech/api/verify-ticket/{verification_code}"
+            qr.add_data(qr_url)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+            buffer = io.BytesIO()
+            img.save(buffer, format="PNG")
+            qr_base64 = base64.b64encode(buffer.getvalue()).decode()
+            qr_code_html = f'<div class="qr-section"><img src="data:image/png;base64,{qr_base64}" class="qr-code" alt="QR" /></div>'
+        except Exception as e:
+            qr_code_html = ""
+    
+    # Build company contact info for ticket
+    contact_info_html = ""
+    if company_phone or company_address:
+        contact_parts = []
+        if company_phone:
+            contact_parts.append(f"Tél: {company_phone}")
+        if company_address:
+            contact_parts.append(company_address)
+        contact_info_html = '<div class="contact-info">' + '<br>'.join(contact_parts) + '</div>'
     
     # Build plays rows - format: "12 - 25 - 36    50 HTG"
     plays_rows = ""
@@ -602,6 +635,20 @@ async def print_ticket_80mm(
             margin-top: 6px;
             font-size: 10px;
         }}
+        .contact-info {{
+            text-align: center;
+            font-size: 8px;
+            margin: 4px 0;
+            color: black;
+        }}
+        .qr-section {{
+            text-align: center;
+            margin: 8px 0;
+        }}
+        .qr-code {{
+            width: 25mm;
+            height: 25mm;
+        }}
         @media print {{
             body {{
                 -webkit-print-color-adjust: exact;
@@ -619,6 +666,7 @@ async def print_ticket_80mm(
     <div class="header">
         {logo_html}
         <div class="logo-text">{company_name}</div>
+        {contact_info_html}
         <div class="sub-header">{header_text if header_text else ''}</div>
     </div>
     
@@ -668,6 +716,7 @@ async def print_ticket_80mm(
         <div style="margin-top:4px;font-size:7px;">
             {footer_text if footer_text else ''}
         </div>
+        {qr_code_html}
         <div style="margin-top:6px;font-size:7px;text-align:left;">
             Vérifiez votre ticket avant de vous déplacer.<br>
             Ce ticket doit être payé UNE SEULE FOIS<br>

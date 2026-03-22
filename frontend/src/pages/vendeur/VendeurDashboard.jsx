@@ -11,7 +11,7 @@ import {
 const VendeurDashboard = () => {
   const { token, user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [commissionRate, setCommissionRate] = useState(10);
+  const [commissionRate, setCommissionRate] = useState(0);
   const [stats, setStats] = useState({
     ventesJour: 0,
     ventesMois: 0,
@@ -35,8 +35,8 @@ const VendeurDashboard = () => {
         axios.get(`${API_URL}/api/results?limit=5`, { headers }).catch(() => ({ data: [] }))
       ]);
 
-      // Get commission rate from profile
-      const profileCommission = profileRes.data?.vendeur?.commission_rate || 10;
+      // Get commission rate from profile - Default to 0 if not configured
+      const profileCommission = profileRes.data?.vendeur?.commission_rate || 0;
       setCommissionRate(profileCommission);
 
       const tickets = ticketsRes.data || [];
