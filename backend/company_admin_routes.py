@@ -2072,10 +2072,12 @@ async def get_company_winning_tickets(
     agent_id: Optional[str] = None,
     branch_id: Optional[str] = None,
     status: Optional[str] = None,
+    payment_status: Optional[str] = None,
     limit: int = 500
 ):
     """
     Get winning tickets for the entire company.
+    payment_status: PAID, UNPAID, or None for all
     """
     company_id = current_user.get("company_id")
     
@@ -2098,6 +2100,12 @@ async def get_company_winning_tickets(
     if status:
         query["status"] = status
     
+    # Filter by payment_status
+    if payment_status == "PAID":
+        query["payment_status"] = "PAID"
+    elif payment_status == "UNPAID":
+        query["$or"] = [{"payment_status": "UNPAID"}, {"payment_status": {"$exists": False}}]
+    
     tickets = await db.lottery_transactions.find(
         query,
         {"_id": 0}
@@ -2105,8 +2113,8 @@ async def get_company_winning_tickets(
     
     # Calculate totals
     total_win_amount = sum(t.get("win_amount", 0) for t in tickets)
-    paid_count = sum(1 for t in tickets if t.get("status") == "PAID")
-    pending_count = sum(1 for t in tickets if t.get("status") in ["WINNER", "WON"])
+    paid_count = sum(1 for t in tickets if t.get("payment_status") == "PAID")
+    pending_count = sum(1 for t in tickets if t.get("payment_status") != "PAID")
     
     # Group by branch
     by_branch = {}
@@ -2126,6 +2134,79 @@ async def get_company_winning_tickets(
             "pending_count": pending_count,
             "by_branch": by_branch
         }
+    }
+
+
+# ============================================================================
+# UPDATE WINNING TICKET PAYMENT STATUS - COMPANY ADMIN
+# ============================================================================
+
+class PaymentStatusUpdateRequest(BaseModel):
+    payment_status: str  # "PAID" or "UNPAID"
+
+
+@company_admin_router.put("/winning-tickets/{ticket_id}/payment-status")
+async def update_company_winning_ticket_payment_status(
+    ticket_id: str,
+    data: PaymentStatusUpdateRequest,
+    current_user: dict = Depends(get_company_admin)
+):
+    """
+    Update the payment status of a winning ticket.
+    Only Company Admins can modify this.
+    """
+    company_id = require_admin(current_user)
+    
+    if data.payment_status not in ["PAID", "UNPAID"]:
+        raise HTTPException(status_code=400, detail="payment_status doit être 'PAID' ou 'UNPAID'")
+    
+    # Find the ticket
+    ticket = await db.lottery_transactions.find_one(
+        {"ticket_id": ticket_id, "company_id": company_id},
+        {"_id": 0}
+    )
+    
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket non trouvé")
+    
+    # Verify ticket is a winner
+    if ticket.get("status") not in ["WINNER", "WON", "PAID"]:
+        raise HTTPException(status_code=400, detail="Ce ticket n'est pas un ticket gagnant")
+    
+    now = get_current_timestamp()
+    
+    # Update the payment status
+    await db.lottery_transactions.update_one(
+        {"ticket_id": ticket_id},
+        {"$set": {
+            "payment_status": data.payment_status,
+            "payment_status_updated_by": current_user.get("user_id"),
+            "payment_status_updated_by_name": current_user.get("name"),
+            "payment_status_updated_by_role": "COMPANY_ADMIN",
+            "payment_status_updated_at": now,
+            "updated_at": now
+        }}
+    )
+    
+    # Log activity
+    await log_activity(
+        db=db,
+        action_type="PAYMENT_STATUS_UPDATE",
+        entity_type="ticket",
+        entity_id=ticket_id,
+        performed_by=current_user.get("user_id"),
+        company_id=company_id,
+        metadata={
+            "ticket_code": ticket.get("ticket_code"),
+            "new_status": data.payment_status,
+            "win_amount": ticket.get("win_amount", 0)
+        }
+    )
+    
+    return {
+        "message": f"Statut de paiement mis à jour: {data.payment_status}",
+        "ticket_id": ticket_id,
+        "payment_status": data.payment_status
     }
 
 
@@ -2246,4 +2327,64 @@ async def company_admin_delete_ticket(
         "message": "Ticket supprimé avec succès par l'administrateur",
         "ticket_id": ticket_id,
         "refunded_amount": total_amount
+    }
+
+
+
+# ============================================================================
+# BET LIMITS SETTINGS (Loto4, Loto5)
+# ============================================================================
+
+class BetLimitsUpdate(BaseModel):
+    loto4_max_limit: Optional[float] = 20.0
+    loto5_max_limit: Optional[float] = 250.0
+
+
+@company_admin_router.get("/bet-limits")
+async def get_bet_limits(current_user: dict = Depends(get_company_admin)):
+    """Get the bet limits for Loto4 and Loto5"""
+    company_id = require_admin(current_user)
+    
+    settings = await db.company_settings.find_one(
+        {"company_id": company_id},
+        {"_id": 0}
+    )
+    
+    return {
+        "loto4_max_limit": settings.get("loto4_max_limit", 20.0) if settings else 20.0,
+        "loto5_max_limit": settings.get("loto5_max_limit", 250.0) if settings else 250.0
+    }
+
+
+@company_admin_router.put("/bet-limits")
+async def update_bet_limits(
+    data: BetLimitsUpdate,
+    current_user: dict = Depends(get_company_admin)
+):
+    """Update the bet limits for Loto4 and Loto5"""
+    company_id = require_admin(current_user)
+    
+    now = get_current_timestamp()
+    
+    # Update or create settings
+    await db.company_settings.update_one(
+        {"company_id": company_id},
+        {
+            "$set": {
+                "loto4_max_limit": data.loto4_max_limit,
+                "loto5_max_limit": data.loto5_max_limit,
+                "updated_at": now
+            },
+            "$setOnInsert": {
+                "company_id": company_id,
+                "created_at": now
+            }
+        },
+        upsert=True
+    )
+    
+    return {
+        "message": "Limites de mise mises à jour",
+        "loto4_max_limit": data.loto4_max_limit,
+        "loto5_max_limit": data.loto5_max_limit
     }

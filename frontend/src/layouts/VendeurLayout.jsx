@@ -51,11 +51,10 @@ const VendeurLayout = () => {
     { path: '/vendeur/recherche', icon: Search, label: 'Recherche Fiches' },
     { path: '/vendeur/tirages', icon: Calendar, label: 'Tirages Disponibles' },
     { path: '/vendeur/resultats', icon: Trophy, label: 'Résultats' },
-    { path: '/vendeur/lots-gagnants', icon: Trophy, label: 'Lots Gagnants', highlight: 'amber' },
-    { path: '/vendeur/payer-gagnants', icon: Banknote, label: 'Payer Gagnants', highlight: 'emerald' },
-    { path: '/vendeur/fiche-gagnant', icon: Receipt, label: 'Fiches Payées' },
+    { path: '/vendeur/fiches-gagnants', icon: Trophy, label: 'Fiches Gagnants', highlight: 'amber' },
     { path: '/vendeur/fiches-supprimees', icon: Trash2, label: 'Fiches Supprimées', highlight: 'red' },
     { path: '/vendeur/mes-ventes', icon: BarChart3, label: 'Mes Ventes' },
+    { path: '/vendeur/rapport', icon: BarChart3, label: 'Rapport', highlight: 'blue' },
     { path: '/vendeur/profil', icon: User, label: 'Mon Profil' },
   ];
 

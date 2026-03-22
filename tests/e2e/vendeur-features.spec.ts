@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 
-const BASE_URL = process.env.REACT_APP_BACKEND_URL || 'https://lotto-server.preview.emergentagent.com';
+const BASE_URL = process.env.REACT_APP_BACKEND_URL || 'https://vendeur-checkout.preview.emergentagent.com';
 
 // Vendeur credentials - use agent.marie@lotopam.com
 const VENDEUR_EMAIL = 'agent.marie@lotopam.com';

@@ -897,3 +897,80 @@ async def update_company_settings(
     )
     
     return CompanySettings(**settings)
+
+
+# ============== FICHES JOUEES ENDPOINT ==============
+
+@company_router.get("/admin/fiches-jouees")
+async def get_fiches_jouees(
+    period: str = "today",
+    status: str = "all",
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all played tickets (fiches jouées) for admins/supervisors"""
+    company_id = require_company_access(current_user, [UserRole.COMPANY_ADMIN, UserRole.BRANCH_SUPERVISOR])
+    
+    from datetime import timedelta
+    now = datetime.now(timezone.utc)
+    
+    # Date filter
+    date_filter = {}
+    if period == "today":
+        start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        date_filter = {"created_at": {"$gte": start_of_day.isoformat()}}
+    elif period == "week":
+        start_of_week = now - timedelta(days=7)
+        date_filter = {"created_at": {"$gte": start_of_week.isoformat()}}
+    elif period == "month":
+        start_of_month = now - timedelta(days=30)
+        date_filter = {"created_at": {"$gte": start_of_month.isoformat()}}
+    
+    # Status filter
+    status_filter = {}
+    if status == "active":
+        status_filter = {"deleted": {"$ne": True}, "status": {"$nin": ["VOID", "CANCELLED"]}}
+    elif status == "deleted":
+        status_filter = {"$or": [{"deleted": True}, {"status": {"$in": ["VOID", "CANCELLED"]}}]}
+    elif status == "winner":
+        status_filter = {"status": {"$in": ["WINNER", "WON", "PAID"]}}
+    
+    # Combine filters
+    query = {"company_id": company_id, **date_filter, **status_filter}
+    
+    # Fetch from lottery_transactions
+    tickets = await db.lottery_transactions.find(query, {"_id": 0}).sort("created_at", -1).limit(200).to_list(200)
+    
+    # Calculate stats
+    all_query = {"company_id": company_id, **date_filter}
+    all_tickets = await db.lottery_transactions.find(all_query, {"_id": 0, "status": 1, "deleted": 1}).to_list(1000)
+    stats = {
+        "total": len(all_tickets),
+        "active": len([t for t in all_tickets if not t.get("deleted") and t.get("status") not in ["VOID", "CANCELLED"]]),
+        "deleted": len([t for t in all_tickets if t.get("deleted") or t.get("status") in ["VOID", "CANCELLED"]]),
+        "winners": len([t for t in all_tickets if t.get("status") in ["WINNER", "WON", "PAID"]])
+    }
+    
+    return {"tickets": tickets, "stats": stats}
+
+@company_router.get("/admin/fiches-jouees/search")
+async def search_fiche_jouee(
+    code: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Search for a specific ticket by code"""
+    company_id = require_company_access(current_user, [UserRole.COMPANY_ADMIN, UserRole.BRANCH_SUPERVISOR])
+    
+    ticket = await db.lottery_transactions.find_one({
+        "company_id": company_id,
+        "$or": [
+            {"ticket_code": code},
+            {"ticket_code": {"$regex": code, "$options": "i"}},
+            {"ticket_id": {"$regex": code, "$options": "i"}}
+        ]
+    }, {"_id": 0})
+    
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket non trouvé")
+    
+    return ticket
+

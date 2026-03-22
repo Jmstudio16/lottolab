@@ -1,144 +1,160 @@
 <analysis>**original_problem_statement:**
-The user's goal is to get a fully functional, production-ready lottery management system deployed and running on their own infrastructure. The project began with building core features like user management, ticket sales, and winner calculations. The scope has since expanded to include advanced functionalities, a professional landing page, and, most critically, resolving persistent deployment failures on the user's custom domains (, ). The user has expressed significant frustration with these deployment issues, leading to a final request to package the entire project into a single zip file for manual deployment on a Hostinger VPS.
+The user originally wanted to export the application to a Hostinger VPS. However, they faced massive deployment and DNS issues. The user then issued a Mega-Prompt demanding to **abandon Hostinger/VPS entirely and host 100% natively on the Emergent platform** using their custom domain. 
+After stabilizing the deployment on Emergent, the user provided a massive list of 14+ feature modifications primarily focused on the Seller (Vendeur) UX, ticket printing, and game rules.
 
-**Consolidated PRODUCT REQUIREMENTS (latest from user):**
-*   **P0 - Successful Deployment on User's VPS:** The user must be able to deploy and run the entire application on their Hostinger VPS. This is the absolute top priority. The login must work, and all features must be functional.
-*   **P0 - Project Delivery:** Provide the complete source code (frontend and backend) in a downloadable zip file.
-*   **P1 - Full System Functionality:** Ensure all existing features, from admin dashboards to vendor ticket sales, are 100% operational post-deployment.
-*   **P2 - Finalize Pending Features:**
-    1.  **Logo on Printed Tickets:** Implement the final step to embed the uploaded company logo onto the physical ticket receipt.
-*   **P3 - SEO & Discoverability:** The deployed site must be optimized for search engines so it can be indexed by Google.
+**PRODUCT REQUIREMENTS (Latest Feature Requests):**
+1. **Automated Mariage Gratis:** System automatically generates free Mariage numbers based on cart total (50 HTG = 1, 150 HTG = 2, 200 HTG = 2, 250 HTG = 3, 300 HTG = 3). *[Implemented]*
+2. **UX Vendeur (No Scroll):** Restructure  so the number input form is immediately visible without scrolling. *[Implemented]*
+3. **Lotto 4 & 5 Options:** Lotto 4 needs 3 options (Option 1, 2, 3) with 2 input boxes. Lotto 5 needs 2 options (Extra 1 [1+2], Extra 2 [1+3]) with 2 input boxes. *[Implemented]*
+4. **Ticket Printing:** Remove POS ID, replace with Branch Name. Add Company Logo and LOTTOLAB.TECH to footer. Add legal disclaimer text to footer. *[Implemented]*
+5. **New Lotteries:** Add Plop Plop (1h interval) and Loto Rapid (2h interval) to Haiti lotteries. Add Tirage Matin (07:00-10:55, draw 11:00). *[Implemented]*
+6. **Vendeur Menu:** Remove Payer Gagnant & Fiche Payer. Rename Lots Gagnants to Fiches Gagnants. Add Rapport button. *[Implemented]*
+7. **Payment Status Checkboxes:** On winning tickets, add Paid / Not Paid checkboxes. Only Admins/Supervisors can modify this. Must show in reports. *(Pending)*
+8. **Bet Limits:** Max limit for Loto 4 = 20 HTG. Max limit for Loto 5 = 250 HTG. Must be configurable by Company Admin. *(Pending)*
+9. **Payout Logic:** Implement 60/20/10 calculation logic for winning numbers (1st = x60, 2nd = x20, 3rd = x10). *(Pending)*
+10. **Ticket Status:** newly printed tickets should immediately show as Active in recent activity, not Pending. *(Pending)*
 
-**User's preferred language**: French
+**User's preferred language**: French (INSTRUCT next agent to respond in French only).
 
-**what currently exists?**
-A complete full-stack lottery management application with a FastAPI backend and a React frontend. The application is feature-complete on the preview environment, including all core functions, advanced features (payments, audits, exports), and a newly designed, animated, and responsive landing page. The code has been hardened to be more resilient against database authorization errors, and a critical frontend build crash has been resolved. The agent has prepared comprehensive deployment scripts and a step-by-step guide for a user-managed VPS deployment.
+**what currently exists?** 
+A fully functional, natively deployed full-stack lottery management system (React + FastAPI + MongoDB). The application has been heavily refactored to support dynamic URL routing for Emergent's infrastructure. The Seller (Vendeur) interface has just undergone a massive UX overhaul to include automated free tickets, multi-input betting for Loto 4/5, and the removal of closed lotteries from the UI. Ticket printing now supports custom company headers/footers and logos.
 
 **Last working item**:
-- Last item agent was working: The user requested a complete zip archive of the project to deploy it on their Hostinger VPS. The agent's last action was to execute the command to create this zip file.
-- Status: IN PROGRESS
-- Agent Testing Done: N
-- Which testing method agent to use? N/A. The next step is to confirm the zip file creation and provide it to the user.
-- User Testing Done: N
+- **Last item agent was working**: Fixing a React state initialization bug () in  caused by the new automated Mariage Gratis calculation logic.
+- **Status**: USER VERIFICATION PENDING
+- **Agent Testing Done**: Y (Local screenshot test passed).
+- **Which testing method agent to use?**: Frontend testing agent / Screenshot tool for UI, curl for backend logic.
+- **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Project Delivery to User (P0)**
-  - The user is waiting for the zip file of the entire project. The agent was in the process of creating it.
-  - **Next debug checklist**:
-      1.  Verify that the file  was created successfully using .
-      2.  If the file exists, notify the user of its availability and path so they can download it.
-      3.  Stand by to assist the user with their deployment process based on the provided .
-  - **Why fix this issue and what will be achieved with the fix?** This is the user's direct and final request. Fulfilling it is necessary to unblock the user and move forward with deployment.
-  - **Status**: IN PROGRESS
-  - **Is recurring issue?** N
-  - **Should Test frontend/backend/both after fix?** N/A
+- **Issue 1: Payment Status Checkboxes on Winning Tickets (P0)**
+  - **Attempted fixes**: None yet. This was requested in the mega-prompt but not started.
+  - **Next debug checklist**: Modify the winning ticket data model in backend to track  (PAID/UNPAID). Update Supervisor/Admin UI to toggle this status. Update Reports UI to filter/show this status.
+  - **Why fix this issue and what will be achieved with the fix?**: Core business requirement to track which agents have physically handed out cash to winners.
+  - **Status**: NOT STARTED
+  - **Is recurring issue?**: N
+  - **Should Test frontend/backend/both after fix?**: Both.
+  
+- **Issue 2: Maximum Bet Limits Configuration (P1)**
+  - **Attempted fixes**: None.
+  - **Next debug checklist**: Add fields to  or  for Loto 4 max limit (default 20 HTG) and Loto 5 max limit (default 250 HTG). Enforce these limits in  and the backend .
+  - **Why fix this issue?**: Protects companies from massive liability on high-multiplier games.
+  - **Status**: NOT STARTED
+  - **Is recurring issue?**: N
+  - **Should Test frontend/backend/both after fix?**: Both.
+
+- **Issue 3: Timezone Sync / Printed Ticket Time Mismatch (P1)**
+  - **Attempted fixes**: None.
+  - **Next debug checklist**: User reported the time on the printed ticket doesn't match the seller's page time. Check  timezone handling vs frontend browser timezone. Ensure  (or company timezone) is strictly applied.
+  - **Status**: NOT STARTED
+  - **Is recurring issue?**: N
+  - **Should Test frontend/backend/both after fix?**: Backend (check HTML output of print route).
 
 **In progress Task List**:
-- None.
+- **Task 1: Complete Fiches Jouées page for Supervisor/Admin (P0)**
+  - **Where to resume**: The file  was created and routed, and a backend endpoint was stubbed, but the frontend UI implementation needs to be verified/completed to show all details of tickets played by sellers.
+  - **What will be achieved with this?**: Allows admins to audit exactly what balls/amounts were played.
+  - **Status**: IN PROGRESS
+  - **Should Test frontend/backend/both after fix?**: Frontend.
 
 **Upcoming and Future Tasks**
-**Upcoming Tasks:**
-*   **P0: Guide User Through VPS Deployment:** The user will need assistance deploying the zip file on their Hostinger VPS. The next agent must be prepared to walk them through the instructions in , covering server setup (Nginx, Python, MongoDB), environment configuration, and starting the services.
-*   **P1: Post-Deployment Troubleshooting:** The user has historically struggled with deployment. The agent must be ready to debug potential issues on the user's live server, such as CORS errors, incorrect environment variables, or Nginx misconfigurations, by analyzing user-provided logs.
-
-**Future Tasks:**
-*   **P2: Integrate Logo onto Printed Ticket**: The UI for uploading a logo exists, but the backend logic to embed it onto the printed ticket receipt in  is still pending.
-*   **P3:** Add full multi-language support (Spanish, English).
-*   **P3:** Develop an offline mode for the seller POS or a dedicated APK for POS devices.
+- **Upcoming Tasks:**
+  - P0: Implement 60/20/10 payout calculation logic when results are entered (1st prize = x60, 2nd = x20, 3rd = x10).
+  - P1: Change default ticket status to Active (instead of Pending) immediately after printing so it shows correctly in Activité Récente.
+- **Future Tasks:**
+  - P2: Full multi-language support (Spanish, English).
+  - P3: Offline mode for the seller POS or a dedicated APK for POS devices.
 
 **Completed work in this session**
-- **Critical Build Crash Fix:** Resolved a frontend compilation error () by patching the internal Babel plugin at .
-- **New Landing Page:** Designed and built a new, professional, and fully responsive landing page () with  animations (falling lottery balls), updated pricing, user-provided logos, and a prominent Popular badge.
-- **Mobile Responsiveness:** Ensured the entire application, including all admin dashboards and the landing page, is mobile-friendly.
-- **New Feature - WhatsApp Button:** Added a floating WhatsApp contact button that appears on all pages.
-- **Backend Stability:** Hardened the backend scheduler () and health check () to gracefully handle  (authorization errors) without crashing the server.
-- **SEO Implementation:** Created , , and added SEO-optimized meta tags and JSON-LD structured data to .
-- **Deployment Preparation:** Created a complete set of deployment resources, including a guide (), Nginx config, and a systemd service file, to facilitate user-managed deployment on a VPS.
+- Switched to Native Emergent Deployment (Fixed  blocking , refactored  and  to use ).
+- Modified  in  (Added Loto 4 Options 1-3, Loto 5 Extra 1 & 2).
+- Updated Seller UI to dynamically show 2 input boxes for Loto 4 and Loto 5.
+- Implemented Automated Mariage Gratis logic based on cart total in the frontend.
+- Added Plop Plop and Loto Rapid lotteries to the DB. Added Tirage Matin to Haiti lotteries.
+- Overhauled  (Replaced POS ID with Branch Name, added Company text/logo, added LOTTOLAB.TECH watermark and legal disclaimers).
+- Cleaned up Seller Menu (Removed Payer Gagnant, Renamed Lots Gagnants, Added Rapport).
+- Restricted WhatsApp button to  only.
+- Hid closed lotteries from the Seller UI.
 
 **Earlier issues found/mentioned but not fixed**
-- **Logo on Printed Ticket:** The functionality to upload a company logo was implemented, but the final step of modifying the print route () to include the logo on the physical ticket was not completed.
+- *None specific from this session, all identified issues are logged in the Pending Issues list.*
 
 **Known issue recurrence from previous fork**
-- **Issue recurrence in previous fork**: Persistent login and deployment failures on the user's custom domains.
-- **Recurrence count**: High
-- **Status**: BLOCKED. The issue is now blocked pending the user's attempt to deploy the provided project archive on their own infrastructure. The agent has provided all necessary files and guidance.
+- **Issue recurrence in previous fork**: Frontend calling  or .
+- **Recurrence count**: 3
+- **Status**: RESOLVED (Fixed by prioritizing  in  over environment variables for production builds).
+- *Note:* Do NOT hardcode  or use absolute URLs in frontend . The app relies on  detecting the current origin to route API calls to .
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Frontend**: React, , , Tailwind CSS, .
-- **Backend**: FastAPI, MongoDB, Pydantic, .
-- **Deployment Strategy**: Shifted from an Emergent-managed deployment to a user-managed VPS deployment (Hostinger), requiring guidance on Nginx, systemd, and environment configuration.
-- **Build Tooling**: Debugged and patched a crashing Babel plugin to ensure stable frontend compilation.
+- **Frontend**: React, Tailwind CSS. Heavy state management in .
+- **Backend**: FastAPI, MongoDB. 
+- **Thermal Printing**: Handled server-side.  returns raw HTML/CSS styled specifically for 80mm POS receipt printers.
+- **Dynamic Routing**: The app uses  to determine the backend URL to support Emergent's single-domain architecture.
 
 **key DB schema**
-- No new changes were made to the database schema in this session.
+- : Source of truth for lotteries (Now contains 236 lotteries).
+- : View collection used by the API.
 
 **changes in tech stack**
-- No fundamental changes.  was introduced on the frontend for animations.
+- None.
 
 **All files of reference**
-- : The final deliverable for the user (pending verification).
-- : The most critical document for the next agent to guide the user.
-- : The file for the new, highly customized home page.
-- : The file that was patched to fix the critical build error.
-- : Contains hardened code to prevent crashes from DB errors.
+- : Modified heavily for new bet types, UI layout, and automated Mariage Gratis.
+- : Modified heavily for visual ticket changes.
+-  & : Critical for API routing on Emergent.
+- : Modified to allow  files to be deployed.
+
+**Areas that need refactoring**:
+-  is getting very large. Some global lottery endpoints could be moved to dedicated routers.
+-  is over 700 lines long and handles very complex cart, validation, and auto-generation logic. It could benefit from custom hooks (e.g., ).
 
 **key api endpoints**
-- : This endpoint was improved to provide a more accurate check of database connectivity and permissions.
+- : Generates the HTML for the physical receipt.
+- : Fetches the catalog of all available lotteries.
 
 **Critical Info for New Agent**
-- **User Frustration is Extremely High:** The user has been stuck on deployment issues for a long time. Your top priority is to be patient, clear, and focused on helping them achieve a successful deployment on their Hostinger VPS.
-- **Shift in Role from Coder to Guide:** The immediate task is not to write new code, but to deliver the zipped project and then guide the user through the deployment process using the .
-- **Anticipate Remote Debugging:** The user will almost certainly encounter problems on their VPS. Be prepared to diagnose issues related to environment variables, Nginx, firewalls, and MongoDB permissions by asking for logs and command outputs.
-- **Do Not Start New Features:** Do not work on any other tasks (like the printed ticket logo) until the user confirms their system is successfully deployed and running.
+- **Deployment Architecture:** The user has abandoned Hostinger VPS. The app is now hosted **100% natively on Emergent**. Do not configure external APIs or  subdomains. The frontend expects the backend to be at .
+- **Business Logic Context:** In Haitian lottery rules (Borlette), a Mariage Gratis is a free 2-number combination given to players who spend above certain thresholds. The system now generates these numbers automatically in the frontend cart.
+- **User Tone:** The user provides massive, multi-point instructions (mega-prompts). Address them systematically and confirm execution of each point.
 
 **documents and test reports created in this job**
+-  (Updated with latest feature lists)
 - 
-- 
-- 
-- 
-- 
-- 
--  (Existence to be confirmed)
 
 **Last 10 User Messages and any pending HUMAN messages**
-The user's recent messages show a clear progression of requests:
-1.  Initially reported that deployment doesn't work and they can't log in.
-2.  Asked for the system to be made fully functional on .
-3.  Reported a frontend build crash, which the agent fixed.
-4.  Asked for a final production deployment.
-5.  Asked why the deployed system isn't visible on search engines.
-6.  Asked for major UI/UX improvements to the landing page, including new pricing and a new logo.
-7.  Requested mobile responsiveness and a WhatsApp button.
-8.  Asked for a final audit of what's missing.
-9.  Stated they will use a Hostinger VPS with MongoDB 4 and asked for guidance.
-10. **Final request:** To receive the entire project in a zip file to deploy it themselves.
+1. (Mega-Prompt) Abandon Hostinger, deploy 100% natively on Emergent.
+2. Login doesn't work on preview. (Agent fixed undefined API URL).
+3. Want to use .
+4. Deployed to  but login fails. (Agent fixed  blocking ).
+5. Still fails. (Agent fixed React build prioritizing old env vars over dynamic host).
+6. (Mega-Prompt) Massive 14-point feature request list for Seller UI, automated free tickets, new lotteries, and ticket printing.
+7. User confirmed priority order for the 14 points (Mariage gratis, UX, remove buttons, add reports).
+8. **Pending Human Action:** The agent just finished implementing the 14 points and fixing a subsequent React hook bug. The user needs to verify the new Vendeur UI and the updated printed ticket.
 
 **Project Health Check:**
-- **Broken**: The user's self-managed deployment is non-existent and therefore broken. The application is fully functional in the isolated preview environment.
-- **Mocked**:
-  - The **Logo on Printed Ticket** feature remains incomplete. The backend logic to add the logo to the printout is missing.
+- **Broken**: Nothing currently known to be broken (Local tests passed after last fix).
+- **Mocked**: The Fiches Jouées page might lack full data integration.
 
 **3rd Party Integrations**
-- : For Excel exports.
-- : For PDF exports.
-- : For background tasks.
-- : For frontend animations.
+- No new external APIs added. 
 
 **Testing status**
-- Testing agent used after significant changes: NO
-- Troubleshoot agent used after agent stuck in loop: NO
-- Test files created: None. All testing was manual via  and visual inspection.
-- Known regressions: None.
+- Testing agent used after significant changes: YES (Iteration 25 used for initial deployment fixes).
+- Troubleshoot agent used after agent stuck in loop: YES (Deployment agent used twice).
+- Test files created: None.
+- Known regressions: None currently.
 
 **Credentials to test flow:**
-- **Super Admin**:  / 
-- **Super Admin (new)**:  / 
-- **Company Admin**:  / 
-- **Supervisor**:  / 
-- **Vendeur (Seller)**:  / 
+- Super Admin:  / 
+- Company Admin:  / 
+- Supervisor:  / 
+- Vendeur:  / 
 
 **What agent forgot to execute**
-- The agent did not complete the Logo on Printed Ticket feature. This was a pending requirement from the previous session that was deprioritized due to the persistent deployment crisis.</analysis>
+- The agent implemented the *frontend* UI for Loto 4 and Loto 5 max limits (point 8 from user prompt) but did not explicitly add the backend validation logic or the Company Admin configuration fields for these specific 20 HTG / 250 HTG limits.
+- The 60/20/10 payout calculation logic (point 16) was acknowledged but not implemented.
+- Ticket status defaulting to Active instead of Pending (point 17) was acknowledged but not implemented.
+- Payment Status checkboxes for winning tickets (point 6/7) was acknowledged but not implemented.</analysis>

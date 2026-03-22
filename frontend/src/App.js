@@ -74,11 +74,11 @@ import {
 } from '@/pages/vendeur';
 import VendeurLotsGagnants from '@/pages/vendeur/VendeurLotsGagnants';
 import VendeurFichesSupprimees from '@/pages/vendeur/VendeurFichesSupprimees';
-import VendeurPayerGagnants from '@/pages/vendeur/VendeurPayerGagnants';
-import VendeurFicheGagnant from '@/pages/vendeur/VendeurFicheGagnant';
+import VendeurRapportPage from '@/pages/vendeur/VendeurRapportPage';
 
 // Super Admin Results Page
 import SuperAdminResultsPage from '@/pages/super_admin/SuperAdminResultsPage';
+import FichesJoueesPage from '@/pages/FichesJoueesPage';
 
 // LOTO PAM Public Platform Pages
 import LotoPamHomePage from '@/pages/lotopam/LotoPamHomePage';
@@ -600,6 +600,7 @@ const SaaSApp = () => {
                   <Route path="dashboard" element={<SupervisorDashboardPage />} />
                   <Route path="agents" element={<SupervisorAgentsPage />} />
                   <Route path="tickets" element={<SupervisorTicketsPage />} />
+                  <Route path="fiches-jouees" element={<FichesJoueesPage />} />
                   <Route path="reports" element={<SupervisorReportsPage />} />
                   <Route path="results" element={<SupervisorResultsPage />} />
                   <Route path="lottery-schedules" element={<SupervisorLotterySchedulesPage />} />
@@ -626,10 +627,9 @@ const SaaSApp = () => {
                   <Route path="resultats" element={<VendeurResultats />} />
                   <Route path="mes-ventes" element={<VendeurMesVentes />} />
                   <Route path="profil" element={<VendeurProfil />} />
-                  <Route path="lots-gagnants" element={<VendeurLotsGagnants />} />
+                  <Route path="fiches-gagnants" element={<VendeurLotsGagnants />} />
                   <Route path="fiches-supprimees" element={<VendeurFichesSupprimees />} />
-                  <Route path="payer-gagnants" element={<VendeurPayerGagnants />} />
-                  <Route path="fiche-gagnant" element={<VendeurFicheGagnant />} />
+                  <Route path="rapport" element={<VendeurRapportPage />} />
                   <Route index element={<Navigate to="/vendeur/dashboard" replace />} />
                 </Route>
 

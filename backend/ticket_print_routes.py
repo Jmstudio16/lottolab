@@ -369,26 +369,50 @@ async def print_ticket_80mm(
     )
     
     company_name = company.get("name", "LOTO PAM") if company else "LOTO PAM"
+    header_text = company.get("ticket_header_text", "") if company else ""
+    footer_text = company.get("ticket_footer_text", "") if company else ""
     currency = ticket.get("currency", "HTG")
+    
+    # Get branch info
+    branch = await db.branches.find_one(
+        {"branch_id": ticket.get("branch_id")},
+        {"_id": 0, "name": 1}
+    )
+    branch_name = branch.get("name", "N/A") if branch else "N/A"
     
     # Get agent info
     agent = await db.users.find_one(
         {"user_id": ticket.get("agent_id")},
-        {"_id": 0, "name": 1, "full_name": 1, "pos_serial_number": 1}
+        {"_id": 0, "name": 1, "full_name": 1, "pos_serial_number": 1, "branch_id": 1}
     )
     agent_name = ticket.get("agent_name") or (agent.get("name") if agent else "") or (agent.get("full_name") if agent else "") or "N/A"
-    pos_id = (agent.get("pos_serial_number") if agent else None) or "N/A"
     
-    # Format date and time
+    # If branch_name not found from ticket, try to get from agent
+    if branch_name == "N/A" and agent and agent.get("branch_id"):
+        agent_branch = await db.branches.find_one(
+            {"branch_id": agent.get("branch_id")},
+            {"_id": 0, "name": 1}
+        )
+        branch_name = agent_branch.get("name", "N/A") if agent_branch else "N/A"
+    
+    # Format date and time in company timezone (Haiti by default)
     created_at = ticket.get("created_at", "")
     formatted_date = "N/A"
     formatted_time = "N/A"
     if created_at:
         try:
+            import pytz
             dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-            formatted_date = dt.strftime("%d/%m/%Y")
-            formatted_time = dt.strftime("%I:%M %p")
-        except:
+            # Convert to Haiti timezone (America/Port-au-Prince)
+            company_tz_str = company.get("timezone", "America/Port-au-Prince") if company else "America/Port-au-Prince"
+            try:
+                target_tz = pytz.timezone(company_tz_str)
+            except:
+                target_tz = pytz.timezone("America/Port-au-Prince")
+            dt_local = dt.astimezone(target_tz)
+            formatted_date = dt_local.strftime("%d/%m/%Y")
+            formatted_time = dt_local.strftime("%I:%M %p")
+        except Exception as e:
             formatted_date = created_at[:10] if len(created_at) >= 10 else created_at
             formatted_time = created_at[11:16] if len(created_at) >= 16 else ""
     
@@ -570,9 +594,8 @@ async def print_ticket_80mm(
     <div class="separator">================================</div>
     
     <div class="header">
-        <div class="logo-text">LOTO PAM</div>
-        <div class="sub-header">© JM STUDIO</div>
-        <div class="sub-header">lotopam.com</div>
+        <div class="logo-text">{company_name}</div>
+        <div class="sub-header">{header_text if header_text else ''}</div>
     </div>
     
     <div class="separator">================================</div>
@@ -582,8 +605,8 @@ async def print_ticket_80mm(
         <span class="info-value">{agent_name.upper()}</span>
     </div>
     <div class="info-line">
-        <span class="info-label">POS ID  :</span>
-        <span class="info-value">{pos_id}</span>
+        <span class="info-label">SUCCURSALE:</span>
+        <span class="info-value">{branch_name}</span>
     </div>
     <div class="info-line">
         <span class="info-label">TICKET  :</span>
@@ -611,15 +634,25 @@ async def print_ticket_80mm(
     </div>
     
     <div class="status-section">
-        <div class="status-badge">STATUT : VALIDÉ</div>
+        <div class="status-badge">STATUT : ACTIF</div>
     </div>
     
     <div class="separator-dashed"></div>
     
     <div class="footer">
-        <div>Vérifiez vos résultats sur :</div>
-        <div class="footer-url">www.lotopam.com</div>
-        <div class="thank-you">MERCI DE JOUER AVEC<br>LOTO PAM</div>
+        <div class="thank-you">MERCI DE JOUER AVEC<br>{company_name}</div>
+        <div style="margin-top:4px;font-size:7px;">
+            {footer_text if footer_text else ''}
+        </div>
+        <div style="margin-top:6px;font-size:7px;text-align:left;">
+            Vérifiez votre ticket avant de partir.<br>
+            Ce ticket doit être payé une seule fois<br>
+            dans les 90 jours. Le premier qui<br>
+            présente ce ticket est bénéficiaire.<br>
+            Si le numéro est effacé, on ne paie pas.<br>
+            Protégez le ticket de la chaleur et humidité.
+        </div>
+        <div class="footer-url" style="margin-top:6px;font-weight:bold;">LOTTOLAB.TECH</div>
     </div>
     
     <div class="separator">================================</div>

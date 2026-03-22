@@ -4,27 +4,33 @@ import { useAuth } from '@/api/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { 
-  Trophy, RefreshCw, Search, DollarSign, CheckCircle, Clock, Eye, Printer, Building2, Download
+  Trophy, RefreshCw, Search, DollarSign, CheckCircle, Clock, Eye, Printer, Building2, Download, Check, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 
 export const CompanyLotsGagnants = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState([]);
   const [summary, setSummary] = useState({ total_count: 0, total_win_amount: 0, paid_count: 0, pending_count: 0, by_branch: {} });
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterPaymentStatus, setFilterPaymentStatus] = useState('all');
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [updatingPayment, setUpdatingPayment] = useState(null);
 
   const headers = { Authorization: `Bearer ${token}` };
 
   const fetchWinningTickets = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_URL}/api/company/winning-tickets`, { headers });
+      let url = `${API_URL}/api/company/winning-tickets`;
+      if (filterPaymentStatus !== 'all') {
+        url += `?payment_status=${filterPaymentStatus}`;
+      }
+      const res = await axios.get(url, { headers });
       setTickets(res.data.tickets || []);
       setSummary(res.data.summary || { total_count: 0, total_win_amount: 0 });
     } catch (error) {
@@ -36,7 +42,7 @@ export const CompanyLotsGagnants = () => {
 
   useEffect(() => {
     fetchWinningTickets();
-  }, [token]);
+  }, [token, filterPaymentStatus]);
 
   const filteredTickets = tickets.filter(t => {
     const matchesSearch = 
@@ -58,6 +64,32 @@ export const CompanyLotsGagnants = () => {
     toast.success('Téléchargement du fichier Excel en cours...');
   };
 
+  const updatePaymentStatus = async (ticketId, newStatus) => {
+    setUpdatingPayment(ticketId);
+    try {
+      await axios.put(
+        `${API_URL}/api/company/winning-tickets/${ticketId}/payment-status`,
+        { payment_status: newStatus },
+        { headers }
+      );
+      toast.success(`Statut mis à jour: ${newStatus === 'PAID' ? 'Payé' : 'Non Payé'}`);
+      // Update local state
+      setTickets(prev => prev.map(t => 
+        t.ticket_id === ticketId ? { ...t, payment_status: newStatus } : t
+      ));
+      // Update summary
+      if (newStatus === 'PAID') {
+        setSummary(prev => ({ ...prev, paid_count: prev.paid_count + 1, pending_count: prev.pending_count - 1 }));
+      } else {
+        setSummary(prev => ({ ...prev, paid_count: prev.paid_count - 1, pending_count: prev.pending_count + 1 }));
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la mise à jour');
+    } finally {
+      setUpdatingPayment(null);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6" data-testid="company-lots-gagnants">
       {/* Header */}
@@ -65,7 +97,7 @@ export const CompanyLotsGagnants = () => {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-3">
             <Trophy className="w-6 h-6 sm:w-7 sm:h-7 text-amber-400" />
-            Lots Gagnants
+            Fiches Gagnants
           </h1>
           <p className="text-sm text-slate-400">Tous les tickets gagnants de votre entreprise</p>
         </div>
@@ -96,7 +128,7 @@ export const CompanyLotsGagnants = () => {
           <p className="text-2xl font-bold text-blue-400">{summary.paid_count}</p>
         </div>
         <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
-          <p className="text-sm text-purple-400">En Attente</p>
+          <p className="text-sm text-purple-400">Non Payés</p>
           <p className="text-2xl font-bold text-purple-400">{summary.pending_count}</p>
         </div>
       </div>
@@ -112,27 +144,32 @@ export const CompanyLotsGagnants = () => {
             className="pl-10 bg-slate-800 border-slate-700 text-white"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
-            onClick={() => setFilterStatus('all')}
-            variant={filterStatus === 'all' ? 'default' : 'outline'}
-            className={filterStatus === 'all' ? 'bg-amber-600' : 'border-slate-700'}
+            onClick={() => setFilterPaymentStatus('all')}
+            variant={filterPaymentStatus === 'all' ? 'default' : 'outline'}
+            className={filterPaymentStatus === 'all' ? 'bg-amber-600' : 'border-slate-700'}
+            size="sm"
           >
             Tous
           </Button>
           <Button
-            onClick={() => setFilterStatus('paid')}
-            variant={filterStatus === 'paid' ? 'default' : 'outline'}
-            className={filterStatus === 'paid' ? 'bg-emerald-600' : 'border-slate-700'}
+            onClick={() => setFilterPaymentStatus('PAID')}
+            variant={filterPaymentStatus === 'PAID' ? 'default' : 'outline'}
+            className={filterPaymentStatus === 'PAID' ? 'bg-emerald-600' : 'border-slate-700'}
+            size="sm"
           >
+            <Check className="w-3 h-3 mr-1" />
             Payés
           </Button>
           <Button
-            onClick={() => setFilterStatus('pending')}
-            variant={filterStatus === 'pending' ? 'default' : 'outline'}
-            className={filterStatus === 'pending' ? 'bg-purple-600' : 'border-slate-700'}
+            onClick={() => setFilterPaymentStatus('UNPAID')}
+            variant={filterPaymentStatus === 'UNPAID' ? 'default' : 'outline'}
+            className={filterPaymentStatus === 'UNPAID' ? 'bg-red-600' : 'border-slate-700'}
+            size="sm"
           >
-            En Attente
+            <X className="w-3 h-3 mr-1" />
+            Non Payés
           </Button>
         </div>
       </div>
@@ -158,7 +195,7 @@ export const CompanyLotsGagnants = () => {
                   <th className="px-4 py-3 text-left text-xs font-bold text-slate-400">Succursale</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-slate-400">Agent</th>
                   <th className="px-4 py-3 text-center text-xs font-bold text-emerald-400">Gains</th>
-                  <th className="px-4 py-3 text-center text-xs font-bold text-slate-400">Statut</th>
+                  <th className="px-4 py-3 text-center text-xs font-bold text-slate-400">Paiement</th>
                   <th className="px-4 py-3 text-right text-xs font-bold text-slate-400">Actions</th>
                 </tr>
               </thead>
@@ -182,13 +219,34 @@ export const CompanyLotsGagnants = () => {
                       <span className="font-bold text-emerald-400">{ticket.win_amount?.toLocaleString()} HTG</span>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        ticket.status === 'PAID' 
-                          ? 'bg-emerald-500/20 text-emerald-400'
-                          : 'bg-purple-500/20 text-purple-400'
-                      }`}>
-                        {ticket.status === 'PAID' ? 'Payé' : 'En Attente'}
-                      </span>
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => updatePaymentStatus(ticket.ticket_id, 'PAID')}
+                          disabled={updatingPayment === ticket.ticket_id}
+                          className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all ${
+                            ticket.payment_status === 'PAID'
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-slate-700 text-slate-400 hover:bg-emerald-500/30 hover:text-emerald-400'
+                          }`}
+                          data-testid={`payment-paid-${ticket.ticket_id}`}
+                        >
+                          <Check className="w-3 h-3" />
+                          Payé
+                        </button>
+                        <button
+                          onClick={() => updatePaymentStatus(ticket.ticket_id, 'UNPAID')}
+                          disabled={updatingPayment === ticket.ticket_id}
+                          className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all ${
+                            ticket.payment_status !== 'PAID'
+                              ? 'bg-red-500 text-white'
+                              : 'bg-slate-700 text-slate-400 hover:bg-red-500/30 hover:text-red-400'
+                          }`}
+                          data-testid={`payment-unpaid-${ticket.ticket_id}`}
+                        >
+                          <X className="w-3 h-3" />
+                          Non Payé
+                        </button>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
@@ -237,6 +295,43 @@ export const CompanyLotsGagnants = () => {
                 <div className="p-3 bg-emerald-500/20 rounded-lg">
                   <p className="text-sm text-emerald-400">Gains</p>
                   <p className="text-xl font-bold text-emerald-400">{selectedTicket.win_amount?.toLocaleString()} HTG</p>
+                </div>
+                <div className="p-3 bg-slate-700/50 rounded-lg">
+                  <p className="text-sm text-slate-400">Agent</p>
+                  <p className="text-white">{selectedTicket.agent_name || selectedTicket.agent_id}</p>
+                </div>
+                <div className="p-3 bg-slate-700/50 rounded-lg">
+                  <p className="text-sm text-slate-400">Statut Paiement</p>
+                  <p className={selectedTicket.payment_status === 'PAID' ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+                    {selectedTicket.payment_status === 'PAID' ? 'Payé' : 'Non Payé'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Payment Status Update in Modal */}
+              <div className="p-4 bg-slate-700/50 rounded-lg">
+                <p className="text-sm text-slate-400 mb-2">Modifier le statut de paiement</p>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      updatePaymentStatus(selectedTicket.ticket_id, 'PAID');
+                      setSelectedTicket(prev => ({ ...prev, payment_status: 'PAID' }));
+                    }}
+                    className={selectedTicket.payment_status === 'PAID' ? 'bg-emerald-600' : 'bg-slate-600'}
+                    size="sm"
+                  >
+                    <Check className="w-4 h-4 mr-1" /> Payé
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      updatePaymentStatus(selectedTicket.ticket_id, 'UNPAID');
+                      setSelectedTicket(prev => ({ ...prev, payment_status: 'UNPAID' }));
+                    }}
+                    className={selectedTicket.payment_status !== 'PAID' ? 'bg-red-600' : 'bg-slate-600'}
+                    size="sm"
+                  >
+                    <X className="w-4 h-4 mr-1" /> Non Payé
+                  </Button>
                 </div>
               </div>
             </div>

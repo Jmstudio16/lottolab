@@ -385,20 +385,53 @@ async def sell_lottery_ticket(
     # Get company info for timezone
     company_info = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
     
+    # Get company-specific bet limits
+    company_settings = await db.company_settings.find_one({"company_id": company_id}, {"_id": 0})
+    loto4_max_limit = 20.0  # Default max for Loto 4
+    loto5_max_limit = 250.0  # Default max for Loto 5
+    
+    if company_settings:
+        loto4_max_limit = company_settings.get("loto4_max_limit", 20.0)
+        loto5_max_limit = company_settings.get("loto5_max_limit", 250.0)
+    
     # Validate plays
     total_amount = 0.0
     validated_plays = []
     
     for play in sale_data.plays:
         amount = float(play.get("amount", 0))
+        bet_type = play.get("bet_type", "BORLETTE")
+        
         if amount < min_bet:
             raise HTTPException(status_code=400, detail=f"Montant minimum: {min_bet}")
         if amount > max_bet:
             raise HTTPException(status_code=400, detail=f"Montant maximum: {max_bet}")
         
+        # Validate Loto4 max limit (default 20 HTG)
+        if bet_type in ["LOTO4", "LOTO4_OPT1", "LOTO4_OPT2", "LOTO4_OPT3"]:
+            if amount > loto4_max_limit:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Montant maximum pour Loto 4: {loto4_max_limit} HTG"
+                )
+        
+        # Validate Loto5 max limit (default 250 HTG)
+        if bet_type in ["LOTO5", "LOTO5_EXTRA1", "LOTO5_EXTRA2"]:
+            if amount > loto5_max_limit:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Montant maximum pour Loto 5: {loto5_max_limit} HTG"
+                )
+            # Loto5 also has minimum of 20 HTG
+            if amount < 20:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Montant minimum pour Loto 5: 20 HTG"
+                )
+        
         validated_plays.append({
             "numbers": play.get("numbers"),
-            "bet_type": play.get("bet_type", "BORLETTE"),
+            "bet_type": bet_type,
             "amount": amount
         })
         total_amount += amount

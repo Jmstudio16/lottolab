@@ -125,6 +125,11 @@ def check_winning_play(play_numbers: str, winning_numbers: str, bet_type: str) -
     """
     Check if a play is a winner
     Returns: {is_winner: bool, position: str, multiplier: float}
+    
+    Default payout multipliers (60/20/10):
+    - 1st position: x60
+    - 2nd position: x20
+    - 3rd position: x10
     """
     play_norm = normalize_number(play_numbers)
     
@@ -143,9 +148,10 @@ def check_winning_play(play_numbers: str, winning_numbers: str, bet_type: str) -
     # Check positions
     result = {"is_winner": False, "position": None, "multiplier": 0.0}
     
+    # Standard 60/20/10 payout for Borlette and Loto3
     if bet_type in ["BORLETTE", "LOTO3", "PICK3"]:
         if play_norm == first:
-            result = {"is_winner": True, "position": "first", "multiplier": 50.0}
+            result = {"is_winner": True, "position": "first", "multiplier": 60.0}
         elif play_norm == second:
             result = {"is_winner": True, "position": "second", "multiplier": 20.0}
         elif play_norm == third:
@@ -160,13 +166,13 @@ def check_winning_play(play_numbers: str, winning_numbers: str, bet_type: str) -
             if (p1_norm == first and p2_norm == second) or (p1_norm == second and p2_norm == first):
                 result = {"is_winner": True, "position": "mariage", "multiplier": 500.0}
     
-    elif bet_type in ["LOTO4", "PICK4"]:
+    elif bet_type in ["LOTO4", "PICK4", "LOTO4_OPT1", "LOTO4_OPT2", "LOTO4_OPT3"]:
         if play_norm == first:
             result = {"is_winner": True, "position": "first", "multiplier": 500.0}
         elif play_norm == second:
             result = {"is_winner": True, "position": "second", "multiplier": 100.0}
     
-    elif bet_type in ["LOTO5", "PICK5"]:
+    elif bet_type in ["LOTO5", "PICK5", "LOTO5_EXTRA1", "LOTO5_EXTRA2"]:
         if play_norm == first:
             result = {"is_winner": True, "position": "first", "multiplier": 5000.0}
     
