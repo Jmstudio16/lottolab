@@ -1,11 +1,46 @@
 # LOTTOLAB - Product Requirements Document
-**Version**: 10.0.0  
-**Date**: 20 Mars 2026  
-**Status**: Production Ready - Nouvelles fonctionnalités ajoutées
+**Version**: 11.0.0  
+**Date**: 22 Mars 2026  
+**Status**: Production Ready - Nouvelles fonctionnalités de gestion des paiements
 
 ---
 
-## 1. Nouvelles Fonctionnalités Implémentées (v10.0.0)
+## 1. Nouvelles Fonctionnalités Implémentées (v11.0.0)
+
+### ✅ Cases "Payé/Non Payé" sur Tickets Gagnants
+- Ajout de boutons "Payé" et "Non Payé" sur les tickets gagnants
+- Visible dans les pages Supervisor et Company Admin
+- **Seuls les Superviseurs et Company Admins peuvent modifier le statut**
+- Le vendeur ne peut PAS modifier le statut de paiement
+- Statut visible dans les rapports avec compteurs (Payés / Non Payés)
+- Filtre par statut de paiement (Tous / Payés / Non Payés)
+
+### ✅ Limites de Mise Maximales
+- **Loto 4**: Maximum 20 HTG (configurable par Company Admin)
+- **Loto 5**: Maximum 250 HTG (configurable par Company Admin)
+- Validation backend et frontend
+- Endpoint `/api/company/bet-limits` pour GET/PUT des limites
+
+### ✅ Logique de Paiement 60/20/10
+- Multiplicateurs de gains mis à jour:
+  - 1er prix: x60 (au lieu de x50)
+  - 2ème prix: x20
+  - 3ème prix: x10
+- S'applique aux types: Borlette, Loto 3, Pick 3
+
+### ✅ Page "Fiches Jouées" Corrigée
+- Endpoint corrigé: `/api/company/admin/fiches-jouees`
+- Utilise maintenant `lottery_transactions` au lieu de `tickets`
+- Affiche les numéros joués avec montants
+- Filtres par période et statut
+
+### ✅ Correction Fuseau Horaire Tickets
+- L'heure sur les tickets imprimés utilise maintenant le fuseau horaire Haiti
+- Par défaut: America/Port-au-Prince (UTC-5)
+
+---
+
+## 2. Fonctionnalités v10.0.0 (Session Précédente)
 
 ### ✅ WhatsApp Button
 - Affiché UNIQUEMENT sur la page `/home`
@@ -71,11 +106,42 @@
 |------|-------|--------------|
 | Super Admin | admin@lottolab.com | 123456 |
 | Company Admin | admin@lotopam.com | Admin123! |
+| Supervisor | supervisor@lotopam.com | Supervisor123! |
 | Vendeur | vendeur@lotopam.com | Vendeur123! |
 
 ---
 
-## 4. Statistiques
+## 4. Nouveaux Endpoints API (v11.0.0)
+
+### Gestion des Tickets Gagnants (Company Admin)
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/api/company/winning-tickets` | Liste tickets gagnants avec payment_status |
+| GET | `/api/company/winning-tickets?payment_status=PAID` | Filtre payés |
+| GET | `/api/company/winning-tickets?payment_status=UNPAID` | Filtre non payés |
+| PUT | `/api/company/winning-tickets/{id}/payment-status` | Mettre à jour statut |
+
+### Gestion des Tickets Gagnants (Supervisor)
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/api/supervisor/winning-tickets` | Liste tickets gagnants des agents |
+| PUT | `/api/supervisor/winning-tickets/{id}/payment-status` | Mettre à jour statut |
+
+### Limites de Mise
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/api/company/bet-limits` | Obtenir limites Loto4/Loto5 |
+| PUT | `/api/company/bet-limits` | Modifier limites |
+
+### Fiches Jouées
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/api/company/admin/fiches-jouees` | Liste des tickets joués |
+| GET | `/api/company/admin/fiches-jouees/search?code=XXX` | Rechercher un ticket |
+
+---
+
+## 5. Statistiques
 
 - Total Loteries: 236
 - Loteries Haiti: 26 (dont Plop Plop et Loto Rapid)
@@ -84,7 +150,20 @@
 
 ---
 
-## 5. Déploiement
+## 6. Tâches Restantes (Backlog)
+
+### P1 - Prochaines Tâches
+- [ ] Statut ticket "Actif" au lieu de "En attente" après impression
+- [ ] Interface Company Admin pour configurer les limites de mise
+
+### P2 - Tâches Futures
+- [ ] Support multi-langue (Espagnol, Anglais)
+- [ ] Mode hors ligne pour vendeurs
+- [ ] APK dédiée pour appareils POS
+
+---
+
+## 7. Déploiement
 
 **IMPORTANT**: Après ces modifications, vous devez REDÉPLOYER sur Emergent pour que les changements soient appliqués sur lottolab.tech.
 
@@ -92,7 +171,7 @@ Cliquez sur "Deploy" dans l'interface Emergent.
 
 ---
 
-## 6. Support
+## 8. Support
 
 - WhatsApp USA: +1 689 245 01 98
 - WhatsApp Haiti: +509 38 19 67 48
