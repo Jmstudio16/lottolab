@@ -379,7 +379,7 @@ async def sell_lottery_ticket(
     
     # Get company config
     config = await db.company_configurations.find_one({"company_id": company_id}, {"_id": 0})
-    min_bet = config.get("min_bet_amount", 10) if config else 10
+    min_bet = config.get("min_bet_amount", 1) if config else 1  # Minimum 1 HTG
     max_bet = config.get("max_bet_amount", 10000) if config else 10000
     
     # Get company info for timezone

@@ -327,7 +327,7 @@ async def create_license(
     return license_obj
 
 # ============ ACTIVITY LOGS ============
-@super_admin_router.get("/activity-logs", response_model=List[ActivityLog])
+@super_admin_router.get("/activity-logs")
 async def get_activity_logs(
     current_user: dict = Depends(get_current_user),
     action_type: Optional[str] = None,
@@ -347,7 +347,7 @@ async def get_activity_logs(
         query["company_id"] = company_id
     
     logs = await db.activity_logs.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
-    return [ActivityLog(**log) for log in logs]
+    return logs
 
 # ============ SYSTEM SETTINGS ============
 @super_admin_router.get("/settings", response_model=SystemSettings)

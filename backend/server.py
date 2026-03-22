@@ -48,6 +48,7 @@ from branch_lottery_routes import branch_lottery_router, set_branch_lottery_db
 from vendeur.vendeur_routes import vendeur_router, set_vendeur_db
 from export_routes import export_router
 from lottery_results_routes import results_router, set_results_db
+from scheduled_results_routes import scheduled_results_router, set_scheduled_results_db, check_and_release_scheduled_results, initialize_lottery_schedules
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -358,13 +359,13 @@ async def get_plans(current_user: dict = Depends(get_current_user)):
     plans = await db.plans.find({}, {"_id": 0}).to_list(100)
     return [Plan(**p) for p in plans]
 
-@api_router.get("/super/activity-logs", response_model=List[ActivityLog])
+@api_router.get("/super/activity-logs")
 async def get_all_activity_logs(current_user: dict = Depends(get_current_user)):
     if current_user["role"] != UserRole.SUPER_ADMIN:
         raise HTTPException(status_code=403, detail="Access denied")
     
     logs = await db.activity_logs.find({}, {"_id": 0}).sort("created_at", -1).limit(500).to_list(500)
-    return [ActivityLog(**log) for log in logs]
+    return logs
 
 # ============ COMPANY ADMIN ROUTES (Dashboard and Lotteries) ============
 @api_router.get("/company/dashboard/stats", response_model=CompanyDashboardStats)
@@ -983,6 +984,7 @@ set_validation_db(db)
 set_branch_lottery_db(db)
 set_vendeur_db(db)
 set_results_db(db)
+set_scheduled_results_db(db)
 
 # Initialize staff endpoints with dependency
 create_staff_endpoints(get_current_user)
@@ -1010,6 +1012,9 @@ app.include_router(ticket_print_router)
 
 # Include results router
 app.include_router(results_router)
+
+# Include scheduled results router
+app.include_router(scheduled_results_router)
 
 # Include validation router (admin only)
 app.include_router(validation_router)
@@ -1215,6 +1220,9 @@ async def startup_event():
     # Set database for scheduler
     set_scheduler_db(db)
     
+    # Initialize lottery schedules for Plop Plop and Loto Rapid
+    await initialize_lottery_schedules()
+    
     # Add daily job to check expired subscriptions at 00:00
     scheduler.add_job(
         check_expired_subscriptions,
@@ -1233,9 +1241,18 @@ async def startup_event():
         replace_existing=True
     )
     
+    # Add job to check and release scheduled results every minute
+    scheduler.add_job(
+        check_and_release_scheduled_results,
+        CronTrigger(minute="*"),  # Every minute
+        id="check_scheduled_results",
+        name="Check Scheduled Results",
+        replace_existing=True
+    )
+    
     # Start the scheduler
     scheduler.start()
-    logger.info("[SCHEDULER] Started - Daily subscription check at 00:00")
+    logger.info("[SCHEDULER] Started - Daily subscription check at 00:00, Results check every minute")
     
     # Run initial check at startup
     asyncio.create_task(check_expired_subscriptions())

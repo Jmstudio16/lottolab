@@ -27,7 +27,8 @@ import {
   Wallet,
   Banknote,
   Flag,
-  Trash2
+  Trash2,
+  Zap
 } from 'lucide-react';
 import { useAuth } from '@/api/auth';
 import Logo from './Logo';
@@ -38,6 +39,7 @@ const SuperAdminMenu = [
   { path: '/super/lottery-flags', label: 'Config Drapeaux', icon: Flag },
   { path: '/super/global-schedules', label: 'Global Schedules', icon: Clock },
   { path: '/super/publish-results', label: 'Publier Résultats', icon: Trophy },
+  { path: '/super/scheduled-results', label: 'Résultats Programmés', icon: Zap },
   { path: '/super/companies', label: 'Companies', icon: Building2 },
   { path: '/super/users', label: 'Users', icon: Users },
   { path: '/super/plans', label: 'Plans & Licenses', icon: Package },

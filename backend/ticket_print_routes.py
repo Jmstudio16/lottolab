@@ -368,7 +368,12 @@ async def print_ticket_80mm(
         {"_id": 0}
     )
     
+    # Build logo HTML
     company_name = company.get("name", "LOTO PAM") if company else "LOTO PAM"
+    company_logo = company.get("logo_url", "") if company else ""
+    logo_html = ""
+    if company_logo:
+        logo_html = f'<img src="{company_logo}" class="company-logo" alt="Logo" onerror="this.style.display=&apos;none&apos;" />'
     header_text = company.get("ticket_header_text", "") if company else ""
     footer_text = company.get("ticket_footer_text", "") if company else ""
     currency = ticket.get("currency", "HTG")
@@ -485,6 +490,12 @@ async def print_ticket_80mm(
             text-align: center;
             margin-bottom: 6px;
         }}
+        .company-logo {{
+            max-width: 50mm;
+            max-height: 15mm;
+            margin: 4px auto;
+            display: block;
+        }}
         .logo-text {{
             font-size: 20px;
             font-weight: bold;
@@ -594,6 +605,7 @@ async def print_ticket_80mm(
     <div class="separator">================================</div>
     
     <div class="header">
+        {logo_html}
         <div class="logo-text">{company_name}</div>
         <div class="sub-header">{header_text if header_text else ''}</div>
     </div>

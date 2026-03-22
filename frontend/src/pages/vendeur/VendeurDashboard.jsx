@@ -90,8 +90,12 @@ const VendeurDashboard = () => {
         return <Trophy className="w-4 h-4 text-amber-400" />;
       case 'LOST':
         return <XCircle className="w-4 h-4 text-red-400" />;
+      case 'VOID':
+      case 'CANCELLED':
+        return <XCircle className="w-4 h-4 text-red-400" />;
+      case 'VALIDATED':
       default:
-        return <Clock className="w-4 h-4 text-blue-400" />;
+        return <CheckCircle className="w-4 h-4 text-emerald-400" />;
     }
   };
 
@@ -102,8 +106,15 @@ const VendeurDashboard = () => {
         return 'Gagnant';
       case 'LOST':
         return 'Perdu';
+      case 'VALIDATED':
+        return 'Validé';
+      case 'VOID':
+      case 'CANCELLED':
+        return 'Annulé';
+      case 'PAID':
+        return 'Payé';
       default:
-        return 'En attente';
+        return 'Validé';  // Default to Validé instead of En attente
     }
   };
 

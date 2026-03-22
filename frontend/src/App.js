@@ -24,6 +24,7 @@ import { SuperGlobalResultsPage } from '@/pages/SuperGlobalResultsPage';
 import { SuperResultManagementPage } from '@/pages/SuperResultManagementPage';
 import { SuperCreateCompanyPage } from '@/pages/SuperCreateCompanyPage';
 import SuperLotteryFlagsPage from '@/pages/SuperLotteryFlagsPage';
+import SuperScheduledResultsPage from '@/pages/SuperScheduledResultsPage';
 
 // Company Admin Pages
 import { CompanyDashboardPage } from '@/pages/CompanyDashboardPage';
@@ -276,6 +277,14 @@ const SaaSApp = () => {
                   element={
                     <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
                       <SuperActivityLogsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/super/scheduled-results"
+                  element={
+                    <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                      <SuperScheduledResultsPage />
                     </ProtectedRoute>
                   }
                 />

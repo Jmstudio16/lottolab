@@ -43,7 +43,8 @@ const VendeurNouvelleVente = () => {
     { value: 'LOTO5_EXTRA2', label: 'Loto 5 - Extra 2 (1+3)', digits: '5', isLoto5: true, minAmount: 20, maxAmount: 250 },
   ];
 
-  // Calculate mariages gratis based on total - NEW THRESHOLDS
+  // Calculate mariages gratis based on total - CORRECTED THRESHOLDS
+  // 100 HTG = 1, 150 HTG = 2, 200 HTG = 2, 250 HTG = 3, 300 HTG = 3
   const calculateMariagesGratis = (total) => {
     if (total >= 300) return 3;
     if (total >= 250) return 3;
@@ -219,6 +220,12 @@ const VendeurNouvelleVente = () => {
 
     const amount = parseFloat(currentPlay.amount) || 0;
     
+    // Minimum 1 HTG for all bet types (except Loto5 which has 20 HTG minimum)
+    if (amount < 1) {
+      toast.error('Montant minimum: 1 HTG');
+      return;
+    }
+    
     // Validate Loto4 max limit (20 HTG)
     if (betType?.isLoto4) {
       if (amount > 20) {
@@ -227,7 +234,7 @@ const VendeurNouvelleVente = () => {
       }
     }
     
-    // Validate Loto5 min/max
+    // Validate Loto5 min/max (min 20 HTG, max 250 HTG)
     if (betType?.isLoto5) {
       if (amount < 20) {
         toast.error('Montant minimum pour Loto 5: 20 HTG');
@@ -237,11 +244,6 @@ const VendeurNouvelleVente = () => {
         toast.error('Montant maximum pour Loto 5: 250 HTG');
         return;
       }
-    }
-    
-    if (amount <= 0) {
-      toast.error('Veuillez entrer un montant valide');
-      return;
     }
 
     // Re-check if lottery is still open

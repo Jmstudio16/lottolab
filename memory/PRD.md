@@ -1,11 +1,54 @@
 # LOTTOLAB - Product Requirements Document
-**Version**: 11.0.0  
+**Version**: 12.0.0  
 **Date**: 22 Mars 2026  
-**Status**: Production Ready - Nouvelles fonctionnalités de gestion des paiements
+**Status**: Production Ready - Résultats automatiques + Nouvelles fonctionnalités
 
 ---
 
-## 1. Nouvelles Fonctionnalités Implémentées (v11.0.0)
+## 1. Nouvelles Fonctionnalités v12.0.0 (Cette Session)
+
+### ✅ Mariage Gratis - Nouveaux Seuils
+- 100 HTG = 1 mariage gratis
+- 150 HTG = 2 mariages gratis
+- 200 HTG = 2 mariages gratis
+- 250 HTG = 3 mariages gratis
+- 300 HTG = 3 mariages gratis
+
+### ✅ Mise Minimum Vendeur
+- Minimum de 1 HTG pour toutes les mises (sauf Loto 5 = 20 HTG min)
+- Maximum configurable par Company Admin
+
+### ✅ Statut Ticket "Validé"
+- Les tickets affichent maintenant "Validé" au lieu de "En attente"
+- Cohérent sur toutes les pages (Dashboard, Fiches Jouées, etc.)
+
+### ✅ Résultats Automatiques - Plop Plop & Loto Rapid
+- **Plop Plop**: Résultats toutes les heures (8h-21h), fermeture 55 min avant
+- **Loto Rapid**: Résultats toutes les 2h (8h, 10h, 12h...), fermeture 5 min avant
+- Génération automatique de numéros aléatoires si non programmés
+- Le Super Admin peut programmer les résultats à l'avance
+- Nouvelle page: `/super/scheduled-results`
+
+### ✅ Tirage Matin Ajouté
+- Ajout du tirage "Matin" à toutes les loteries Haiti
+- Horaire: Ouverture 7h00, Fermeture 10h55, Tirage 11h00
+
+### ✅ Activity Logs Fonctionnel
+- Page Activity Logs opérationnelle pour Super Admin
+- Filtre par type d'action et entité
+- Audit trail complet du système
+
+### ✅ Logo Compagnie sur Ticket
+- Le logo de la compagnie s'affiche maintenant sur le ticket imprimé
+- Configurable via `logo_url` dans les settings compagnie
+
+### ✅ Fuseau Horaire Ticket Corrigé
+- L'heure sur le ticket correspond au fuseau horaire Haiti (UTC-5)
+- Utilise `America/Port-au-Prince`
+
+---
+
+## 2. Fonctionnalités v11.0.0 (Session Précédente)
 
 ### ✅ Cases "Payé/Non Payé" sur Tickets Gagnants
 - Ajout de boutons "Payé" et "Non Payé" sur les tickets gagnants
@@ -150,11 +193,22 @@
 
 ---
 
-## 6. Tâches Restantes (Backlog)
+## 7. Tâches Restantes (Backlog)
 
-### P1 - Prochaines Tâches
-- [ ] Statut ticket "Actif" au lieu de "En attente" après impression
-- [ ] Interface Company Admin pour configurer les limites de mise
+### ✅ TERMINÉ
+- [x] Cases "Payé/Non Payé" sur tickets gagnants
+- [x] Limites de mise max (Loto4: 20 HTG, Loto5: 250 HTG)
+- [x] Logique 60/20/10 pour les gains
+- [x] Page "Fiches Jouées" corrigée
+- [x] Mariage Gratis auto (100=1, 150=2, 200=2, 250=3, 300=3)
+- [x] Minimum 1 HTG pour vendeur
+- [x] Statut "Validé" au lieu de "En attente"
+- [x] Résultats auto Plop Plop / Loto Rapid
+- [x] Page programmation résultats Super Admin
+- [x] Tirage Matin ajouté
+- [x] Activity Logs fonctionnel
+- [x] Logo compagnie sur ticket
+- [x] Fuseau horaire ticket
 
 ### P2 - Tâches Futures
 - [ ] Support multi-langue (Espagnol, Anglais)
@@ -163,7 +217,7 @@
 
 ---
 
-## 7. Déploiement
+## 8. Déploiement
 
 **IMPORTANT**: Après ces modifications, vous devez REDÉPLOYER sur Emergent pour que les changements soient appliqués sur lottolab.tech.
 
@@ -171,7 +225,18 @@ Cliquez sur "Deploy" dans l'interface Emergent.
 
 ---
 
-## 8. Support
+## 9. Endpoints Résultats Programmés (Super Admin)
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/api/scheduled-results/list` | Liste des résultats programmés |
+| POST | `/api/scheduled-results/program` | Programmer un nouveau résultat |
+| PUT | `/api/scheduled-results/{id}` | Modifier un résultat programmé |
+| DELETE | `/api/scheduled-results/{id}` | Annuler un résultat programmé |
+
+---
+
+## 10. Support
 
 - WhatsApp USA: +1 689 245 01 98
 - WhatsApp Haiti: +509 38 19 67 48

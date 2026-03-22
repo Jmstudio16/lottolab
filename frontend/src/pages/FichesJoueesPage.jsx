@@ -65,16 +65,16 @@ const FichesJoueesPage = () => {
   };
 
   const getStatusBadge = (ticket) => {
-    if (ticket.deleted) {
+    if (ticket.deleted || ticket.status === 'VOID' || ticket.status === 'CANCELLED') {
       return <span className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs">Supprimé</span>;
     }
-    if (ticket.is_winner) {
+    if (ticket.is_winner || ticket.status === 'WINNER' || ticket.status === 'WON') {
       return <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded text-xs">Gagnant</span>;
     }
-    if (ticket.is_paid) {
+    if (ticket.is_paid || ticket.status === 'PAID') {
       return <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-xs">Payé</span>;
     }
-    return <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs">Actif</span>;
+    return <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-xs">Validé</span>;
   };
 
   const dateFilters = [
