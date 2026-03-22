@@ -10,7 +10,8 @@
 ### ✅ Ticket Imprimé - Modifications
 - **POS ID remplacé par SUCCURSALE** - Plus sécurisé
 - **"JM STUDIO" supprimé** - Remplacé par nom compagnie
-- **Logo compagnie en haut** - S'affiche si configuré (logo_url)
+- **Logo compagnie en haut** - Configurable via `/api/company/ticket-settings`
+- **"Gain potentiel" SUPPRIMÉ** - N'apparaît plus sur le ticket
 - **LOTTOLAB.TECH en bas** - Après les mentions légales
 - **Statut "VALIDÉ"** - Au lieu de "ACTIF"
 - **Mentions légales complètes**:
@@ -20,6 +21,12 @@
   - Numéro effacé = non payé
   - Protéger de chaleur/humidité
   - Ne pas garder dans les pièces de monnaie
+
+### ✅ Nouvel Endpoint - Configuration Ticket
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/api/company/ticket-settings` | Obtenir les paramètres du ticket |
+| PUT | `/api/company/ticket-settings` | Configurer logo_url, header, footer |
 
 ### ✅ Commission = 0 par défaut
 - Si Supervisor/Admin n'a pas configuré le pourcentage → Vendeur = 0% commission

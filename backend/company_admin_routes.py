@@ -2388,3 +2388,69 @@ async def update_bet_limits(
         "loto4_max_limit": data.loto4_max_limit,
         "loto5_max_limit": data.loto5_max_limit
     }
+
+
+
+# ============================================================================
+# COMPANY TICKET SETTINGS (Logo, Header, Footer)
+# ============================================================================
+
+class TicketSettingsUpdate(BaseModel):
+    logo_url: Optional[str] = None
+    ticket_header_text: Optional[str] = None
+    ticket_footer_text: Optional[str] = None
+
+
+@company_admin_router.get("/ticket-settings")
+async def get_ticket_settings(current_user: dict = Depends(get_company_admin)):
+    """Get ticket customization settings (logo, header, footer)"""
+    company_id = require_admin(current_user)
+    
+    company = await db.companies.find_one(
+        {"company_id": company_id},
+        {"_id": 0, "logo_url": 1, "ticket_header_text": 1, "ticket_footer_text": 1, "name": 1}
+    )
+    
+    if not company:
+        raise HTTPException(status_code=404, detail="Compagnie non trouvée")
+    
+    return {
+        "company_name": company.get("name"),
+        "logo_url": company.get("logo_url", ""),
+        "ticket_header_text": company.get("ticket_header_text", ""),
+        "ticket_footer_text": company.get("ticket_footer_text", "")
+    }
+
+
+@company_admin_router.put("/ticket-settings")
+async def update_ticket_settings(
+    data: TicketSettingsUpdate,
+    current_user: dict = Depends(get_company_admin)
+):
+    """Update ticket customization settings (logo, header, footer)"""
+    company_id = require_admin(current_user)
+    
+    update_data = {"updated_at": get_current_timestamp()}
+    
+    if data.logo_url is not None:
+        update_data["logo_url"] = data.logo_url
+    if data.ticket_header_text is not None:
+        update_data["ticket_header_text"] = data.ticket_header_text
+    if data.ticket_footer_text is not None:
+        update_data["ticket_footer_text"] = data.ticket_footer_text
+    
+    result = await db.companies.update_one(
+        {"company_id": company_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Compagnie non trouvée")
+    
+    return {
+        "message": "Paramètres du ticket mis à jour",
+        "logo_url": data.logo_url,
+        "ticket_header_text": data.ticket_header_text,
+        "ticket_footer_text": data.ticket_footer_text
+    }
+
