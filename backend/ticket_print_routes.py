@@ -646,7 +646,7 @@ async def print_ticket_80mm(
     </div>
     
     <div class="status-section">
-        <div class="status-badge">STATUT : ACTIF</div>
+        <div class="status-badge">STATUT : VALIDÉ</div>
     </div>
     
     <div class="separator-dashed"></div>
@@ -657,12 +657,13 @@ async def print_ticket_80mm(
             {footer_text if footer_text else ''}
         </div>
         <div style="margin-top:6px;font-size:7px;text-align:left;">
-            Vérifiez votre ticket avant de partir.<br>
-            Ce ticket doit être payé une seule fois<br>
-            dans les 90 jours. Le premier qui<br>
-            présente ce ticket est bénéficiaire.<br>
-            Si le numéro est effacé, on ne paie pas.<br>
-            Protégez le ticket de la chaleur et humidité.
+            Vérifiez votre ticket avant de vous déplacer.<br>
+            Ce ticket doit être payé UNE SEULE FOIS<br>
+            dans les 90 jours. Le PREMIER qui<br>
+            présente ce ticket est le bénéficiaire.<br>
+            Si le numéro est effacé, on NE PAIE PAS.<br>
+            Protégez le ticket de la chaleur, humidité<br>
+            et ne gardez pas dans les pièces de monnaie.
         </div>
         <div class="footer-url" style="margin-top:6px;font-weight:bold;">LOTTOLAB.TECH</div>
     </div>

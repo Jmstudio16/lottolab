@@ -541,16 +541,39 @@ async def print_ticket_universal(
     agent_name = ticket.get("agent_name") or (agent.get("name") if agent else "") or "N/A"
     pos_id = (agent.get("pos_serial_number") if agent else None) or "N/A"
     
-    # Format date and time
+    # Get company info
+    company = await db.companies.find_one(
+        {"company_id": ticket.get("company_id")},
+        {"_id": 0, "name": 1, "logo_url": 1}
+    )
+    company_name = company.get("name", "LOTO PAM") if company else "LOTO PAM"
+    
+    # Get branch/succursale name
+    succursale_name = "N/A"
+    if ticket.get("succursale_id") or ticket.get("branch_id"):
+        branch_id = ticket.get("succursale_id") or ticket.get("branch_id")
+        branch = await db.branches.find_one({"branch_id": branch_id}, {"_id": 0, "name": 1})
+        if branch:
+            succursale_name = branch.get("name", "N/A")
+        else:
+            succursale = await db.succursales.find_one({"succursale_id": branch_id}, {"_id": 0, "name": 1})
+            if succursale:
+                succursale_name = succursale.get("name", "N/A")
+    
+    # Format date and time - Haiti timezone
     created_at = ticket.get("created_at", "")
     formatted_date = "N/A"
     formatted_time = "N/A"
     if created_at:
         try:
-            from datetime import datetime, timezone
+            import pytz
+            from datetime import datetime, timezone as tz
             dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-            formatted_date = dt.strftime("%d/%m/%Y")
-            formatted_time = dt.strftime("%I:%M %p")
+            # Convert to Haiti timezone
+            haiti_tz = pytz.timezone("America/Port-au-Prince")
+            dt_local = dt.astimezone(haiti_tz)
+            formatted_date = dt_local.strftime("%d/%m/%Y")
+            formatted_time = dt_local.strftime("%I:%M %p")
         except:
             formatted_date = created_at[:10] if len(created_at) >= 10 else created_at
             formatted_time = created_at[11:16] if len(created_at) >= 16 else ""
@@ -744,9 +767,8 @@ async def print_ticket_universal(
     <div class="separator">================================</div>
     
     <div class="header">
-        <div class="logo-text">LOTO PAM</div>
-        <div class="sub-header">© JM STUDIO</div>
-        <div class="sub-header">lotopam.com</div>
+        {'<img src="' + company.get("logo_url", "") + '" class="logo-image" alt="Logo" onerror="this.style.display=' + "'none'" + '" />' if company and company.get("logo_url") else ''}
+        <div class="logo-text">{company_name}</div>
     </div>
     
     <div class="separator">================================</div>
@@ -756,8 +778,8 @@ async def print_ticket_universal(
         <span class="info-value">{agent_name.upper() if agent_name else 'N/A'}</span>
     </div>
     <div class="info-line">
-        <span class="info-label">POS ID  :</span>
-        <span class="info-value">{pos_id}</span>
+        <span class="info-label">SUCCURSALE:</span>
+        <span class="info-value">{succursale_name if succursale_name else 'N/A'}</span>
     </div>
     <div class="info-line">
         <span class="info-label">TICKET  :</span>
@@ -791,9 +813,17 @@ async def print_ticket_universal(
     <div class="separator-dashed"></div>
     
     <div class="footer">
-        <div>Vérifiez vos résultats sur :</div>
-        <div class="footer-url">www.lotopam.com</div>
-        <div class="thank-you">MERCI DE JOUER AVEC<br>LOTO PAM</div>
+        <div class="thank-you">MERCI DE JOUER AVEC<br>{company_name}</div>
+        <div style="margin-top:6px;font-size:7px;text-align:left;">
+            Vérifiez votre ticket avant de vous déplacer.<br>
+            Ce ticket doit être payé UNE SEULE FOIS<br>
+            dans les 90 jours. Le PREMIER qui<br>
+            présente ce ticket est le bénéficiaire.<br>
+            Si le numéro est effacé, on NE PAIE PAS.<br>
+            Protégez le ticket de la chaleur, humidité<br>
+            et ne gardez pas dans les pièces de monnaie.
+        </div>
+        <div class="footer-url" style="margin-top:6px;font-weight:bold;">LOTTOLAB.TECH</div>
     </div>
     
     <div class="separator">================================</div>

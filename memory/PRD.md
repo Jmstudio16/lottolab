@@ -1,11 +1,37 @@
 # LOTTOLAB - Product Requirements Document
-**Version**: 12.0.0  
+**Version**: 12.1.0  
 **Date**: 22 Mars 2026  
-**Status**: Production Ready - Résultats automatiques + Nouvelles fonctionnalités
+**Status**: Production Ready - Corrections Ticket + Commission
 
 ---
 
-## 1. Nouvelles Fonctionnalités v12.0.0 (Cette Session)
+## 1. Nouvelles Corrections v12.1.0 (Cette Session)
+
+### ✅ Ticket Imprimé - Modifications
+- **POS ID remplacé par SUCCURSALE** - Plus sécurisé
+- **"JM STUDIO" supprimé** - Remplacé par nom compagnie
+- **Logo compagnie en haut** - S'affiche si configuré (logo_url)
+- **LOTTOLAB.TECH en bas** - Après les mentions légales
+- **Statut "VALIDÉ"** - Au lieu de "ACTIF"
+- **Mentions légales complètes**:
+  - Vérifiez ticket avant de vous déplacer
+  - Payé UNE SEULE FOIS dans les 90 jours
+  - Premier présentateur = bénéficiaire
+  - Numéro effacé = non payé
+  - Protéger de chaleur/humidité
+  - Ne pas garder dans les pièces de monnaie
+
+### ✅ Commission = 0 par défaut
+- Si Supervisor/Admin n'a pas configuré le pourcentage → Vendeur = 0% commission
+- La commission se calcule UNIQUEMENT si explicitement définie via `agent_policies`
+
+### ✅ Fuseau Horaire Synchronisé
+- Ticket imprimé utilise l'heure Haiti (America/Port-au-Prince)
+- Consistant entre page vendeur et ticket
+
+---
+
+## 2. Fonctionnalités v12.0.0 (Session Précédente)
 
 ### ✅ Mariage Gratis - Nouveaux Seuils
 - 100 HTG = 1 mariage gratis

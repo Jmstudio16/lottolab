@@ -766,7 +766,7 @@ async def lottery_sell_redirect(
         "total_amount": total_amount,
         "potential_win": potential_win,
         "currency": company.get("currency", "HTG") if company else "HTG",
-        "status": "PENDING",
+        "status": "VALIDATED",
         "printed_count": 0,
         "device_type": "WEB",
         "created_at": now,

@@ -150,10 +150,13 @@ async def get_vendeur_dashboard(current_vendeur: dict = Depends(get_current_vend
     ventes_mois = month_stats.get("total_sales", 0)
     tickets_jour = today_stats.get("total_tickets", 0)
     
-    # Get commission rate from agent policy
+    # Get commission rate from agent policy - DEFAULT TO 0 if not configured
     agent_policy = await db.agent_policies.find_one({"agent_id": vendeur_id}, {"_id": 0})
-    commission_rate = agent_policy.get("commission_percent", 10) if agent_policy else 10
-    commission = ventes_mois * (commission_rate / 100)
+    # Commission is 0 by default unless explicitly configured by supervisor/company admin
+    commission_rate = 0
+    if agent_policy and agent_policy.get("commission_percent"):
+        commission_rate = agent_policy.get("commission_percent", 0)
+    commission = ventes_mois * (commission_rate / 100) if commission_rate > 0 else 0
     
     # Get recent tickets (last 10)
     recent_tickets = await db.lottery_transactions.find(
@@ -812,9 +815,11 @@ async def get_vendeur_stats(
     ]
     daily_sales = await db.lottery_transactions.aggregate(daily_pipeline).to_list(30)
     
-    # Get commission rate
+    # Get commission rate - DEFAULT TO 0 if not configured
     agent_policy = await db.agent_policies.find_one({"agent_id": vendeur_id}, {"_id": 0})
-    commission_rate = agent_policy.get("commission_percent", 10) if agent_policy else 10
+    commission_rate = 0
+    if agent_policy and agent_policy.get("commission_percent"):
+        commission_rate = agent_policy.get("commission_percent", 0)
     
     return {
         "period": period,
@@ -826,7 +831,7 @@ async def get_vendeur_stats(
             "losers_count": stats.get("losers_count", 0),
             "pending_count": stats.get("pending_count", 0),
             "total_wins": stats.get("total_wins", 0),
-            "commission": stats.get("total_sales", 0) * (commission_rate / 100),
+            "commission": stats.get("total_sales", 0) * (commission_rate / 100) if commission_rate > 0 else 0,
             "commission_rate": commission_rate
         },
         "by_lottery": [
