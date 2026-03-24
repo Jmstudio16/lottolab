@@ -386,32 +386,37 @@ async def get_company_dashboard_stats(current_user: dict = Depends(get_current_u
     
     active_agents = await db.agents.count_documents({"company_id": company_id, "status": AgentStatus.ACTIVE})
     
-    now = datetime.now(timezone.utc)
+    # Get Haiti time
+    from pytz import timezone as pytz_timezone
+    haiti_tz = pytz_timezone('America/Port-au-Prince')
+    now_haiti = datetime.now(haiti_tz)
+    current_time_str = now_haiti.strftime("%H:%M")
+    current_day = now_haiti.weekday()
+    
     open_lotteries = 0
-    company_lotteries = await db.company_lotteries.find({"company_id": company_id, "enabled": True}, {"_id": 0}).to_list(100)
-    
-    # Optimized: Batch fetch all lotteries in one query instead of N+1
+    company_lotteries = await db.company_lotteries.find({"company_id": company_id, "enabled": True}, {"_id": 0}).to_list(500)
     lottery_ids = [cl["lottery_id"] for cl in company_lotteries]
-    lotteries = await db.lotteries.find({"lottery_id": {"$in": lottery_ids}}, {"_id": 0}).to_list(100)
-    lottery_map = {l["lottery_id"]: l for l in lotteries}
     
-    for cl in company_lotteries:
-        lottery = lottery_map.get(cl["lottery_id"])
-        if lottery and lottery.get("draw_times"):
-            for draw_time_str in lottery["draw_times"]:
-                try:
-                    draw_time = datetime.fromisoformat(draw_time_str.replace("Z", "+00:00"))
-                    open_offset = cl.get("sales_open_offset_minutes") or lottery.get("sales_open_offset_minutes", 240)
-                    close_offset = cl.get("sales_close_offset_minutes") or lottery.get("sales_close_offset_minutes", 5)
-                    
-                    open_time = draw_time - timedelta(minutes=open_offset)
-                    close_time = draw_time - timedelta(minutes=close_offset)
-                    
-                    if open_time <= now <= close_time:
-                        open_lotteries += 1
-                        break
-                except:
-                    continue
+    # Use global_schedules to determine open lotteries (same as sync_routes)
+    schedules = await db.global_schedules.find({
+        "lottery_id": {"$in": lottery_ids},
+        "is_active": True
+    }, {"_id": 0}).to_list(1000)
+    
+    seen_lottery_ids = set()
+    for schedule in schedules:
+        lottery_id = schedule.get("lottery_id")
+        if lottery_id in seen_lottery_ids:
+            continue
+            
+        open_time = schedule.get("open_time", "00:00")
+        close_time = schedule.get("close_time", "23:59")
+        days_of_week = schedule.get("days_of_week", [0, 1, 2, 3, 4, 5, 6])
+        
+        if current_day in days_of_week:
+            if open_time <= current_time_str <= close_time:
+                open_lotteries += 1
+                seen_lottery_ids.add(lottery_id)
     
     return CompanyDashboardStats(
         tickets_today=tickets_today,

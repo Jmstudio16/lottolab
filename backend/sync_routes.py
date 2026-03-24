@@ -804,17 +804,6 @@ async def print_ticket_universal(
             width: 25mm;
             height: 25mm;
         }}
-        .print-btn {{
-            display: block;
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            background: #333;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-        }}
         .logo-image {{
             max-width: 60mm;
             max-height: 20mm;
@@ -834,8 +823,6 @@ async def print_ticket_universal(
     </style>
 </head>
 <body>
-    <button class="print-btn no-print" onclick="window.print()">IMPRIMER</button>
-    
     <div class="separator">================================</div>
     
     <div class="header">

@@ -1,0 +1,88 @@
+{
+  "summary": "Iteration 29 - Complete LOTTOLAB system verification. All 4 roles login successfully. Company Admin shows 193 Open Lotteries. Vendeur shows 26 Haiti lotteries with 🇭🇹 flag. Ticket print has no IMPRIMER button and shows VALIDÉ status. Super Admin Global Schedules shows 403 schedules in UI (API has Pydantic validation issue).",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET /api/super/global-schedules",
+        "issue": "Returns 500 error due to Pydantic validation - some schedules in DB missing required fields (draw_name, open_time, close_time, draw_time)",
+        "priority": "MEDIUM",
+        "note": "Frontend handles this gracefully and shows 403 schedules"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Multiple pages (SuperDashboard, CompanyDashboard, Supervisor)",
+        "issues": ["React hydration warning: <tr> cannot be child of <span> in table - minor HTML structure issue from dynamic rendering"]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration29_lottolab.py",
+    "/app/test_reports/pytest/iteration29_results.xml"
+  ],
+  "action_items": [
+    "Fix GlobalScheduleEnhanced model to make draw_name, open_time, close_time, draw_time optional with defaults",
+    "Or clean up database schedules to ensure all have required fields"
+  ],
+  "critical_code_review_comments": [
+    "The GlobalScheduleEnhanced Pydantic model requires fields that some DB records don't have - should use Optional with defaults"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration29_lottolab.py"
+  ],
+  "success_rate": {
+    "backend": "87.5% (14/16 tests passed - 2 failed due to global-schedules API)",
+    "frontend": "100% (all UI elements verified)"
+  },
+  "test_credentials": {
+    "super_admin": "admin@lottolab.com / 123456",
+    "company_admin": "admin@lotopam.com / Admin123!",
+    "supervisor": "supervisor@lotopam.com / Supervisor123!",
+    "vendeur": "vendeur@lotopam.com / Vendeur123!"
+  },
+  "seed_data_creation": "Used existing test data",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All core features working. Global Schedules API has Pydantic validation issue but UI works. 26 Haiti lotteries displayed with flag. Ticket print has no IMPRIMER button.",
+  "features_tested": {
+    "super_admin_login": {"status": "PASS", "details": "Login successful, redirects to /super/dashboard"},
+    "super_admin_dashboard": {"status": "PASS", "details": "Shows 3 companies, 3 active, 10 agents"},
+    "super_admin_global_schedules_ui": {"status": "PASS", "details": "UI shows 403 schedules configured"},
+    "super_admin_global_schedules_api": {"status": "FAIL", "details": "API returns 500 due to Pydantic validation"},
+    "company_admin_login": {"status": "PASS", "details": "Login successful, redirects to /company/dashboard"},
+    "company_admin_dashboard": {"status": "PASS", "details": "Shows 193 Open Lotteries, subscription info"},
+    "company_admin_succursales": {"status": "PASS", "details": "API returns succursales list"},
+    "supervisor_login": {"status": "PASS", "details": "Login successful, redirects to /supervisor/dashboard"},
+    "supervisor_dashboard": {"status": "PASS", "details": "Shows 1 total agent, 1 active"},
+    "supervisor_agents": {"status": "PASS", "details": "Shows agent list with Marie Dupont"},
+    "vendeur_login": {"status": "PASS", "details": "Login successful, redirects to /vendeur/dashboard"},
+    "vendeur_nouvelle_vente": {"status": "PASS", "details": "Shows 26 open lotteries with Haiti flag filter"},
+    "vendeur_haiti_lotteries": {"status": "PASS", "details": "26 Haiti lotteries with 🇭🇹 flag, sorted first"},
+    "vendeur_bet_form": {"status": "PASS", "details": "Number input, bet type buttons, amount input, add to cart all present"},
+    "ticket_print_no_imprimer": {"status": "PASS", "details": "No IMPRIMER button in ticket HTML"},
+    "ticket_print_valide_status": {"status": "PASS", "details": "VALIDÉ status shown in ticket"}
+  },
+  "api_endpoints_verified": [
+    "GET /api/health - Returns healthy status",
+    "POST /api/auth/login - All 4 roles login working",
+    "GET /api/super/dashboard/stats - Returns company stats",
+    "GET /api/company/dashboard/stats - Returns 193 open lotteries",
+    "GET /api/company/succursales - Returns succursales list",
+    "GET /api/supervisor/dashboard-stats - Returns agent stats",
+    "GET /api/supervisor/agents - Returns agents list",
+    "GET /api/device/config - Returns 26+ Haiti lotteries with flag_type=HAITI",
+    "GET /api/ticket/print/{id} - Returns HTML without IMPRIMER button, with VALIDÉ status"
+  ],
+  "haiti_lotteries_verified": {
+    "count": 26,
+    "flag_type": "HAITI",
+    "flag_emoji": "🇭🇹",
+    "sorted_first": true,
+    "examples": ["Haiti Borlette Midi", "Haiti Borlette Soir", "Haiti Loto 3 Midi", "Haiti Loto 4 Midi", "Haiti Mariage Midi"]
+  }
+}
