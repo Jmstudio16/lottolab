@@ -1,80 +1,99 @@
 # LOTTOLAB - Product Requirements Document
-**Version**: 12.4.0  
+**Version**: 12.5.0 FINAL  
 **Date**: 24 Mars 2026  
-**Status**: Production Ready - Système 100% Fonctionnel
+**Status**: ✅ PRÊT POUR DÉPLOIEMENT - Système 100% Fonctionnel
 
 ---
 
-## 1. Résumé du Système
+## 🚀 INSTRUCTIONS DE DÉPLOIEMENT
 
-LOTTOLAB est une plateforme de loterie complète avec:
-- **Super Admin**: Gestion globale, catalogues, schedules, résultats
-- **Company Admin**: Gestion entreprise, succursales, tickets
-- **Supervisor**: Gestion agents, rapports succursale
-- **Vendeur**: Vente tickets, résultats, paiement gagnants
+### Après le déploiement sur lottolab.tech:
 
----
+**Les loteries Haiti s'initialisent AUTOMATIQUEMENT au démarrage du serveur.**
 
-## 2. Corrections v12.4.0 (Cette Session)
+Vous n'avez rien à faire! Mais si vous souhaitez vérifier ou réinitialiser:
 
-### ✅ Système 100% Fonctionnel
-- Tous les logins fonctionnent (4 rôles)
-- Toutes les pages accessibles
-- Tous les boutons fonctionnels
+1. **Via Interface Super Admin:**
+   - Connectez-vous: admin@lottolab.com
+   - Allez dans Settings
+   - Cliquez sur "Initialiser Loteries Haiti"
 
-### ✅ Loteries Haiti
-- 26 loteries Haiti configurées
-- Horaires: 06:00-23:00
-- Drapeau 🇭🇹 affiché
-- Triées en premier dans la liste
-
-### ✅ Initialisation Automatique Production
-- Script de migration: `migrate_haiti_lotteries.py`
-- Endpoint API: `POST /api/super/init-haiti-lotteries`
-- Bouton UI: Super Admin > Settings > Initialiser Loteries Haiti
-- Auto-init au démarrage serveur
-
-### ✅ Ticket Imprimé
-- Bouton "IMPRIMER" supprimé
-- Logo entreprise affiché
-- Téléphone et adresse affichés
-- QR Code optionnel
-- Texte header/footer personnalisable
+2. **Via Script (optionnel):**
+   ```bash
+   cd /app/backend
+   python3 migrate_haiti_lotteries.py
+   ```
 
 ---
 
-## 3. Statistiques Actuelles
+## ✅ TOUT CE QUI FONCTIONNE
 
-| Métrique | Valeur |
-|----------|--------|
-| Total Schedules | 403 |
-| Loteries Haiti | 26 |
-| Loteries ouvertes (Company) | 193 |
-| Succursales | 2 |
-| Agents actifs | 10 |
+### Super Admin
+| Fonctionnalité | Status |
+|----------------|--------|
+| Login | ✅ |
+| Dashboard (Companies, Agents) | ✅ |
+| Companies Management | ✅ |
+| Users Management | ✅ |
+| Global Schedules (403) | ✅ |
+| Global Results | ✅ |
+| Haiti Lotteries Init | ✅ |
+| Settings | ✅ |
+
+### Company Admin
+| Fonctionnalité | Status |
+|----------------|--------|
+| Login | ✅ |
+| Dashboard (193 loteries ouvertes) | ✅ |
+| Succursales (2) | ✅ |
+| Catalogue Loteries | ✅ |
+| Tickets | ✅ |
+| Profile Settings | ✅ |
+| Subscription (580 jours) | ✅ |
+
+### Supervisor
+| Fonctionnalité | Status |
+|----------------|--------|
+| Login | ✅ |
+| Dashboard | ✅ |
+| Agents (Marie Dupont 10%) | ✅ |
+| Reports | ✅ |
+
+### Vendeur
+| Fonctionnalité | Status |
+|----------------|--------|
+| Login | ✅ |
+| Dashboard + Nom Succursale | ✅ |
+| Nouvelle Vente + Nom Succursale | ✅ |
+| 31 Loteries Ouvertes | ✅ |
+| 26 Loteries Haiti 🇭🇹 | ✅ |
+| Filtre Haiti/USA | ✅ |
+| Mes Tickets | ✅ |
+| Résultats | ✅ |
+
+### Tickets
+| Fonctionnalité | Status |
+|----------------|--------|
+| Impression sans "IMPRIMER" | ✅ |
+| Statut VALIDÉ | ✅ |
+| Logo Entreprise | ✅ |
+| Téléphone + Adresse | ✅ |
+| QR Code (optionnel) | ✅ |
+| Texte Header/Footer | ✅ |
 
 ---
 
-## 4. Guide de Déploiement Production
+## 📊 Statistiques Système
 
-### Option A: Automatique (Recommandé)
-Les loteries Haiti sont initialisées automatiquement au démarrage du serveur.
-Aucune action requise après déploiement.
-
-### Option B: Via Interface Super Admin
-1. Connectez-vous sur lottolab.tech en tant que Super Admin
-2. Allez dans **Settings**
-3. Cliquez sur **Initialiser Loteries Haiti**
-
-### Option C: Via Script
-```bash
-cd /app/backend
-python3 migrate_haiti_lotteries.py
-```
+- **Total Schedules**: 403
+- **Loteries Haiti**: 26
+- **Loteries ouvertes**: 193 (Company) / 31 (Vendeur)
+- **Succursales**: 2
+- **Agents actifs**: 10
 
 ---
 
-## 5. Comptes de Test
+## 🔑 Comptes de Test
 
 | Rôle | Email | Mot de passe |
 |------|-------|--------------|
@@ -85,60 +104,46 @@ python3 migrate_haiti_lotteries.py
 
 ---
 
-## 6. API Endpoints Clés
+## 🇭🇹 Loteries Haiti Configurées (26)
 
-### Authentification
-- `POST /api/auth/login` - Connexion tous rôles
+1. Haiti Borlette Midi/Soir
+2. Haiti Loto 3 Midi/Soir
+3. Haiti Loto 4 Midi/Soir
+4. Haiti Loto 5 Midi/Soir
+5. Haiti Mariage Midi/Soir
+6. Tennessee Matin/Midi/Soir
+7. Texas Matin/Midi/Soir/Nuit
+8. Georgia Midi/Soir/Nuit
+9. Florida Midi/Soir
+10. New York Midi/Soir
+11. Plop Plop (24h)
+12. Loto Rapid (24h)
 
-### Super Admin
-- `GET /api/super/global-schedules` - Liste des schedules (403)
-- `GET /api/super/haiti-lotteries-status` - Status loteries Haiti
-- `POST /api/super/init-haiti-lotteries` - Initialiser loteries Haiti
-
-### Company Admin
-- `GET /api/company/dashboard/stats` - Stats dashboard
-- `GET /api/company/profile` - Configuration entreprise
-- `PUT /api/company/profile` - Modifier configuration
-
-### Vendeur
-- `GET /api/device/config` - Config + loteries ouvertes
-- `POST /api/device/tickets` - Créer ticket
-
-### Tickets
-- `GET /api/ticket/print/{id}` - Imprimer ticket
-- `GET /api/sync/reprint-ticket/{id}` - Réimprimer ticket
+**Horaires**: 06:00 - 23:00 (sauf Plop Plop et Loto Rapid: 24h)
 
 ---
 
-## 7. Fichiers Importants
+## 📁 Fichiers Importants
 
 ```
 /app/backend/
-├── server.py                    # Serveur principal
-├── haiti_lottery_init.py        # Initialisation Haiti (auto)
+├── server.py                    # Serveur principal (auto-init Haiti)
+├── haiti_lottery_init.py        # Module initialisation Haiti
 ├── migrate_haiti_lotteries.py   # Script migration standalone
 ├── sync_routes.py               # Ticket print (sans IMPRIMER)
 ├── ticket_print_routes.py       # Ticket print online
 └── super_admin_global_routes.py # Endpoints Super Admin
+
+/app/frontend/src/
+├── layouts/VendeurLayout.jsx    # Affiche nom succursale
+└── pages/vendeur/
+    ├── VendeurDashboard.jsx     # Nom succursale visible
+    └── VendeurNouvelleVente.jsx # Nom succursale visible
 ```
 
 ---
 
-## 8. Tâches Terminées
-
-- [x] Login tous les rôles
-- [x] Super Admin Dashboard + 403 schedules
-- [x] Company Admin Dashboard + 193 loteries
-- [x] Supervisor Dashboard + Agents
-- [x] Vendeur Nouvelle Vente + 26 Haiti
-- [x] Ticket sans bouton IMPRIMER
-- [x] Configuration ticket (logo, téléphone, adresse, QR)
-- [x] Initialisation auto production
-- [x] Script de migration
-
----
-
-## 9. Support
+## 📞 Support
 
 - WhatsApp USA: +1 689 245 01 98
 - WhatsApp Haiti: +509 38 19 67 48
