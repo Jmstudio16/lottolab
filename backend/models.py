@@ -682,13 +682,13 @@ class GlobalScheduleEnhanced(BaseModel):
     lottery_id: str
     lottery_name: Optional[str] = None
     state_code: Optional[str] = None
-    draw_name: str  # "Midday", "Evening", "Night"
+    draw_name: Optional[str] = "Journée"  # "Midday", "Evening", "Night"
     days_of_week: List[int] = []  # 0=Monday, 6=Sunday, empty=all days
-    open_time: str  # HH:MM
-    close_time: str  # HH:MM
-    draw_time: str  # HH:MM
+    open_time: Optional[str] = "06:00"  # HH:MM
+    close_time: Optional[str] = "23:00"  # HH:MM
+    draw_time: Optional[str] = "23:30"  # HH:MM
     is_active: bool = True
-    created_at: str
+    created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
 class GlobalScheduleCreateEnhanced(BaseModel):
