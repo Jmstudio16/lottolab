@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Save, Settings } from 'lucide-react';
+import { Save, Settings, Flag, RefreshCw, CheckCircle } from 'lucide-react';
 
 export const SuperSettingsPage = () => {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [initializingHaiti, setInitializingHaiti] = useState(false);
+  const [haitiStatus, setHaitiStatus] = useState(null);
   const [formData, setFormData] = useState({
     platform_name: '',
     default_currency: '',
@@ -23,7 +25,30 @@ export const SuperSettingsPage = () => {
 
   useEffect(() => {
     fetchSettings();
+    fetchHaitiStatus();
   }, []);
+
+  const fetchHaitiStatus = async () => {
+    try {
+      const response = await apiClient.get('/super/haiti-lotteries-status');
+      setHaitiStatus(response.data);
+    } catch (error) {
+      console.error('Failed to load Haiti status');
+    }
+  };
+
+  const initializeHaitiLotteries = async () => {
+    setInitializingHaiti(true);
+    try {
+      const response = await apiClient.post('/super/init-haiti-lotteries');
+      toast.success(`Loteries Haiti initialisées! Créées: ${response.data.created}, Mises à jour: ${response.data.updated}`);
+      fetchHaitiStatus();
+    } catch (error) {
+      toast.error('Erreur lors de l\'initialisation des loteries Haiti');
+    } finally {
+      setInitializingHaiti(false);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -212,6 +237,66 @@ export const SuperSettingsPage = () => {
             </p>
           </div>
         )}
+
+        {/* Haiti Lotteries Section */}
+        <div className="mt-8 p-6 bg-gradient-to-r from-blue-900/30 to-red-900/30 border border-blue-700 rounded-lg">
+          <div className="flex items-center gap-3 mb-4">
+            <Flag className="w-6 h-6 text-blue-400" />
+            <h3 className="text-lg font-semibold text-white">Loteries Haiti 🇭🇹</h3>
+          </div>
+          
+          <p className="text-sm text-gray-400 mb-4">
+            Initialiser ou mettre à jour les 26 loteries Haiti avec leurs horaires (06:00-23:00).
+            Cette action est sûre et peut être exécutée plusieurs fois.
+          </p>
+
+          {haitiStatus && (
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="bg-slate-800/50 p-3 rounded-lg text-center">
+                <div className="text-2xl font-bold text-green-400">{haitiStatus.total_haiti_master}</div>
+                <div className="text-xs text-gray-400">Loteries Master</div>
+              </div>
+              <div className="bg-slate-800/50 p-3 rounded-lg text-center">
+                <div className="text-2xl font-bold text-blue-400">{haitiStatus.total_haiti_global}</div>
+                <div className="text-xs text-gray-400">Loteries Global</div>
+              </div>
+              <div className="bg-slate-800/50 p-3 rounded-lg text-center">
+                <div className="text-2xl font-bold text-yellow-400">{haitiStatus.total_haiti_schedules}</div>
+                <div className="text-xs text-gray-400">Schedules</div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <Button
+              onClick={initializeHaitiLotteries}
+              disabled={initializingHaiti}
+              className="bg-blue-600 hover:bg-blue-700"
+              data-testid="init-haiti-btn"
+            >
+              {initializingHaiti ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Initialisation...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Initialiser Loteries Haiti
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={fetchHaitiStatus}
+              variant="outline"
+              className="border-slate-600"
+              data-testid="refresh-haiti-status-btn"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Actualiser
+            </Button>
+          </div>
+        </div>
       </div>
     </AdminLayout>
   );

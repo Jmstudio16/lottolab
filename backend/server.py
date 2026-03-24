@@ -1228,6 +1228,14 @@ async def startup_event():
     # Initialize lottery schedules for Plop Plop and Loto Rapid
     await initialize_lottery_schedules()
     
+    # Initialize Haiti lotteries (idempotent - safe to run multiple times)
+    try:
+        from haiti_lottery_init import initialize_haiti_lotteries
+        result = await initialize_haiti_lotteries(db)
+        logger.info(f"[STARTUP] Haiti lotteries initialized: Created {result['created']}, Updated {result['updated']}")
+    except Exception as e:
+        logger.warning(f"[STARTUP] Haiti lottery init skipped: {str(e)}")
+    
     # Add daily job to check expired subscriptions at 00:00
     scheduler.add_job(
         check_expired_subscriptions,

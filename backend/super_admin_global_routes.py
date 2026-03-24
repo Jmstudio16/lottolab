@@ -983,3 +983,79 @@ async def get_device_sessions_stats(current_user: dict = Depends(get_super_admin
         "top_companies": by_company
     }
 
+
+
+# ============ HAITI LOTTERY INITIALIZATION ============
+@super_admin_global_router.post("/init-haiti-lotteries")
+async def init_haiti_lotteries(current_user: dict = Depends(get_super_admin_user)):
+    """
+    Initialize all Haiti lotteries with proper schedules.
+    This endpoint is idempotent - safe to call multiple times.
+    """
+    from haiti_lottery_init import initialize_haiti_lotteries
+    
+    try:
+        result = await initialize_haiti_lotteries(db)
+        
+        await log_activity(
+            db=db,
+            action_type="INIT_HAITI_LOTTERIES",
+            entity_type="system",
+            entity_id="haiti_lotteries",
+            performed_by=current_user["user_id"],
+            company_id=None,
+            metadata={"created": result["created"], "updated": result["updated"]}
+        )
+        
+        return {
+            "success": True,
+            "message": "Haiti lotteries initialized successfully",
+            "created": result["created"],
+            "updated": result["updated"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to initialize Haiti lotteries: {str(e)}")
+
+@super_admin_global_router.get("/haiti-lotteries-status")
+async def get_haiti_lotteries_status(current_user: dict = Depends(get_super_admin_user)):
+    """
+    Get the current status of Haiti lotteries.
+    """
+    # Count Haiti lotteries
+    haiti_master = await db.master_lotteries.count_documents({"flag_type": "HAITI"})
+    haiti_global = await db.global_lotteries.count_documents({"flag_type": "HAITI"})
+    haiti_schedules = await db.global_schedules.count_documents({
+        "lottery_name": {"$regex": "^(Haiti|Tennessee|Texas|Georgia|Florida|New York|Plop|Loto Rapid)", "$options": "i"}
+    })
+    
+    # Get list of Haiti lotteries with their schedules
+    haiti_lotteries = await db.master_lotteries.find(
+        {"flag_type": "HAITI"},
+        {"_id": 0, "lottery_id": 1, "lottery_name": 1, "is_active_global": 1}
+    ).to_list(100)
+    
+    lottery_ids = [l["lottery_id"] for l in haiti_lotteries]
+    schedules = await db.global_schedules.find(
+        {"lottery_id": {"$in": lottery_ids}},
+        {"_id": 0}
+    ).to_list(100)
+    
+    schedule_map = {s["lottery_id"]: s for s in schedules}
+    
+    lotteries_status = []
+    for lottery in haiti_lotteries:
+        schedule = schedule_map.get(lottery["lottery_id"], {})
+        lotteries_status.append({
+            "lottery_name": lottery["lottery_name"],
+            "is_active": lottery.get("is_active_global", False),
+            "has_schedule": lottery["lottery_id"] in schedule_map,
+            "open_time": schedule.get("open_time", "N/A"),
+            "close_time": schedule.get("close_time", "N/A")
+        })
+    
+    return {
+        "total_haiti_master": haiti_master,
+        "total_haiti_global": haiti_global,
+        "total_haiti_schedules": haiti_schedules,
+        "lotteries": lotteries_status
+    }
