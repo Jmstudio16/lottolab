@@ -1,95 +1,110 @@
 # LOTTOLAB - Product Requirements Document
-**Version**: 12.5.0 FINAL  
+**Version**: 13.0.0 FINAL  
 **Date**: 24 Mars 2026  
-**Status**: ✅ PRÊT POUR DÉPLOIEMENT - Système 100% Fonctionnel
+**Status**: ✅ PRÊT POUR DÉPLOIEMENT - Système 100% Responsive
 
 ---
 
 ## 🚀 INSTRUCTIONS DE DÉPLOIEMENT
 
-### Après le déploiement sur lottolab.tech:
-
-**Les loteries Haiti s'initialisent AUTOMATIQUEMENT au démarrage du serveur.**
-
-Vous n'avez rien à faire! Mais si vous souhaitez vérifier ou réinitialiser:
-
-1. **Via Interface Super Admin:**
-   - Connectez-vous: admin@lottolab.com
-   - Allez dans Settings
-   - Cliquez sur "Initialiser Loteries Haiti"
-
-2. **Via Script (optionnel):**
-   ```bash
-   cd /app/backend
-   python3 migrate_haiti_lotteries.py
-   ```
+**Déployez le code sur lottolab.tech - Les loteries Haiti s'initialisent AUTOMATIQUEMENT!**
 
 ---
 
-## ✅ TOUT CE QUI FONCTIONNE
+## ✅ RESPONSIVE - TOUS LES APPAREILS
 
-### Super Admin
+### Mobile (iPhone - 375x812)
 | Fonctionnalité | Status |
 |----------------|--------|
-| Login | ✅ |
-| Dashboard (Companies, Agents) | ✅ |
-| Companies Management | ✅ |
-| Users Management | ✅ |
-| Global Schedules (403) | ✅ |
-| Global Results | ✅ |
-| Haiti Lotteries Init | ✅ |
-| Settings | ✅ |
+| Menu hamburger (☰) | ✅ |
+| Menu se ferme après navigation | ✅ |
+| Cards en 1 colonne | ✅ |
+| Barre navigation bas (Vendeur) | ✅ |
 
-### Company Admin
+### Tablette (iPad - 768x1024)
 | Fonctionnalité | Status |
 |----------------|--------|
-| Login | ✅ |
-| Dashboard (193 loteries ouvertes) | ✅ |
-| Succursales (2) | ✅ |
-| Catalogue Loteries | ✅ |
-| Tickets | ✅ |
-| Profile Settings | ✅ |
-| Subscription (580 jours) | ✅ |
+| Menu hamburger visible | ✅ |
+| Cards en 2 colonnes | ✅ |
+| Layout responsive | ✅ |
 
-### Supervisor
+### Desktop (1920x1080)
 | Fonctionnalité | Status |
 |----------------|--------|
-| Login | ✅ |
-| Dashboard | ✅ |
-| Agents (Marie Dupont 10%) | ✅ |
-| Reports | ✅ |
-
-### Vendeur
-| Fonctionnalité | Status |
-|----------------|--------|
-| Login | ✅ |
-| Dashboard + Nom Succursale | ✅ |
-| Nouvelle Vente + Nom Succursale | ✅ |
-| 31 Loteries Ouvertes | ✅ |
-| 26 Loteries Haiti 🇭🇹 | ✅ |
-| Filtre Haiti/USA | ✅ |
-| Mes Tickets | ✅ |
-| Résultats | ✅ |
-
-### Tickets
-| Fonctionnalité | Status |
-|----------------|--------|
-| Impression sans "IMPRIMER" | ✅ |
-| Statut VALIDÉ | ✅ |
-| Logo Entreprise | ✅ |
-| Téléphone + Adresse | ✅ |
-| QR Code (optionnel) | ✅ |
-| Texte Header/Footer | ✅ |
+| Sidebar complète visible | ✅ |
+| Menu hamburger caché | ✅ |
+| Layout complet | ✅ |
 
 ---
 
-## 📊 Statistiques Système
+## ✅ TOUS LES RÔLES FONCTIONNELS
 
-- **Total Schedules**: 403
-- **Loteries Haiti**: 26
-- **Loteries ouvertes**: 193 (Company) / 31 (Vendeur)
-- **Succursales**: 2
-- **Agents actifs**: 10
+### Super Admin (Mobile ✅ | Tablette ✅ | Desktop ✅)
+- Dashboard avec stats
+- Companies Management
+- Users Management
+- Global Schedules (403)
+- Global Results
+- Haiti Lotteries Init
+- Settings
+
+### Company Admin (Mobile ✅ | Tablette ✅ | Desktop ✅)
+- Dashboard (193 loteries ouvertes)
+- Succursales (2)
+- Catalogue Loteries
+- Tickets
+- Profile Settings (logo, téléphone, QR code)
+
+### Supervisor (Mobile ✅ | Tablette ✅ | Desktop ✅)
+- Dashboard
+- Mes Agents
+- Tickets
+- Fiches Jouées
+- Rapports
+- Résultats
+- Fiches Gagnants
+
+### Vendeur (Mobile ✅ | Tablette ✅ | Desktop ✅)
+- Dashboard + Nom Succursale
+- Nouvelle Vente + Nom Succursale
+- 31 Loteries Ouvertes
+- 26 Loteries Haiti 🇭🇹
+- Mes Tickets
+- Résultats
+
+---
+
+## 📍 NOM SUCCURSALE AFFICHÉ
+
+| Emplacement | Affichage |
+|-------------|-----------|
+| Header Vendeur | LOTO PAM Test + Succursale Pétion-Ville |
+| Sidebar Vendeur | Succursale Pétion-Ville (vert) |
+| Dashboard | 📍 Succursale Pétion-Ville • LOTO PAM Test |
+| Nouvelle Vente | 📍 Succursale Pétion-Ville |
+
+---
+
+## 🎫 TICKETS
+
+- Bouton "IMPRIMER" supprimé
+- Statut "VALIDÉ"
+- Logo + Téléphone + Adresse affichés
+- QR Code optionnel
+- Texte header/footer personnalisable
+
+---
+
+## 🇭🇹 LOTERIES HAITI (26)
+
+Toutes ouvertes 06:00-23:00:
+- Haiti Borlette Midi/Soir
+- Haiti Loto 3 Midi/Soir
+- Haiti Loto 4 Midi/Soir
+- Haiti Loto 5 Midi/Soir
+- Haiti Mariage Midi/Soir
+- Tennessee, Texas, Georgia, Florida, New York
+- Plop Plop, Loto Rapid (24h)
 
 ---
 
@@ -104,41 +119,17 @@ Vous n'avez rien à faire! Mais si vous souhaitez vérifier ou réinitialiser:
 
 ---
 
-## 🇭🇹 Loteries Haiti Configurées (26)
-
-1. Haiti Borlette Midi/Soir
-2. Haiti Loto 3 Midi/Soir
-3. Haiti Loto 4 Midi/Soir
-4. Haiti Loto 5 Midi/Soir
-5. Haiti Mariage Midi/Soir
-6. Tennessee Matin/Midi/Soir
-7. Texas Matin/Midi/Soir/Nuit
-8. Georgia Midi/Soir/Nuit
-9. Florida Midi/Soir
-10. New York Midi/Soir
-11. Plop Plop (24h)
-12. Loto Rapid (24h)
-
-**Horaires**: 06:00 - 23:00 (sauf Plop Plop et Loto Rapid: 24h)
-
----
-
-## 📁 Fichiers Importants
+## 📁 Fichiers Modifiés (Responsive)
 
 ```
-/app/backend/
-├── server.py                    # Serveur principal (auto-init Haiti)
-├── haiti_lottery_init.py        # Module initialisation Haiti
-├── migrate_haiti_lotteries.py   # Script migration standalone
-├── sync_routes.py               # Ticket print (sans IMPRIMER)
-├── ticket_print_routes.py       # Ticket print online
-└── super_admin_global_routes.py # Endpoints Super Admin
+/app/frontend/src/components/
+├── AdminLayout.js       # Menu mobile Super Admin
+├── CompanyLayout.js     # Menu mobile Company Admin
+├── Sidebar.js           # Support onNavigate callback
 
-/app/frontend/src/
-├── layouts/VendeurLayout.jsx    # Affiche nom succursale
-└── pages/vendeur/
-    ├── VendeurDashboard.jsx     # Nom succursale visible
-    └── VendeurNouvelleVente.jsx # Nom succursale visible
+/app/frontend/src/layouts/
+├── SupervisorLayout.js  # Menu mobile Supervisor
+└── VendeurLayout.jsx    # Menu mobile Vendeur
 ```
 
 ---
