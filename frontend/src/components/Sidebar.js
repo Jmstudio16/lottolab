@@ -78,16 +78,20 @@ const CompanyAdminMenu = [
   { path: '/company/settings', label: 'Paramètres', icon: Settings },
 ];
 
-export const Sidebar = ({ role }) => {
+export const Sidebar = ({ role, onNavigate }) => {
   const location = useLocation();
   const { logout, user } = useAuth();
   
   const menu = role === 'SUPER_ADMIN' ? SuperAdminMenu : CompanyAdminMenu;
   
+  const handleClick = () => {
+    if (onNavigate) onNavigate();
+  };
+  
   return (
-    <div className="w-64 h-screen bg-[#020617] border-r border-slate-800 flex flex-col">
+    <div className="w-64 h-screen bg-[#020617] border-r border-slate-800 flex flex-col overflow-hidden">
       {/* Logo */}
-      <div className="p-6 border-b border-slate-800">
+      <div className="p-4 lg:p-6 border-b border-slate-800">
         <Logo 
           size="xl" 
           className="mx-auto justify-center"
@@ -96,7 +100,7 @@ export const Sidebar = ({ role }) => {
       </div>
       
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3">
+      <nav className="flex-1 overflow-y-auto py-4 px-2 lg:px-3">
         {menu.map((item, index) => {
           // Handle divider
           if (item.divider) {
@@ -115,24 +119,25 @@ export const Sidebar = ({ role }) => {
             <Link
               key={item.path}
               to={item.path}
+              onClick={handleClick}
               data-testid={`sidebar-link-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-              className={`sidebar-link flex items-center gap-3 px-4 py-3 mb-2 rounded-lg text-sm transition-all ${
+              className={`sidebar-link flex items-center gap-3 px-3 lg:px-4 py-2.5 lg:py-3 mb-1 lg:mb-2 rounded-lg text-sm transition-all ${
                 isActive 
                   ? 'active bg-yellow-400/10 text-yellow-400 border-l-4 border-yellow-400' 
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
               }`}
             >
-              <Icon className="w-5 h-5" />
-              <span className="font-medium">{item.label}</span>
+              <Icon className="w-5 h-5 flex-shrink-0" />
+              <span className="font-medium truncate">{item.label}</span>
             </Link>
           );
         })}
       </nav>
       
       {/* User Section */}
-      <div className="p-4 border-t border-slate-800">
+      <div className="p-3 lg:p-4 border-t border-slate-800">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-slate-900 font-bold">
+          <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-slate-900 font-bold text-sm lg:text-base">
             {user?.name?.charAt(0) || 'U'}
           </div>
           <div className="flex-1 min-w-0">
@@ -146,13 +151,13 @@ export const Sidebar = ({ role }) => {
           className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-900/20 text-red-400 hover:bg-red-900/40 transition-colors text-sm font-medium"
         >
           <LogOut className="w-4 h-4" />
-          Logout
+          Déconnexion
         </button>
       </div>
       
       {/* Footer */}
-      <div className="p-4 text-center text-xs text-slate-500 border-t border-slate-800">
-        © JM STUDIO
+      <div className="p-3 lg:p-4 text-center text-xs text-slate-500 border-t border-slate-800">
+        © LOTTOLAB
       </div>
     </div>
   );

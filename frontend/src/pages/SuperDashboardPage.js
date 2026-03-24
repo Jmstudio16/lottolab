@@ -24,16 +24,16 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color = 'yellow' }) => {
   };
 
   return (
-    <div className="stat-card bg-card border border-slate-700/50 rounded-xl p-6 relative overflow-hidden">
-      <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${colorClasses[color]} rounded-full blur-2xl opacity-50`}></div>
+    <div className="stat-card bg-card border border-slate-700/50 rounded-xl p-4 sm:p-6 relative overflow-hidden">
+      <div className={`absolute -top-10 -right-10 w-24 sm:w-32 h-24 sm:h-32 bg-gradient-to-br ${colorClasses[color]} rounded-full blur-2xl opacity-50`}></div>
       <div className="relative">
-        <div className="flex items-start justify-between mb-4">
-          <div className="p-3 rounded-lg bg-slate-900/50">
-            <Icon className="w-6 h-6 text-yellow-400" />
+        <div className="flex items-start justify-between mb-3 sm:mb-4">
+          <div className="p-2 sm:p-3 rounded-lg bg-slate-900/50">
+            <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400" />
           </div>
         </div>
-        <h3 className="text-3xl font-barlow font-bold text-white mb-1">{value}</h3>
-        <p className="text-sm font-medium text-slate-300">{title}</p>
+        <h3 className="text-2xl sm:text-3xl font-barlow font-bold text-white mb-1">{value}</h3>
+        <p className="text-xs sm:text-sm font-medium text-slate-300">{title}</p>
         {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
       </div>
     </div>
