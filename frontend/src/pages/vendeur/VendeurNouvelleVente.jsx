@@ -20,6 +20,8 @@ const VendeurNouvelleVente = () => {
   const [selectedFlag, setSelectedFlag] = useState('all');
   const [selectedLottery, setSelectedLottery] = useState(null);
   const [cart, setCart] = useState([]);
+  const [succursaleName, setSuccursaleName] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [currentPlay, setCurrentPlay] = useState({
     numbers: '',
     numbers2: '', // Second number for Loto4/Loto5
@@ -72,8 +74,17 @@ const VendeurNouvelleVente = () => {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_URL}/api/device/config`, { headers });
-      setLotteries(res.data.enabled_lotteries || []);
+      const [lotteriesRes, profileRes] = await Promise.all([
+        axios.get(`${API_URL}/api/device/config`, { headers }),
+        axios.get(`${API_URL}/api/vendeur/profile`, { headers }).catch(() => ({ data: null }))
+      ]);
+      setLotteries(lotteriesRes.data.enabled_lotteries || []);
+      
+      // Get succursale and company name
+      if (profileRes.data) {
+        setSuccursaleName(profileRes.data?.succursale?.name || '');
+        setCompanyName(profileRes.data?.company?.name || '');
+      }
     } catch (error) {
       toast.error('Erreur lors du chargement des loteries');
     } finally {
@@ -467,6 +478,11 @@ const VendeurNouvelleVente = () => {
             Nouvelle Vente
           </h1>
           <p className="text-sm text-slate-400">Sélectionnez une loterie</p>
+          {succursaleName && (
+            <p className="text-xs text-emerald-400 mt-1" data-testid="succursale-name-vente">
+              📍 {succursaleName}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
           <div className="flex items-center gap-2 px-3 py-2 bg-slate-800 rounded-xl border border-slate-700">

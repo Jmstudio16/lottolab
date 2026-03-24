@@ -12,6 +12,8 @@ const VendeurDashboard = () => {
   const { token, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [commissionRate, setCommissionRate] = useState(0);
+  const [succursaleName, setSuccursaleName] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [stats, setStats] = useState({
     ventesJour: 0,
     ventesMois: 0,
@@ -38,6 +40,10 @@ const VendeurDashboard = () => {
       // Get commission rate from profile - Default to 0 if not configured
       const profileCommission = profileRes.data?.vendeur?.commission_rate || 0;
       setCommissionRate(profileCommission);
+      
+      // Get succursale and company name
+      setSuccursaleName(profileRes.data?.succursale?.name || '');
+      setCompanyName(profileRes.data?.company?.name || '');
 
       const tickets = ticketsRes.data || [];
       setRecentTickets(tickets.slice(0, 5));
@@ -138,6 +144,11 @@ const VendeurDashboard = () => {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white">Tableau de Bord</h1>
           <p className="text-sm text-slate-400">Bienvenue, {user?.full_name || 'Vendeur'}</p>
+          {succursaleName && (
+            <p className="text-xs text-emerald-400 mt-1" data-testid="succursale-name">
+              📍 {succursaleName} {companyName && `• ${companyName}`}
+            </p>
+          )}
         </div>
         <div className="text-left sm:text-right">
           <p className="text-xs sm:text-sm text-slate-400">

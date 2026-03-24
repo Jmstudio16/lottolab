@@ -716,14 +716,14 @@ class GlobalResultEnhanced(BaseModel):
     lottery_name: str
     state_code: Optional[str] = None
     draw_date: str  # YYYY-MM-DD
-    draw_name: str  # "Midday", "Evening"
+    draw_name: Optional[str] = "Journée"  # "Midday", "Evening"
     winning_numbers: str
     winning_numbers_parsed: Dict[str, str] = {}  # {"first": "123", "second": "456", "third": "789"}
     bonus_number: Optional[str] = None
-    entered_by: str
+    entered_by: Optional[str] = None
     entered_by_name: Optional[str] = None
     is_verified: bool = False
-    created_at: str
+    created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
 class GlobalResultCreateEnhanced(BaseModel):
