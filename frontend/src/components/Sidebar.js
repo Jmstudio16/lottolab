@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/api/auth';
 import Logo from './Logo';
+import UserAvatar from './UserAvatar';
 
 // Menu items will be generated with translation keys
 const getSuperAdminMenu = (t) => [
@@ -140,9 +141,11 @@ export const Sidebar = ({ role, onNavigate }) => {
       {/* User Section */}
       <div className="p-3 lg:p-4 border-t border-slate-800">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-slate-900 font-bold text-sm lg:text-base">
-            {user?.name?.charAt(0) || 'U'}
-          </div>
+          <UserAvatar 
+            photoUrl={user?.photo_url || user?.profile_image_url}
+            name={user?.name}
+            size="md"
+          />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white truncate">{user?.name}</p>
             <p className="text-xs text-slate-400 truncate">{user?.role?.replace('_', ' ')}</p>

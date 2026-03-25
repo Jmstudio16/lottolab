@@ -4,6 +4,7 @@ import { useAuth } from '@/api/auth';
 import axios from 'axios';
 import { API_URL } from '@/config/api';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import UserAvatar from './UserAvatar';
 
 const getNotificationIcon = (type) => {
   switch (type) {
@@ -305,6 +306,14 @@ export const Header = ({ title, subtitle }) => {
               </div>
             )}
           </div>
+          
+          {/* User Avatar */}
+          <UserAvatar 
+            photoUrl={user?.photo_url || user?.profile_image_url}
+            name={user?.name || user?.full_name}
+            size="sm"
+            className="hidden sm:flex"
+          />
         </div>
       </div>
     </div>

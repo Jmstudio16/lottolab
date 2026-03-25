@@ -10,6 +10,7 @@ import {
   Banknote, Receipt
 } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import UserAvatar from '@/components/UserAvatar';
 
 
 const VendeurLayout = () => {
@@ -19,6 +20,7 @@ const VendeurLayout = () => {
   const { t } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [companyInfo, setCompanyInfo] = useState(null);
+  const [vendeurPhoto, setVendeurPhoto] = useState(null);
 
   // Fetch company and succursale info
   useEffect(() => {
@@ -30,10 +32,11 @@ const VendeurLayout = () => {
         });
         setCompanyInfo({
           companyName: res.data.company?.name || 'Compagnie',
-          companyLogo: res.data.company?.logo_url,
+          companyLogo: res.data.company?.logo_url || res.data.company?.company_logo_url,
           succursaleName: res.data.succursale?.name || '',
           vendeurName: res.data.vendeur?.name || user?.full_name || 'Vendeur'
         });
+        setVendeurPhoto(res.data.vendeur?.photo_url || res.data.vendeur?.profile_image_url);
       } catch (e) {
         // Fallback to user data
         setCompanyInfo({
@@ -42,6 +45,7 @@ const VendeurLayout = () => {
           succursaleName: user?.succursale_name || '',
           vendeurName: user?.full_name || 'Vendeur'
         });
+        setVendeurPhoto(user?.photo_url);
       }
     };
     fetchInfo();
@@ -137,9 +141,11 @@ const VendeurLayout = () => {
           {/* User Info */}
           <div className="p-4 border-b border-slate-700">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                <User className="w-5 h-5 text-emerald-400" />
-              </div>
+              <UserAvatar 
+                photoUrl={vendeurPhoto}
+                name={companyInfo?.vendeurName || user?.full_name}
+                size="md"
+              />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white truncate">
                   {companyInfo?.vendeurName || user?.full_name || 'Vendeur'}
