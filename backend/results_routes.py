@@ -1,6 +1,8 @@
 """
 LOTTOLAB - Lottery Results & Automatic Winner Detection System
 Handles: Result publishing, Winner detection, Payout calculation
+
+UPDATED: Now uses PayoutEngine for proper prize calculations based on company configs.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Request
@@ -14,6 +16,7 @@ from models import UserRole, TicketStatus
 from auth import decode_token
 from utils import generate_id, get_current_timestamp
 from activity_logger import log_activity
+from payout_engine import process_result_for_all_tickets, get_company_primes, calculate_play_win
 
 results_router = APIRouter(prefix="/api", tags=["Results & Winners"])
 security = HTTPBearer()
@@ -204,8 +207,8 @@ async def publish_result(
     
     Process:
     1. Store result in global_results collection
-    2. Find all pending tickets for this lottery/draw
-    3. Check each ticket against winning numbers
+    2. Use PayoutEngine to process all pending tickets
+    3. PayoutEngine uses company-specific prime configurations
     4. Update winning tickets status and calculate payouts
     5. Create payout records for winners
     """
@@ -239,159 +242,21 @@ async def publish_result(
     
     await db.global_results.insert_one(result_doc)
     
-    # 2. Find all pending tickets for this lottery/draw
-    pending_tickets = await db.lottery_transactions.find({
+    # 2. Use PayoutEngine to process all tickets
+    # This centralized engine:
+    # - Uses company-specific prime configurations (60|20|10, etc.)
+    # - Properly extracts borlette from 1st prize (last 2 digits)
+    # - Creates payout records
+    # - Updates ticket statuses
+    payout_result = await process_result_for_all_tickets({
+        "result_id": result_id,
         "lottery_id": data.lottery_id,
         "draw_date": data.draw_date,
         "draw_name": data.draw_name,
-        "status": {"$in": [TicketStatus.PENDING_RESULT.value, "PENDING_RESULT", "ACTIVE", "pending"]}
-    }, {"_id": 0}).to_list(10000)
+        "winning_numbers": data.winning_numbers
+    })
     
-    # Also check tickets collection (if separate)
-    pending_tickets_alt = await db.tickets.find({
-        "lottery_id": data.lottery_id,
-        "draw_date": data.draw_date,
-        "draw_name": data.draw_name,
-        "status": {"$in": [TicketStatus.PENDING_RESULT.value, "PENDING_RESULT", "ACTIVE", "pending"]}
-    }, {"_id": 0}).to_list(10000)
-    
-    all_pending = pending_tickets + pending_tickets_alt
-    
-    # 3. Process each ticket
-    winners_count = 0
-    losers_count = 0
-    total_payouts = 0.0
-    winner_details = []
-    
-    for ticket in all_pending:
-        ticket_id = ticket.get("ticket_id")
-        plays = ticket.get("plays", [])
-        total_win = 0.0
-        winning_plays = []
-        
-        # Check each play in the ticket
-        for play in plays:
-            play_numbers = play.get("numbers", "")
-            bet_type = play.get("bet_type", "BORLETTE")
-            amount = float(play.get("amount", 0))
-            
-            win_check = check_winning(play_numbers, bet_type, data.winning_numbers)
-            
-            if win_check["is_winner"]:
-                win_amount = amount * win_check["multiplier"]
-                total_win += win_amount
-                winning_plays.append({
-                    **play,
-                    "win_amount": win_amount,
-                    "match_type": win_check["match_type"],
-                    "multiplier": win_check["multiplier"]
-                })
-        
-        # Update ticket status
-        if total_win > 0:
-            # WINNER
-            winners_count += 1
-            total_payouts += total_win
-            
-            update_data = {
-                "status": TicketStatus.WINNER.value,
-                "win_amount": total_win,
-                "winning_plays": winning_plays,
-                "result_id": result_id,
-                "processed_at": now
-            }
-            
-            # Update in lottery_transactions
-            await db.lottery_transactions.update_one(
-                {"ticket_id": ticket_id},
-                {"$set": update_data}
-            )
-            
-            # Also update in tickets collection if exists
-            await db.tickets.update_one(
-                {"ticket_id": ticket_id},
-                {"$set": update_data}
-            )
-            
-            # Create payout record
-            payout_id = generate_id("pay_")
-            payout_doc = {
-                "payout_id": payout_id,
-                "ticket_id": ticket_id,
-                "ticket_code": ticket.get("ticket_code"),
-                "agent_id": ticket.get("agent_id"),
-                "company_id": ticket.get("company_id"),
-                "lottery_id": data.lottery_id,
-                "lottery_name": lottery.get("lottery_name"),
-                "draw_date": data.draw_date,
-                "draw_name": data.draw_name,
-                "winning_numbers": data.winning_numbers,
-                "winning_plays": winning_plays,
-                "total_bet": ticket.get("total_amount", 0),
-                "total_payout": total_win,
-                "currency": ticket.get("currency", "HTG"),
-                "status": "PENDING",  # PENDING, PAID, CANCELLED
-                "created_at": now
-            }
-            await db.payouts.insert_one(payout_doc)
-            
-            # Update agent balance (add winnings)
-            agent_balance = await db.agent_balances.find_one(
-                {"agent_id": ticket.get("agent_id")},
-                {"_id": 0}
-            )
-            if agent_balance:
-                new_total_winnings = agent_balance.get("total_winnings", 0) + total_win
-                await db.agent_balances.update_one(
-                    {"agent_id": ticket.get("agent_id")},
-                    {"$set": {
-                        "total_winnings": new_total_winnings,
-                        "updated_at": now
-                    }}
-                )
-            
-            winner_details.append({
-                "ticket_id": ticket_id,
-                "ticket_code": ticket.get("ticket_code"),
-                "agent_name": ticket.get("agent_name"),
-                "company_name": ticket.get("company_name"),
-                "total_bet": ticket.get("total_amount"),
-                "total_win": total_win,
-                "winning_plays": winning_plays
-            })
-        else:
-            # LOSER
-            losers_count += 1
-            
-            update_data = {
-                "status": TicketStatus.LOSER.value,
-                "result_id": result_id,
-                "processed_at": now
-            }
-            
-            await db.lottery_transactions.update_one(
-                {"ticket_id": ticket_id},
-                {"$set": update_data}
-            )
-            
-            await db.tickets.update_one(
-                {"ticket_id": ticket_id},
-                {"$set": update_data}
-            )
-    
-    # 4. Mark result as processed
-    await db.global_results.update_one(
-        {"result_id": result_id},
-        {"$set": {
-            "winners_processed": True,
-            "winners_count": winners_count,
-            "losers_count": losers_count,
-            "total_payouts": total_payouts,
-            "tickets_processed": len(all_pending)
-        }}
-    )
-    
-    # 5. Log activity
+    # 3. Log activity
     await log_activity(
         db=db,
         action_type="RESULT_PUBLISHED",
@@ -403,10 +268,10 @@ async def publish_result(
             "draw_date": data.draw_date,
             "draw_name": data.draw_name,
             "winning_numbers": data.winning_numbers,
-            "tickets_processed": len(all_pending),
-            "winners": winners_count,
-            "losers": losers_count,
-            "total_payouts": total_payouts
+            "tickets_processed": payout_result.get("processed", 0),
+            "winners": payout_result.get("winners", 0),
+            "losers": payout_result.get("losers", 0),
+            "total_payouts": payout_result.get("total_payout", 0)
         },
         ip_address=request.client.host if request.client else None
     )
@@ -418,12 +283,12 @@ async def publish_result(
         "draw_date": data.draw_date,
         "draw_name": data.draw_name,
         "winning_numbers": data.winning_numbers,
-        "tickets_processed": len(all_pending),
-        "winners_count": winners_count,
-        "losers_count": losers_count,
-        "total_payouts": total_payouts,
+        "tickets_processed": payout_result.get("processed", 0),
+        "winners_count": payout_result.get("winners", 0),
+        "losers_count": payout_result.get("losers", 0),
+        "total_payouts": payout_result.get("total_payout", 0),
         "currency": "HTG",
-        "winner_details": winner_details[:10]  # Return first 10 winners
+        "winner_details": payout_result.get("winner_details", [])[:10]
     }
 
 

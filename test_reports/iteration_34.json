@@ -1,0 +1,112 @@
+{
+  "summary": "Iteration 34 - PayoutEngine and Prime Configuration testing complete. All 30 tests pass (20 unit tests + 10 API tests). PayoutEngine correctly implements Borlette 60|20|10, Loto3 500, Loto4 5000, Loto5 50000, Mariage 750 rules. Prime configuration APIs work correctly. Frontend displays Configuration des Primes section with all 6 prime fields.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "CompanyDashboardPage",
+        "issues": ["Minor React hydration warning: <tr> inside <span> in table - cosmetic only, doesn't affect functionality"]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_payout_engine.py",
+    "/app/backend/tests/test_prime_config_api.py",
+    "/app/test_reports/pytest/iteration34_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_prime_config_api.py"
+  ],
+  "success_rate": {
+    "backend": "100% (30/30 tests passed)",
+    "frontend": "100% (All features verified)"
+  },
+  "test_credentials": {
+    "company_admin": "admin@lotopam.com / Test123!",
+    "super_admin": "jefferson@jmstudio.com / JMStudio@2026!"
+  },
+  "seed_data_creation": "Used existing test data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "PayoutEngine fully tested with 20 unit tests covering Borlette extraction, prime parsing, all bet types (Borlette, Loto3, Loto4, Loto5, Mariage). Prime configuration APIs tested with 10 API tests. Frontend Configuration des Primes section displays correctly with all 6 prime input fields.",
+  "features_tested": {
+    "payout_engine_unit_tests": {
+      "status": "PASS",
+      "tests_count": 20,
+      "details": [
+        "extract_borlette_number: 4 tests - extracts last 2 digits from 1st prize",
+        "parse_prime: 3 tests - parses 60|20|10 and single values",
+        "calculate_borlette_win: 5 tests - 1er/2eme/3eme rang with 60/20/10 multipliers",
+        "calculate_loto3_win: 2 tests - exact 3-digit match with 500x",
+        "calculate_loto4_win: 2 tests - exact 4-digit match with 5000x",
+        "calculate_loto5_win: 1 test - exact 5-digit match with 50000x",
+        "calculate_mariage_win: 2 tests - 2 numbers in winning set with 750x",
+        "calculate_play_win: 1 test - uses prime_at_sale snapshot"
+      ]
+    },
+    "api_get_primes": {
+      "status": "PASS",
+      "endpoint": "GET /api/company/primes",
+      "details": "Returns all 12 prime fields (borlette, loto3, loto4, loto5, mariage, mariage_gratuit, l401-l403, l501-l503)"
+    },
+    "api_put_primes": {
+      "status": "PASS",
+      "endpoint": "PUT /api/company/primes",
+      "details": "Updates single/multiple primes, validates format, rejects invalid input"
+    },
+    "api_sync_lotteries": {
+      "status": "PASS",
+      "endpoint": "POST /api/company/sync-lotteries",
+      "details": "Syncs lotteries from master catalog, fixes enabled_lotteries: 0 bug"
+    },
+    "api_enabled_lotteries_count": {
+      "status": "PASS",
+      "endpoint": "GET /api/company/enabled-lotteries-count",
+      "details": "Returns 236 enabled lotteries (bug fix verified - was 0 before)"
+    },
+    "api_primes_display": {
+      "status": "PASS",
+      "endpoint": "GET /api/company/primes/display",
+      "details": "Returns 6 primes formatted for vendeur display with bet_type, name, formula, description"
+    },
+    "frontend_prime_config_section": {
+      "status": "PASS",
+      "page": "/company/profile-settings",
+      "details": [
+        "Configuration des Primes section visible",
+        "Info box explaining prime rules (Borlette 60|20|10, Loto3/4/5, example calculation)",
+        "6 prime input fields with data-testid attributes",
+        "Save Primes button functional",
+        "Prime values populated correctly (60|20|10, 500, 5000, 50000, 750, 750)"
+      ]
+    }
+  },
+  "api_tests_summary": {
+    "total_tests": 30,
+    "passed": 30,
+    "failed": 0,
+    "payout_engine_tests": 20,
+    "prime_config_api_tests": 10
+  },
+  "verified_prime_values": {
+    "prime_borlette": "60|20|10",
+    "prime_loto3": "500",
+    "prime_loto4": "5000",
+    "prime_loto5": "50000",
+    "prime_mariage": "750",
+    "prime_mariage_gratuit": "750"
+  },
+  "enabled_lotteries_bug_fix": {
+    "status": "VERIFIED",
+    "before_fix": 0,
+    "after_fix": 236,
+    "details": "sync_company_lotteries function correctly syncs master lotteries to company"
+  }
+}

@@ -8,7 +8,7 @@ import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Switch } from '../../components/ui/switch';
 import { useToast } from '../../hooks/use-toast';
-import { Loader2, Upload, Trash2, Building2, Phone, Mail, MapPin, Image as ImageIcon, Check, QrCode, FileText, DollarSign } from 'lucide-react';
+import { Loader2, Upload, Trash2, Building2, Phone, Mail, MapPin, Image as ImageIcon, Check, QrCode, FileText, DollarSign, Award, Info } from 'lucide-react';
 import axios from 'axios';
 
 
@@ -36,12 +36,24 @@ const CompanySettingsPage = () => {
     max_bet_amount: 999999
   });
 
+  // Prime configuration state
+  const [primes, setPrimes] = useState({
+    prime_borlette: '60|20|10',
+    prime_loto3: '500',
+    prime_loto4: '5000',
+    prime_loto5: '50000',
+    prime_mariage: '750',
+    prime_mariage_gratuit: '750'
+  });
+  const [savingPrimes, setSavingPrimes] = useState(false);
+
   const [previewUrl, setPreviewUrl] = useState(null);
   const [currentLogoUrl, setCurrentLogoUrl] = useState(null);
   const [hasCompanyLogo, setHasCompanyLogo] = useState(false);
 
   useEffect(() => {
     fetchSettings();
+    fetchPrimes();
   }, []);
 
   const fetchSettings = async () => {
@@ -81,6 +93,56 @@ const CompanySettingsPage = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setSettings(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePrimeChange = (e) => {
+    const { name, value } = e.target;
+    setPrimes(prev => ({ ...prev, [name]: value }));
+  };
+
+  const fetchPrimes = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/api/company/primes`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const data = response.data;
+      setPrimes({
+        prime_borlette: data.prime_borlette || '60|20|10',
+        prime_loto3: data.prime_loto3 || '500',
+        prime_loto4: data.prime_loto4 || '5000',
+        prime_loto5: data.prime_loto5 || '50000',
+        prime_mariage: data.prime_mariage || '750',
+        prime_mariage_gratuit: data.prime_mariage_gratuit || '750'
+      });
+    } catch (err) {
+      // Silently fail - use defaults
+      console.log('Using default primes');
+    }
+  };
+
+  const handleSavePrimes = async () => {
+    setSavingPrimes(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${API_URL}/api/company/primes`, primes, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast({
+        title: "Succès",
+        description: "Les primes ont été mises à jour. Elles seront appliquées aux nouvelles ventes.",
+      });
+    } catch (err) {
+      toast({
+        title: "Erreur",
+        description: err.response?.data?.detail || "Échec de la mise à jour des primes",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingPrimes(false);
+    }
   };
 
   const handleSaveSettings = async () => {
@@ -571,6 +633,166 @@ const CompanySettingsPage = () => {
                 <>
                   <Check className="h-4 w-4 mr-2" />
                   Enregistrer les paramètres du ticket
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Prime Configuration Section */}
+      <Card className="bg-gray-800/50 border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <Award className="h-5 w-5 text-yellow-400" />
+            Configuration des Primes
+          </CardTitle>
+          <CardDescription>
+            Configurez les multiplicateurs de gains pour chaque type de jeu. Ces primes seront appliquées à toutes les nouvelles ventes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Info Box */}
+          <div className="bg-blue-900/30 border border-blue-700/50 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <Info className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-blue-200">
+                <p className="font-medium mb-1">Comment fonctionnent les primes?</p>
+                <ul className="list-disc list-inside text-xs text-blue-300 space-y-1">
+                  <li><strong>Borlette (60|20|10)</strong>: 1er rang × 60, 2ème rang × 20, 3ème rang × 10</li>
+                  <li><strong>Loto 3, Loto 4, Loto 5</strong>: Un seul multiplicateur pour le match exact</li>
+                  <li><strong>Exemple</strong>: Mise de 10 HTG avec prime 500 = Gain potentiel de 5,000 HTG</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Borlette Prime */}
+            <div className="space-y-2">
+              <Label htmlFor="prime_borlette" className="text-gray-300 flex items-center gap-2">
+                <Award className="h-4 w-4 text-yellow-400" />
+                Prime Borlette
+              </Label>
+              <Input
+                id="prime_borlette"
+                name="prime_borlette"
+                value={primes.prime_borlette}
+                onChange={handlePrimeChange}
+                className="bg-gray-700 border-gray-600 text-white font-mono"
+                placeholder="60|20|10"
+                data-testid="prime-borlette-input"
+              />
+              <p className="text-xs text-gray-500">Format: 1er|2ème|3ème (ex: 60|20|10)</p>
+            </div>
+
+            {/* Loto 3 Prime */}
+            <div className="space-y-2">
+              <Label htmlFor="prime_loto3" className="text-gray-300 flex items-center gap-2">
+                <Award className="h-4 w-4 text-green-400" />
+                Prime Loto 3
+              </Label>
+              <Input
+                id="prime_loto3"
+                name="prime_loto3"
+                value={primes.prime_loto3}
+                onChange={handlePrimeChange}
+                className="bg-gray-700 border-gray-600 text-white font-mono"
+                placeholder="500"
+                data-testid="prime-loto3-input"
+              />
+              <p className="text-xs text-gray-500">Multiplicateur pour 3 chiffres exacts (ex: 500)</p>
+            </div>
+
+            {/* Loto 4 Prime */}
+            <div className="space-y-2">
+              <Label htmlFor="prime_loto4" className="text-gray-300 flex items-center gap-2">
+                <Award className="h-4 w-4 text-blue-400" />
+                Prime Loto 4
+              </Label>
+              <Input
+                id="prime_loto4"
+                name="prime_loto4"
+                value={primes.prime_loto4}
+                onChange={handlePrimeChange}
+                className="bg-gray-700 border-gray-600 text-white font-mono"
+                placeholder="5000"
+                data-testid="prime-loto4-input"
+              />
+              <p className="text-xs text-gray-500">Multiplicateur pour 4 chiffres exacts (ex: 5000)</p>
+            </div>
+
+            {/* Loto 5 Prime */}
+            <div className="space-y-2">
+              <Label htmlFor="prime_loto5" className="text-gray-300 flex items-center gap-2">
+                <Award className="h-4 w-4 text-purple-400" />
+                Prime Loto 5
+              </Label>
+              <Input
+                id="prime_loto5"
+                name="prime_loto5"
+                value={primes.prime_loto5}
+                onChange={handlePrimeChange}
+                className="bg-gray-700 border-gray-600 text-white font-mono"
+                placeholder="50000"
+                data-testid="prime-loto5-input"
+              />
+              <p className="text-xs text-gray-500">Multiplicateur pour 5 chiffres exacts (ex: 50000)</p>
+            </div>
+
+            {/* Mariage Prime */}
+            <div className="space-y-2">
+              <Label htmlFor="prime_mariage" className="text-gray-300 flex items-center gap-2">
+                <Award className="h-4 w-4 text-pink-400" />
+                Prime Mariage
+              </Label>
+              <Input
+                id="prime_mariage"
+                name="prime_mariage"
+                value={primes.prime_mariage}
+                onChange={handlePrimeChange}
+                className="bg-gray-700 border-gray-600 text-white font-mono"
+                placeholder="750"
+                data-testid="prime-mariage-input"
+              />
+              <p className="text-xs text-gray-500">Multiplicateur pour combinaison mariage (ex: 750)</p>
+            </div>
+
+            {/* Mariage Gratuit Prime */}
+            <div className="space-y-2">
+              <Label htmlFor="prime_mariage_gratuit" className="text-gray-300 flex items-center gap-2">
+                <Award className="h-4 w-4 text-orange-400" />
+                Prime Mariage Gratuit
+              </Label>
+              <Input
+                id="prime_mariage_gratuit"
+                name="prime_mariage_gratuit"
+                value={primes.prime_mariage_gratuit}
+                onChange={handlePrimeChange}
+                className="bg-gray-700 border-gray-600 text-white font-mono"
+                placeholder="750"
+                data-testid="prime-mariage-gratuit-input"
+              />
+              <p className="text-xs text-gray-500">Multiplicateur pour mariage offert (ex: 750)</p>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <Button
+              onClick={handleSavePrimes}
+              disabled={savingPrimes}
+              className="bg-yellow-600 hover:bg-yellow-700"
+              data-testid="save-primes-btn"
+            >
+              {savingPrimes ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Enregistrement...
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Enregistrer les primes
                 </>
               )}
             </Button>

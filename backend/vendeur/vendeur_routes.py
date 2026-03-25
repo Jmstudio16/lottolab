@@ -576,33 +576,49 @@ async def sell_ticket(
     # Calculate totals
     total_amount = sum(play.amount for play in sell_data.plays)
     
-    # Get prime config for potential win calculation
-    prime_configs = await db.prime_configs.find(
-        {"company_id": company_id, "is_active": True},
+    # Get prime config from company_configurations (source of truth)
+    company_config = await db.company_configurations.find_one(
+        {"company_id": company_id},
         {"_id": 0}
-    ).to_list(100)
+    )
     
-    # Calculate potential win (simplified)
+    # Build primes dict with defaults
+    primes = {
+        "BORLETTE": company_config.get("prime_borlette", "60|20|10") if company_config else "60|20|10",
+        "LOTO3": company_config.get("prime_loto3", "500") if company_config else "500",
+        "LOTO4": company_config.get("prime_loto4", "5000") if company_config else "5000",
+        "LOTO5": company_config.get("prime_loto5", "50000") if company_config else "50000",
+        "MARIAGE": company_config.get("prime_mariage", "750") if company_config else "750",
+        "MARIAGE_GRATUIT": company_config.get("prime_mariage_gratuit", "750") if company_config else "750",
+    }
+    
+    def parse_prime_first(prime_str):
+        """Get first multiplier from prime string (e.g., '60|20|10' -> 60)"""
+        try:
+            return float(prime_str.split("|")[0])
+        except:
+            return 60.0
+    
+    # Calculate potential win using actual primes
     potential_win = 0
+    enriched_plays = []
+    
     for play in sell_data.plays:
-        # Default multipliers
-        multiplier = 70  # Borlette default
-        if play.bet_type == "LOTO3":
-            multiplier = 500
-        elif play.bet_type == "LOTO4":
-            multiplier = 5000
-        elif play.bet_type == "LOTO5":
-            multiplier = 50000
-        elif play.bet_type == "MARIAGE":
-            multiplier = 1000
+        bet_type = play.bet_type.upper()
         
-        # Check for custom prime config
-        for pc in prime_configs:
-            if pc.get("bet_type") == play.bet_type:
-                multiplier = pc.get("multiplier", multiplier)
-                break
+        # Get prime formula for this bet type
+        prime_formula = primes.get(bet_type, primes.get("BORLETTE", "60|20|10"))
+        multiplier = parse_prime_first(prime_formula)
         
         potential_win += play.amount * multiplier
+        
+        # CRITICAL: Snapshot the prime at moment of sale
+        enriched_plays.append({
+            "numbers": play.numbers,
+            "bet_type": play.bet_type,
+            "amount": play.amount,
+            "prime_at_sale": prime_formula  # Store for future payout calculation
+        })
     
     # Generate ticket
     ticket_id = generate_id("tkt_")
@@ -623,13 +639,7 @@ async def sell_ticket(
         "lottery_name": lottery.get("lottery_name", ""),
         "draw_date": sell_data.draw_date,
         "draw_name": sell_data.draw_name,
-        "plays": [
-            {
-                "numbers": play.numbers,
-                "bet_type": play.bet_type,
-                "amount": play.amount
-            } for play in sell_data.plays
-        ],
+        "plays": enriched_plays,  # Now includes prime_at_sale
         "total_amount": total_amount,
         "potential_win": potential_win,
         "currency": company.get("currency", "HTG"),

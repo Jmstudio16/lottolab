@@ -49,6 +49,9 @@ from vendeur.vendeur_routes import vendeur_router, set_vendeur_db
 from export_routes import export_router
 from lottery_results_routes import results_router, set_results_db
 from scheduled_results_routes import scheduled_results_router, set_scheduled_results_db, check_and_release_scheduled_results, initialize_lottery_schedules
+from payout_engine import set_payout_engine_db, process_result_for_all_tickets
+from prime_config_routes import prime_config_router, set_prime_config_db
+from lottery_sync_service import lottery_sync_router, set_lottery_sync_db, startup_lottery_sync
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -990,12 +993,15 @@ set_branch_lottery_db(db)
 set_vendeur_db(db)
 set_results_db(db)
 set_scheduled_results_db(db)
+set_payout_engine_db(db)
+set_prime_config_db(db)
+set_lottery_sync_db(db)
 
 # Initialize staff endpoints with dependency
 create_staff_endpoints(get_current_user)
 
-# Connect ticket processor for automatic winning detection
-set_ticket_processor(process_all_tickets_for_result)
+# Connect ticket processor for automatic winning detection (using new PayoutEngine)
+set_ticket_processor(process_result_for_all_tickets)
 
 # Include all routers
 app.include_router(super_admin_router)
@@ -1035,6 +1041,12 @@ app.include_router(export_router)
 
 # Include lottery results router
 app.include_router(results_router)
+
+# Include prime config router (company admin)
+app.include_router(prime_config_router)
+
+# Include lottery sync router (fixes enabled_lotteries bug)
+app.include_router(lottery_sync_router)
 
 # Include staff router under /api prefix
 api_router.include_router(staff_router)
@@ -1266,6 +1278,13 @@ async def startup_event():
     # Start the scheduler
     scheduler.start()
     logger.info("[SCHEDULER] Started - Daily subscription check at 00:00, Results check every minute")
+    
+    # Auto-repair companies with enabled_lotteries = 0
+    try:
+        await startup_lottery_sync()
+        logger.info("[STARTUP] Lottery sync completed - enabled_lotteries bug fixed")
+    except Exception as e:
+        logger.warning(f"[STARTUP] Lottery sync warning: {str(e)}")
     
     # Run initial check at startup
     asyncio.create_task(check_expired_subscriptions())
