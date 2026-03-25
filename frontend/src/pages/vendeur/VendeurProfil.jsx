@@ -51,8 +51,9 @@ const VendeurProfil = () => {
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('L\'image ne doit pas dépasser 2MB');
+    // Increased limit to 10MB for better quality photos
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('L\'image ne doit pas dépasser 10MB');
       return;
     }
 
@@ -65,7 +66,7 @@ const VendeurProfil = () => {
         headers: { ...headers, 'Content-Type': 'multipart/form-data' }
       });
       
-      toast.success('Photo mise à jour');
+      toast.success('Photo mise à jour avec succès!');
       setProfile(prev => ({
         ...prev,
         vendeur: { ...prev.vendeur, photo_url: res.data.photo_url }

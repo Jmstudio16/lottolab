@@ -29,6 +29,8 @@ const CompanySettingsPage = () => {
     company_address: '',
     ticket_header_text: '',
     ticket_footer_text: '',
+    ticket_legal_text: '',
+    ticket_thank_you_text: '',
     qr_code_enabled: true
   });
 
@@ -55,6 +57,8 @@ const CompanySettingsPage = () => {
         company_address: data.company_address || '',
         ticket_header_text: data.ticket_header_text || '',
         ticket_footer_text: data.ticket_footer_text || '',
+        ticket_legal_text: data.ticket_legal_text || '',
+        ticket_thank_you_text: data.ticket_thank_you_text || '',
         qr_code_enabled: data.qr_code_enabled !== false
       });
       setCurrentLogoUrl(data.company_logo_url || data.display_logo_url);
@@ -104,21 +108,21 @@ const CompanySettingsPage = () => {
     if (!file) return;
 
     // Validate file type
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml'];
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml', 'image/gif'];
     if (!allowedTypes.includes(file.type)) {
       toast({
         title: "Type de fichier invalide",
-        description: "Utilisez PNG, JPG, WEBP ou SVG",
+        description: "Utilisez PNG, JPG, WEBP, GIF ou SVG",
         variant: "destructive"
       });
       return;
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
+    // Validate file size (max 10MB - increased for high resolution logos)
+    if (file.size > 10 * 1024 * 1024) {
       toast({
         title: "Fichier trop volumineux",
-        description: "Taille maximale: 5MB",
+        description: "Taille maximale: 10MB",
         variant: "destructive"
       });
       return;
@@ -279,7 +283,7 @@ const CompanySettingsPage = () => {
               <div>
                 <Label className="text-gray-300">Télécharger un nouveau logo</Label>
                 <p className="text-xs text-gray-500 mb-2">
-                  Formats: PNG, JPG, WEBP, SVG • Taille max: 5MB
+                  Formats: PNG, JPG, WEBP, GIF, SVG • Taille max: 10MB
                 </p>
                 <div className="flex items-center gap-2">
                   <Input
@@ -508,6 +512,42 @@ const CompanySettingsPage = () => {
                 onCheckedChange={(checked) => setSettings(prev => ({ ...prev, qr_code_enabled: checked }))}
                 data-testid="qr-code-toggle"
               />
+            </div>
+
+            {/* Thank You Text */}
+            <div className="space-y-2">
+              <Label htmlFor="ticket_thank_you_text" className="text-gray-300 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Message de Remerciement
+              </Label>
+              <Input
+                id="ticket_thank_you_text"
+                name="ticket_thank_you_text"
+                value={settings.ticket_thank_you_text}
+                onChange={handleInputChange}
+                className="bg-gray-700 border-gray-600 text-white"
+                placeholder="Ex: MERCI DE JOUER AVEC NOUS!"
+                data-testid="ticket-thank-you-input"
+              />
+              <p className="text-xs text-gray-500">Texte de remerciement en bas du ticket</p>
+            </div>
+
+            {/* Legal Text */}
+            <div className="space-y-2">
+              <Label htmlFor="ticket_legal_text" className="text-gray-300 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Mentions Légales (optionnel)
+              </Label>
+              <Textarea
+                id="ticket_legal_text"
+                name="ticket_legal_text"
+                value={settings.ticket_legal_text}
+                onChange={handleInputChange}
+                className="bg-gray-700 border-gray-600 text-white min-h-[100px]"
+                placeholder="Ex: Ce ticket doit être présenté pour tout paiement..."
+                data-testid="ticket-legal-text-input"
+              />
+              <p className="text-xs text-gray-500">Si vide, les mentions légales par défaut seront utilisées</p>
             </div>
           </div>
 

@@ -317,14 +317,14 @@ async def upload_vendeur_photo(
     vendeur_id = current_vendeur.get("user_id")
     
     # Validate file type
-    allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+    allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"]
     if file.content_type not in allowed_types:
         raise HTTPException(status_code=400, detail="Type de fichier non supporté")
     
     # Read and validate size
     contents = await file.read()
-    if len(contents) > 2 * 1024 * 1024:  # 2MB max for profile photos
-        raise HTTPException(status_code=400, detail="L'image ne doit pas dépasser 2MB")
+    if len(contents) > 10 * 1024 * 1024:  # 10MB max for profile photos (increased for high quality)
+        raise HTTPException(status_code=400, detail="L'image ne doit pas dépasser 10MB")
     
     # Save file
     import os

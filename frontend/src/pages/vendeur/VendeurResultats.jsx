@@ -58,22 +58,26 @@ const parseWinningNumbers = (wn) => {
   return ['--', '--', '--'];
 };
 
-// Number box component
-const NumberBox = ({ number, position }) => {
+// Number box component with animation
+const NumberBox = ({ number, position, isNew }) => {
   const colors = ['bg-emerald-500', 'bg-amber-400', 'bg-blue-500'];
   return (
-    <div className={`${colors[position] || 'bg-slate-500'} w-11 h-13 sm:w-14 sm:h-16 flex items-center justify-center rounded-lg shadow-lg transform hover:scale-105 transition-transform`}>
+    <div 
+      className={`${colors[position] || 'bg-slate-500'} w-11 h-13 sm:w-14 sm:h-16 flex items-center justify-center rounded-lg shadow-lg transform hover:scale-110 transition-all duration-300 ${isNew ? 'animate-bounce' : ''}`}
+      style={{ animationDelay: `${position * 100}ms` }}
+    >
       <span className="text-white font-bold text-lg sm:text-xl drop-shadow">{number}</span>
     </div>
   );
 };
 
-// Lottery result card
-const LotteryResultCard = ({ result }) => {
+// Lottery result card with animation
+const LotteryResultCard = ({ result, index }) => {
   const { flag, color } = getLotteryInfo(result.lottery_name);
   const numbers = parseWinningNumbers(result.winning_numbers);
   const drawTime = result.draw_time || result.draw_name || 'Tirage';
   const drawDate = result.draw_date;
+  const isNew = result.is_new || false;
   
   // Format date
   const formatDate = (dateStr) => {
@@ -86,11 +90,14 @@ const LotteryResultCard = ({ result }) => {
   };
   
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200 hover:shadow-xl transition-all duration-300 hover:border-blue-300">
+    <div 
+      className={`bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200 hover:shadow-xl transition-all duration-300 hover:border-blue-300 hover:-translate-y-1 ${isNew ? 'ring-2 ring-amber-400 animate-pulse' : ''}`}
+      style={{ animationDelay: `${index * 50}ms` }}
+    >
       <div className="p-4">
         {/* Header with logo/flag and lottery name */}
         <div className="flex items-center gap-3 mb-4">
-          <div className={`w-14 h-14 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center text-2xl shadow-md`}>
+          <div className={`w-14 h-14 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center text-2xl shadow-md transform hover:rotate-12 transition-transform`}>
             {flag}
           </div>
           <div className="flex-1 min-w-0">
@@ -98,13 +105,18 @@ const LotteryResultCard = ({ result }) => {
             <p className="text-xs text-slate-500">
               {formatDate(drawDate)} • {drawTime}
             </p>
+            {isNew && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 animate-pulse">
+                ✨ Nouveau
+              </span>
+            )}
           </div>
         </div>
         
-        {/* Winning numbers */}
+        {/* Winning numbers with animation */}
         <div className="flex gap-2 justify-center">
           {numbers.map((num, idx) => (
-            <NumberBox key={idx} number={num} position={idx} />
+            <NumberBox key={idx} number={num} position={idx} isNew={isNew} />
           ))}
         </div>
       </div>
@@ -252,12 +264,12 @@ const VendeurResultats = () => {
           sortedDates.map(date => (
             <div key={date} className="space-y-4">
               <h2 className="text-lg font-bold text-slate-700 flex items-center gap-2 capitalize">
-                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
                 {formatDateHeader(date)}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {groupedResults[date].map((result, idx) => (
-                  <LotteryResultCard key={result.result_id || idx} result={result} />
+                  <LotteryResultCard key={result.result_id || idx} result={result} index={idx} />
                 ))}
               </div>
             </div>

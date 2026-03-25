@@ -376,10 +376,26 @@ async def print_ticket_80mm(
         logo_html = f'<img src="{company_logo}" class="company-logo" alt="Logo" onerror="this.style.display=&apos;none&apos;" />'
     header_text = company.get("ticket_header_text", "") if company else ""
     footer_text = company.get("ticket_footer_text", "") if company else ""
+    legal_text = company.get("ticket_legal_text", "") if company else ""
+    thank_you_text = company.get("ticket_thank_you_text", "") if company else ""
     company_phone = company.get("phone", "") if company else ""
     company_address = company.get("address", "") if company else ""
     qr_code_enabled = company.get("qr_code_enabled", True) if company else True
     currency = ticket.get("currency", "HTG")
+    
+    # Default legal text if not customized
+    if not legal_text:
+        legal_text = """Vérifiez votre ticket avant de vous déplacer.
+Ce ticket doit être payé UNE SEULE FOIS
+dans les 90 jours. Le PREMIER qui
+présente ce ticket est le bénéficiaire.
+Si le numéro est effacé, on NE PAIE PAS.
+Protégez le ticket de la chaleur, humidité
+et ne gardez pas dans les pièces de monnaie."""
+    
+    # Default thank you text if not customized
+    if not thank_you_text:
+        thank_you_text = f"MERCI DE JOUER AVEC<br>{company_name}"
     
     # Get branch/succursale info
     branch_id = ticket.get("branch_id") or ticket.get("succursale_id")
@@ -712,21 +728,15 @@ async def print_ticket_80mm(
     <div class="separator-dashed"></div>
     
     <div class="footer">
-        <div class="thank-you">MERCI DE JOUER AVEC<br>{company_name}</div>
+        <div class="thank-you">{thank_you_text}</div>
         <div style="margin-top:4px;font-size:7px;">
             {footer_text if footer_text else ''}
         </div>
         {qr_code_html}
-        <div style="margin-top:6px;font-size:7px;text-align:left;">
-            Vérifiez votre ticket avant de vous déplacer.<br>
-            Ce ticket doit être payé UNE SEULE FOIS<br>
-            dans les 90 jours. Le PREMIER qui<br>
-            présente ce ticket est le bénéficiaire.<br>
-            Si le numéro est effacé, on NE PAIE PAS.<br>
-            Protégez le ticket de la chaleur, humidité<br>
-            et ne gardez pas dans les pièces de monnaie.
+        <div style="margin-top:6px;font-size:7px;text-align:center;">
+            {legal_text.replace(chr(10), '<br>')}
         </div>
-        <div class="footer-url" style="margin-top:6px;font-weight:bold;">LOTTOLAB.TECH</div>
+        <div class="footer-url" style="margin-top:6px;font-weight:bold;text-align:center;">LOTTOLAB.TECH</div>
     </div>
     
     <div class="separator">================================</div>

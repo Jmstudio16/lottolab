@@ -82,6 +82,8 @@ class CompanyProfileUpdate(BaseModel):
     logo_url: Optional[str] = None
     ticket_header_text: Optional[str] = None
     ticket_footer_text: Optional[str] = None
+    ticket_legal_text: Optional[str] = None
+    ticket_thank_you_text: Optional[str] = None
     qr_code_enabled: Optional[bool] = True
 
 
@@ -108,6 +110,8 @@ async def get_company_profile(current_user: dict = Depends(get_current_user)):
         "display_logo_url": company.get("logo_url", ""),
         "ticket_header_text": company.get("ticket_header_text", ""),
         "ticket_footer_text": company.get("ticket_footer_text", ""),
+        "ticket_legal_text": company.get("ticket_legal_text", ""),
+        "ticket_thank_you_text": company.get("ticket_thank_you_text", ""),
         "qr_code_enabled": company.get("qr_code_enabled", True),
         "currency": company.get("currency", "HTG"),
         "timezone": company.get("timezone", "America/Port-au-Prince")
@@ -138,6 +142,10 @@ async def update_company_profile(
         update_data["ticket_header_text"] = data.ticket_header_text
     if data.ticket_footer_text is not None:
         update_data["ticket_footer_text"] = data.ticket_footer_text
+    if data.ticket_legal_text is not None:
+        update_data["ticket_legal_text"] = data.ticket_legal_text
+    if data.ticket_thank_you_text is not None:
+        update_data["ticket_thank_you_text"] = data.ticket_thank_you_text
     if data.qr_code_enabled is not None:
         update_data["qr_code_enabled"] = data.qr_code_enabled
     

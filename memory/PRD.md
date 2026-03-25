@@ -1,97 +1,88 @@
 # LOTTOLAB - Product Requirements Document
-**Version**: 13.0.0 FINAL  
-**Date**: 24 Mars 2026  
-**Status**: ✅ PRÊT POUR DÉPLOIEMENT - Système 100% Responsive
+**Version**: 13.1.0 FINAL  
+**Date**: 25 Mars 2026  
+**Status**: ✅ PRÊT POUR DÉPLOIEMENT - Système Complet
 
 ---
 
 ## 🚀 INSTRUCTIONS DE DÉPLOIEMENT
 
-**Déployez le code sur lottolab.tech - Les loteries Haiti s'initialisent AUTOMATIQUEMENT!**
+**Déployez le code sur lottolab.tech - Tout s'initialise AUTOMATIQUEMENT!**
 
 ---
 
-## ✅ RESPONSIVE - TOUS LES APPAREILS
+## ✅ NOUVELLES FONCTIONNALITÉS (v13.1.0)
 
-### Mobile (iPhone - 375x812)
-| Fonctionnalité | Status |
-|----------------|--------|
-| Menu hamburger (☰) | ✅ |
-| Menu se ferme après navigation | ✅ |
-| Cards en 1 colonne | ✅ |
-| Barre navigation bas (Vendeur) | ✅ |
+### 🔔 Notifications Temps Réel
+- Badge compteur sur l'icône cloche
+- Liste des notifications avec marquage lu/non-lu
+- Bouton "Tout lu" pour marquer tout comme lu
+- Coche verte (✓) pour les notifications lues
+- Point bleu animé pour les non-lues
+- Rafraîchissement auto toutes les 15 secondes
 
-### Tablette (iPad - 768x1024)
-| Fonctionnalité | Status |
-|----------------|--------|
-| Menu hamburger visible | ✅ |
-| Cards en 2 colonnes | ✅ |
-| Layout responsive | ✅ |
+### ⏰ Horloge Temps Réel
+- Affichage heure Haiti en temps réel
+- Mise à jour chaque seconde
+- Format: HH:MM:SS + date
 
-### Desktop (1920x1080)
-| Fonctionnalité | Status |
-|----------------|--------|
-| Sidebar complète visible | ✅ |
-| Menu hamburger caché | ✅ |
-| Layout complet | ✅ |
+### 🎨 Animations Résultats
+- Numéros avec effet bounce
+- Hover effects sur les cartes
+- Badge "✨ Nouveau" animé
+- Point bleu animé à côté des dates
+
+### 🎫 Ticket Personnalisable 100%
+- **Texte en Haut**: Message d'accueil
+- **Texte en Bas**: Message personnalisé
+- **Message de Remerciement**: Texte de fin
+- **Mentions Légales**: Entièrement modifiable
+- **QR Code**: Toggle on/off
+- Tout centré et professionnel
+
+### 📷 Upload Photos
+- Logo entreprise: jusqu'à 10MB
+- Photo profil vendeur: jusqu'à 10MB
+- Formats: PNG, JPG, WEBP, GIF, SVG
+- Toutes dimensions acceptées
 
 ---
 
-## ✅ TOUS LES RÔLES FONCTIONNELS
+## ✅ RESPONSIVE MOBILE/TABLETTE/DESKTOP
 
-### Super Admin (Mobile ✅ | Tablette ✅ | Desktop ✅)
+| Appareil | Menu | Status |
+|----------|------|--------|
+| Mobile (375px) | Hamburger ☰ | ✅ |
+| Tablette (768px) | Hamburger ☰ | ✅ |
+| Desktop (1920px) | Sidebar complète | ✅ |
+
+---
+
+## ✅ TOUS LES RÔLES
+
+### Super Admin
 - Dashboard avec stats
-- Companies Management
-- Users Management
-- Global Schedules (403)
-- Global Results
+- Companies, Users, Global Schedules (403)
 - Haiti Lotteries Init
-- Settings
+- Notifications temps réel
+- Horloge temps réel
 
-### Company Admin (Mobile ✅ | Tablette ✅ | Desktop ✅)
+### Company Admin
 - Dashboard (193 loteries ouvertes)
-- Succursales (2)
-- Catalogue Loteries
-- Tickets
-- Profile Settings (logo, téléphone, QR code)
+- Succursales, Catalogue Loteries
+- **Configuration Ticket complète**
+- Notifications temps réel
 
-### Supervisor (Mobile ✅ | Tablette ✅ | Desktop ✅)
-- Dashboard
-- Mes Agents
-- Tickets
-- Fiches Jouées
-- Rapports
-- Résultats
-- Fiches Gagnants
+### Supervisor
+- Dashboard, Agents, Rapports
+- Notifications temps réel
 
-### Vendeur (Mobile ✅ | Tablette ✅ | Desktop ✅)
+### Vendeur
 - Dashboard + Nom Succursale
-- Nouvelle Vente + Nom Succursale
-- 31 Loteries Ouvertes
-- 26 Loteries Haiti 🇭🇹
-- Mes Tickets
-- Résultats
-
----
-
-## 📍 NOM SUCCURSALE AFFICHÉ
-
-| Emplacement | Affichage |
-|-------------|-----------|
-| Header Vendeur | LOTO PAM Test + Succursale Pétion-Ville |
-| Sidebar Vendeur | Succursale Pétion-Ville (vert) |
-| Dashboard | 📍 Succursale Pétion-Ville • LOTO PAM Test |
-| Nouvelle Vente | 📍 Succursale Pétion-Ville |
-
----
-
-## 🎫 TICKETS
-
-- Bouton "IMPRIMER" supprimé
-- Statut "VALIDÉ"
-- Logo + Téléphone + Adresse affichés
-- QR Code optionnel
-- Texte header/footer personnalisable
+- Nouvelle Vente (31 loteries, 26 Haiti)
+- **Résultats avec animations**
+- Upload photo profil 10MB
+- Notifications temps réel
 
 ---
 
@@ -99,9 +90,7 @@
 
 Toutes ouvertes 06:00-23:00:
 - Haiti Borlette Midi/Soir
-- Haiti Loto 3 Midi/Soir
-- Haiti Loto 4 Midi/Soir
-- Haiti Loto 5 Midi/Soir
+- Haiti Loto 3, 4, 5 Midi/Soir
 - Haiti Mariage Midi/Soir
 - Tennessee, Texas, Georgia, Florida, New York
 - Plop Plop, Loto Rapid (24h)
@@ -119,17 +108,20 @@ Toutes ouvertes 06:00-23:00:
 
 ---
 
-## 📁 Fichiers Modifiés (Responsive)
+## 📁 Fichiers Modifiés (Cette Session)
 
 ```
-/app/frontend/src/components/
-├── AdminLayout.js       # Menu mobile Super Admin
-├── CompanyLayout.js     # Menu mobile Company Admin
-├── Sidebar.js           # Support onNavigate callback
+/app/frontend/src/
+├── components/Header.js           # Notifications + horloge temps réel
+├── pages/vendeur/VendeurResultats.jsx  # Animations
+├── pages/company/CompanySettingsPage.jsx  # Champs ticket
 
-/app/frontend/src/layouts/
-├── SupervisorLayout.js  # Menu mobile Supervisor
-└── VendeurLayout.jsx    # Menu mobile Vendeur
+/app/backend/
+├── company_routes.py              # API ticket customization
+├── ticket_print_routes.py         # Template personnalisable
+├── sync_routes.py                 # Template personnalisable
+├── settings_routes.py             # Upload 10MB
+├── vendeur/vendeur_routes.py      # Upload 10MB
 ```
 
 ---

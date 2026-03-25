@@ -299,16 +299,16 @@ async def upload_company_logo(
     company_id = current_user["company_id"]
     
     # Validate file type
-    allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml"]
+    allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml", "image/gif"]
     if file.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Type de fichier non supporté. Utilisez PNG, JPG, WEBP ou SVG")
+        raise HTTPException(status_code=400, detail="Type de fichier non supporté. Utilisez PNG, JPG, WEBP, GIF ou SVG")
     
-    # Validate file size (max 5MB)
+    # Validate file size (max 10MB for high resolution logos)
     file.file.seek(0, 2)
     size = file.file.tell()
     file.file.seek(0)
-    if size > 5 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Fichier trop volumineux (max 5MB)")
+    if size > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Fichier trop volumineux (max 10MB)")
     
     # Generate unique filename
     ext = file.filename.split(".")[-1] if "." in file.filename else "png"
