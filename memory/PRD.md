@@ -1,7 +1,7 @@
 # LOTTOLAB - Product Requirements Document
-**Version**: 14.0.0  
+**Version**: 14.1.0  
 **Date**: 25 Mars 2026  
-**Status**: ✅ PRÊT POUR DÉPLOIEMENT - Système Multilingue Complet
+**Status**: ✅ SYSTÈME MULTILINGUE COMPLET - Traduction Temps Réel Fonctionnelle
 
 ---
 
@@ -11,16 +11,20 @@
 
 ---
 
-## ✅ NOUVELLES FONCTIONNALITÉS (v14.0.0)
+## ✅ NOUVELLES FONCTIONNALITÉS (v14.1.0)
 
-### 🌐 Système Multilingue (4 Langues)
+### 🌐 Système Multilingue Temps Réel (4 Langues)
 - **Français** 🇫🇷 - Langue par défaut
 - **Créole Haïtien** 🇭🇹 - Kreyòl Ayisyen
-- **Anglais** 🇬🇧 - English
+- **Anglais** 🇺🇸 - English
 - **Espagnol** 🇪🇸 - Español
-- Sélecteur de langue visible sur TOUTES les pages
-- Persistance de la langue choisie (localStorage)
-- Traductions pour la page de vente (VendeurNouvelleVente)
+- ✅ **Changement de langue EN TEMPS RÉEL** (sans rechargement de page)
+- ✅ Sélecteur de langue visible sur TOUTES les pages
+- ✅ Persistance de la langue choisie (localStorage)
+- ✅ Traductions complètes pour:
+  - Dashboard Vendeur
+  - Page Nouvelle Vente
+  - Toasts et messages d'erreur
 
 ### 💰 Limite de Mise Configurable
 - **Minimum**: Configurable par Admin Entreprise (défaut: 1 HTG)

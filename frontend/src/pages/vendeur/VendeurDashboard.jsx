@@ -1,6 +1,7 @@
 import { API_URL } from '@/config/api';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/api/auth';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { 
   DollarSign, Ticket, TrendingUp, Bell, Clock, 
@@ -10,6 +11,7 @@ import {
 
 const VendeurDashboard = () => {
   const { token, user } = useAuth();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [commissionRate, setCommissionRate] = useState(0);
   const [succursaleName, setSuccursaleName] = useState('');
@@ -142,8 +144,8 @@ const VendeurDashboard = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white">Tableau de Bord</h1>
-          <p className="text-sm text-slate-400">Bienvenue, {user?.full_name || 'Vendeur'}</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">{t('vendeur.dashboard')}</h1>
+          <p className="text-sm text-slate-400">{t('vendeur.welcome')}, {user?.full_name || 'Vendeur'}</p>
           {succursaleName && (
             <p className="text-xs text-emerald-400 mt-1" data-testid="succursale-name">
               📍 {succursaleName} {companyName && `• ${companyName}`}
@@ -169,7 +171,7 @@ const VendeurDashboard = () => {
               <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs sm:text-sm text-slate-400">Ventes Jour</p>
+              <p className="text-xs sm:text-sm text-slate-400">{t('vendeur.salesToday')}</p>
               <p className="text-base sm:text-xl font-bold text-white truncate">{formatCurrency(stats.ventesJour)} <span className="text-xs">HTG</span></p>
             </div>
           </div>
@@ -181,7 +183,7 @@ const VendeurDashboard = () => {
               <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs sm:text-sm text-slate-400">Ventes Mois</p>
+              <p className="text-xs sm:text-sm text-slate-400">{t('vendeur.salesMonth')}</p>
               <p className="text-base sm:text-xl font-bold text-white truncate">{formatCurrency(stats.ventesMois)} <span className="text-xs">HTG</span></p>
             </div>
           </div>
@@ -195,7 +197,7 @@ const VendeurDashboard = () => {
                 <Percent className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-amber-300">Commission ({commissionRate}%)</p>
+                <p className="text-xs sm:text-sm text-amber-300">{t('vendeur.commissions')} ({commissionRate}%)</p>
                 <p className="text-base sm:text-xl font-bold text-amber-400 truncate">{formatCurrency(stats.commissions)} <span className="text-xs">HTG</span></p>
               </div>
             </div>
@@ -208,7 +210,7 @@ const VendeurDashboard = () => {
               <Ticket className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
             </div>
             <div>
-              <p className="text-xs sm:text-sm text-slate-400">Tickets Jour</p>
+              <p className="text-xs sm:text-sm text-slate-400">{t('vendeur.ticketsToday')}</p>
               <p className="text-base sm:text-xl font-bold text-white">{stats.ticketsJour}</p>
             </div>
           </div>
@@ -220,7 +222,7 @@ const VendeurDashboard = () => {
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-3 sm:p-4">
           <h2 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center gap-2">
             <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
-            Notifications
+            {t('vendeur.notifications')}
           </h2>
           <div className="space-y-2 sm:space-y-3">
             {notifications.map((notif) => (
@@ -250,7 +252,7 @@ const VendeurDashboard = () => {
           </h2>
           <div className="space-y-2 sm:space-y-3">
             {latestResults.length === 0 ? (
-              <p className="text-slate-400 text-sm">Aucun résultat récent</p>
+              <p className="text-slate-400 text-sm">{t('vendeur.noResults')}</p>
             ) : (
               latestResults.map((result, idx) => (
                 <div 
@@ -277,11 +279,11 @@ const VendeurDashboard = () => {
       <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-3 sm:p-4">
         <h2 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center gap-2">
           <Ticket className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-          Activité Récente
+          {t('vendeur.recentActivity')}
         </h2>
         <div className="space-y-2">
           {recentTickets.length === 0 ? (
-            <p className="text-slate-400 text-sm">Aucun ticket récent</p>
+            <p className="text-slate-400 text-sm">{t('vendeur.noActivity')}</p>
           ) : (
             recentTickets.map((ticket, idx) => (
               <div 

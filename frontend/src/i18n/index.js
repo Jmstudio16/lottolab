@@ -14,13 +14,16 @@ const resources = {
   es: { translation: es }
 };
 
+// Get saved language from localStorage or default to French
+const savedLanguage = localStorage.getItem('lottolab_language') || 'fr';
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     resources,
     fallbackLng: 'fr',
-    lng: 'fr', // Force French as default
+    lng: savedLanguage,
     supportedLngs: ['fr', 'en', 'es', 'ht'],
     detection: {
       order: ['localStorage', 'navigator', 'htmlTag'],
@@ -31,7 +34,12 @@ i18n
       escapeValue: false
     },
     react: {
-      useSuspense: false
+      useSuspense: false,
+      bindI18n: 'languageChanged loaded',
+      bindI18nStore: 'added removed',
+      transEmptyNodeValue: '',
+      transSupportBasicHtmlNodes: true,
+      transKeepBasicHtmlNodesFor: ['br', 'strong', 'i', 'p']
     }
   });
 
@@ -44,7 +52,8 @@ export const LANGUAGES = [
   { code: 'ht', name: 'Kreyòl Ayisyen', flag: '🇭🇹' }
 ];
 
-export const changeLanguage = (lang) => {
-  i18n.changeLanguage(lang);
+export const changeLanguage = async (lang) => {
+  await i18n.changeLanguage(lang);
   localStorage.setItem('lottolab_language', lang);
+  document.documentElement.lang = lang;
 };

@@ -1,18 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LANGUAGES, changeLanguage } from '../i18n';
+import { LANGUAGES } from '../i18n';
 import { Globe, ChevronDown } from 'lucide-react';
 
 export const LanguageSwitcher = ({ className = '' }) => {
   const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
-  const currentLang = LANGUAGES.find(l => l.code === i18n.language) || LANGUAGES[2]; // Default to English
+  const currentLang = LANGUAGES.find(l => l.code === i18n.language) || LANGUAGES[0]; // Default to French
 
-  const handleChange = (langCode) => {
-    changeLanguage(langCode);
+  const handleChange = useCallback(async (langCode) => {
+    try {
+      // Change language using i18n directly
+      await i18n.changeLanguage(langCode);
+      // Save to localStorage for persistence
+      localStorage.setItem('lottolab_language', langCode);
+      // Force document language attribute update
+      document.documentElement.lang = langCode;
+    } catch (error) {
+      console.error('Error changing language:', error);
+    }
     setIsOpen(false);
-  };
+  }, [i18n]);
 
   return (
     <div className={`relative ${className}`}>
@@ -20,6 +29,7 @@ export const LanguageSwitcher = ({ className = '' }) => {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800/50 border border-slate-700 hover:border-slate-600 transition-colors text-sm"
         data-testid="language-switcher"
+        type="button"
       >
         <Globe className="w-4 h-4 text-slate-400" />
         <span className="text-white">{currentLang.flag}</span>
@@ -38,6 +48,7 @@ export const LanguageSwitcher = ({ className = '' }) => {
               <button
                 key={lang.code}
                 onClick={() => handleChange(lang.code)}
+                type="button"
                 className={`w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-slate-700 transition-colors ${
                   i18n.language === lang.code ? 'bg-slate-700/50 text-yellow-400' : 'text-slate-300'
                 }`}
