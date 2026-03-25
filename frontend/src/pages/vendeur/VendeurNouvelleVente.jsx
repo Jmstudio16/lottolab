@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/api/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { 
   ShoppingCart, Search, Clock, CheckCircle, XCircle, AlertTriangle,
   Plus, Trash2, Printer, RefreshCw, DollarSign, Ticket, Timer, Flag
@@ -13,6 +14,7 @@ import { Input } from '@/components/ui/input';
 
 const VendeurNouvelleVente = () => {
   const { token } = useAuth();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [lotteries, setLotteries] = useState([]);
@@ -94,11 +96,11 @@ const VendeurNouvelleVente = () => {
         setCompanyName(profileRes.data?.company?.name || '');
       }
     } catch (error) {
-      toast.error('Erreur lors du chargement des loteries');
+      toast.error(t('vendeur.loadingError'));
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, t]);
 
   useEffect(() => {
     fetchData();
@@ -246,14 +248,14 @@ const VendeurNouvelleVente = () => {
 
   const addToCart = () => {
     if (!currentPlay.numbers || !selectedLottery) {
-      toast.error('Veuillez entrer un numéro');
+      toast.error(t('vendeur.enterNumber'));
       return;
     }
 
     // For Loto4 and Loto5 options, require second number
     const betType = BET_TYPES.find(bt => bt.value === currentPlay.betType);
     if ((betType?.isLoto4 || betType?.isLoto5) && !currentPlay.numbers2) {
-      toast.error('Veuillez entrer le deuxième numéro');
+      toast.error(t('vendeur.enterSecondNumber'));
       return;
     }
 
@@ -261,20 +263,20 @@ const VendeurNouvelleVente = () => {
     
     // Use configurable min bet amount from company settings
     if (amount < minBetAmount) {
-      toast.error(`Montant minimum: ${minBetAmount} HTG`);
+      toast.error(`${t('vendeur.minBetError')} ${minBetAmount} HTG`);
       return;
     }
     
     // Use configurable max bet amount from company settings
     if (amount > maxBetAmount) {
-      toast.error(`Montant maximum: ${maxBetAmount} HTG`);
+      toast.error(`${t('vendeur.maxBetError')} ${maxBetAmount} HTG`);
       return;
     }
     
     // Validate Loto4 max limit (20 HTG)
     if (betType?.isLoto4) {
       if (amount > 20) {
-        toast.error('Montant maximum pour Loto 4: 20 HTG');
+        toast.error(t('vendeur.loto4MaxError'));
         return;
       }
     }
@@ -282,11 +284,11 @@ const VendeurNouvelleVente = () => {
     // Validate Loto5 min/max (min 20 HTG, max 250 HTG)
     if (betType?.isLoto5) {
       if (amount < 20) {
-        toast.error('Montant minimum pour Loto 5: 20 HTG');
+        toast.error(t('vendeur.loto5MinError'));
         return;
       }
       if (amount > 250) {
-        toast.error('Montant maximum pour Loto 5: 250 HTG');
+        toast.error(t('vendeur.loto5MaxError'));
         return;
       }
     }
@@ -470,11 +472,11 @@ const VendeurNouvelleVente = () => {
           <div className="flex gap-3">
             <Button onClick={printTicket} className="flex-1 bg-blue-600 hover:bg-blue-700">
               <Printer className="w-4 h-4 mr-2" />
-              Imprimer
+              {t('vendeur.print')}
             </Button>
             <Button onClick={newSale} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
               <Plus className="w-4 h-4 mr-2" />
-              Nouvelle Vente
+              {t('vendeur.newSale')}
             </Button>
           </div>
         </div>
@@ -489,9 +491,9 @@ const VendeurNouvelleVente = () => {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2 sm:gap-3">
             <ShoppingCart className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-400" />
-            Nouvelle Vente
+            {t('vendeur.newSale')}
           </h1>
-          <p className="text-sm text-slate-400">Sélectionnez une loterie</p>
+          <p className="text-sm text-slate-400">{t('vendeur.selectLotteryToStart')}</p>
           {succursaleName && (
             <p className="text-xs text-emerald-400 mt-1" data-testid="succursale-name-vente">
               📍 {succursaleName}
@@ -518,13 +520,13 @@ const VendeurNouvelleVente = () => {
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Rechercher une loterie..."
+            placeholder={t('vendeur.searchLottery')}
             className="pl-10 bg-slate-800 border-slate-700"
           />
         </div>
         <div className="flex gap-2">
           {[
-            { key: 'all', label: 'Toutes', icon: null },
+            { key: 'all', label: t('vendeur.allLotteries'), icon: null },
             { key: 'haiti', label: '🇭🇹', icon: null },
             { key: 'usa', label: '🇺🇸', icon: null }
           ].map(flag => (
@@ -624,11 +626,11 @@ const VendeurNouvelleVente = () => {
                 <div className="space-y-4">
                   {/* Number Input */}
                   <div>
-                    <label className="text-sm text-slate-400 mb-1 block">Numéro *</label>
+                    <label className="text-sm text-slate-400 mb-1 block">{t('vendeur.number')} *</label>
                     <Input
                       value={currentPlay.numbers}
                       onChange={(e) => setCurrentPlay({...currentPlay, numbers: e.target.value.replace(/[^0-9]/g, '')})}
-                      placeholder="Ex: 123, 4567"
+                      placeholder={t('vendeur.numberPlaceholder')}
                       className="bg-slate-700 border-slate-600 text-lg sm:text-xl font-mono"
                       maxLength={5}
                       data-testid="number-input"
@@ -640,7 +642,7 @@ const VendeurNouvelleVente = () => {
                       <Input
                         value={currentPlay.numbers2}
                         onChange={(e) => setCurrentPlay({...currentPlay, numbers2: e.target.value.replace(/[^0-9]/g, '')})}
-                        placeholder="2ème numéro"
+                        placeholder={`2${t('vendeur.number')}`}
                         className="bg-slate-700 border-slate-600 text-lg sm:text-xl font-mono mt-2"
                         maxLength={5}
                         data-testid="number-input-2"
@@ -650,7 +652,7 @@ const VendeurNouvelleVente = () => {
 
                   {/* Bet Type */}
                   <div>
-                    <label className="text-sm text-slate-400 mb-2 block">Type de mise</label>
+                    <label className="text-sm text-slate-400 mb-2 block">{t('vendeur.betType')}</label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {BET_TYPES.map(type => (
                         <button
@@ -671,28 +673,28 @@ const VendeurNouvelleVente = () => {
 
                   {/* Amount Input */}
                   <div>
-                    <label className="text-sm text-slate-400 mb-1 block">Montant (HTG) *</label>
+                    <label className="text-sm text-slate-400 mb-1 block">{t('vendeur.amount')} *</label>
                     <Input
                       type="number"
                       value={currentPlay.amount}
                       onChange={(e) => setCurrentPlay({...currentPlay, amount: e.target.value})}
-                      placeholder="Entrez le montant (ex: 50, 100, 500...)"
+                      placeholder={t('vendeur.amountPlaceholder')}
                       className="bg-slate-700 border-slate-600 text-lg font-semibold"
                       min="0"
                       step="1"
                       data-testid="amount-input"
                     />
                     <p className="text-xs text-slate-500 mt-1">
-                      Min: {minBetAmount} HTG {maxBetAmount < 999999 ? `| Max: ${maxBetAmount} HTG` : ''}
+                      {t('vendeur.minAmount')}: {minBetAmount} HTG {maxBetAmount < 999999 ? `| ${t('vendeur.maxAmount')}: ${maxBetAmount} HTG` : ''}
                     </p>
                     
                     {/* Mariages Gratis indicator */}
                     {totalAmount >= 50 && (
                       <div className="mt-2 p-2 bg-amber-500/20 border border-amber-500/30 rounded-lg">
                         <p className="text-amber-400 text-xs font-semibold">
-                          🎁 {calculateMariagesGratis(totalAmount)} Mariage(s) Gratis disponible(s)
+                          🎁 {calculateMariagesGratis(totalAmount)} {t('vendeur.freeMarriage')}(s)
                         </p>
-                        <p className="text-amber-300/70 text-xs">Automatique selon total: 50HTG=1, 100HTG=2, 150HTG=3</p>
+                        <p className="text-amber-300/70 text-xs">50HTG=1, 100HTG=2, 150HTG=3</p>
                       </div>
                     )}
                   </div>
@@ -703,7 +705,7 @@ const VendeurNouvelleVente = () => {
                     data-testid="add-to-cart-btn"
                   >
                     <Plus className="w-4 h-4 mr-2" />
-                    Ajouter au Panier
+                    {t('vendeur.addToCart')}
                   </Button>
                 </div>
               </div>
@@ -712,11 +714,11 @@ const VendeurNouvelleVente = () => {
               <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
                 <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
                   <Ticket className="w-5 h-5 text-purple-400" />
-                  Récapitulatif ({cart.length})
+                  {t('vendeur.summary')} ({cart.length})
                 </h3>
 
                 {cart.length === 0 ? (
-                  <p className="text-slate-400 text-sm text-center py-4">Panier vide</p>
+                  <p className="text-slate-400 text-sm text-center py-4">{t('vendeur.emptyCart')}</p>
                 ) : (
                   <div className="space-y-2 max-h-[200px] overflow-y-auto">
                     {cart.map(item => (
@@ -742,12 +744,12 @@ const VendeurNouvelleVente = () => {
 
                 <div className="mt-4 pt-4 border-t border-slate-600">
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-slate-400">Total</span>
+                    <span className="text-slate-400">{t('vendeur.total')}</span>
                     <span className="text-xl sm:text-2xl font-bold text-white">{totalAmount} HTG</span>
                   </div>
                   <div className="flex gap-3">
                     <Button onClick={clearCart} variant="outline" className="flex-1 border-slate-600">
-                      Effacer
+                      {t('vendeur.clearCart')}
                     </Button>
                     <Button 
                       onClick={submitSale} 
@@ -760,7 +762,7 @@ const VendeurNouvelleVente = () => {
                       ) : (
                         <CheckCircle className="w-4 h-4 mr-2" />
                       )}
-                      Valider
+                      {t('vendeur.validateSale')}
                     </Button>
                   </div>
                 </div>
@@ -769,9 +771,9 @@ const VendeurNouvelleVente = () => {
           ) : (
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 sm:p-8 text-center">
               <ShoppingCart className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-400">Sélectionnez une loterie ouverte pour commencer</p>
+              <p className="text-slate-400">{t('vendeur.selectLotteryToStart')}</p>
               <p className="text-xs text-slate-500 mt-2">
-                Chaque loterie a son propre tirage (Matin, Midi, Soir, Nuit)
+                {t('lottery.morning')}, {t('lottery.midday')}, {t('lottery.evening')}, {t('lottery.night')}
               </p>
             </div>
           )}

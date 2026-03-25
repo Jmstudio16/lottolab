@@ -1,7 +1,7 @@
 # LOTTOLAB - Product Requirements Document
-**Version**: 13.1.0 FINAL  
+**Version**: 14.0.0  
 **Date**: 25 Mars 2026  
-**Status**: ✅ PRÊT POUR DÉPLOIEMENT - Système Complet
+**Status**: ✅ PRÊT POUR DÉPLOIEMENT - Système Multilingue Complet
 
 ---
 
@@ -11,7 +11,23 @@
 
 ---
 
-## ✅ NOUVELLES FONCTIONNALITÉS (v13.1.0)
+## ✅ NOUVELLES FONCTIONNALITÉS (v14.0.0)
+
+### 🌐 Système Multilingue (4 Langues)
+- **Français** 🇫🇷 - Langue par défaut
+- **Créole Haïtien** 🇭🇹 - Kreyòl Ayisyen
+- **Anglais** 🇬🇧 - English
+- **Espagnol** 🇪🇸 - Español
+- Sélecteur de langue visible sur TOUTES les pages
+- Persistance de la langue choisie (localStorage)
+- Traductions pour la page de vente (VendeurNouvelleVente)
+
+### 💰 Limite de Mise Configurable
+- **Minimum**: Configurable par Admin Entreprise (défaut: 1 HTG)
+- **Maximum**: Configurable par Admin Entreprise
+- Affichage dynamique "Min: X HTG" sur la page de vente
+- API /api/company/profile pour modifier les limites
+- API /api/device/config renvoie les limites à l'appareil POS
 
 ### 🔔 Notifications Temps Réel
 - Badge compteur sur l'icône cloche
@@ -50,11 +66,11 @@
 
 ## ✅ RESPONSIVE MOBILE/TABLETTE/DESKTOP
 
-| Appareil | Menu | Status |
-|----------|------|--------|
-| Mobile (375px) | Hamburger ☰ | ✅ |
-| Tablette (768px) | Hamburger ☰ | ✅ |
-| Desktop (1920px) | Sidebar complète | ✅ |
+| Appareil | Menu | Sélecteur Langue | Status |
+|----------|------|------------------|--------|
+| Mobile (375px) | Hamburger ☰ | Header | ✅ |
+| Tablette (768px) | Hamburger ☰ | Header | ✅ |
+| Desktop (1920px) | Sidebar complète | Sidebar/Header | ✅ |
 
 ---
 
@@ -66,16 +82,20 @@
 - Haiti Lotteries Init
 - Notifications temps réel
 - Horloge temps réel
+- **Sélecteur de langue** 🌐
 
 ### Company Admin
 - Dashboard (193 loteries ouvertes)
 - Succursales, Catalogue Loteries
 - **Configuration Ticket complète**
+- **Configuration Limites de Mise**
 - Notifications temps réel
+- **Sélecteur de langue** 🌐
 
 ### Supervisor
 - Dashboard, Agents, Rapports
 - Notifications temps réel
+- **Sélecteur de langue** 🌐
 
 ### Vendeur
 - Dashboard + Nom Succursale
