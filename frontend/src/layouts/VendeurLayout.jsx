@@ -2,6 +2,7 @@ import { API_URL } from '@/config/api';
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/api/auth';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { 
   LayoutDashboard, ShoppingCart, Ticket, Search, Calendar,
@@ -15,6 +16,7 @@ const VendeurLayout = () => {
   const { user, token, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [companyInfo, setCompanyInfo] = useState(null);
 
@@ -46,17 +48,17 @@ const VendeurLayout = () => {
   }, [token, user]);
 
   const menuItems = [
-    { path: '/vendeur/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
-    { path: '/vendeur/nouvelle-vente', icon: ShoppingCart, label: 'Nouvelle Vente' },
-    { path: '/vendeur/mes-tickets', icon: Ticket, label: 'Mes Tickets' },
-    { path: '/vendeur/recherche', icon: Search, label: 'Recherche Fiches' },
-    { path: '/vendeur/tirages', icon: Calendar, label: 'Tirages Disponibles' },
-    { path: '/vendeur/resultats', icon: Trophy, label: 'Résultats' },
-    { path: '/vendeur/fiches-gagnants', icon: Trophy, label: 'Fiches Gagnants', highlight: 'amber' },
-    { path: '/vendeur/fiches-supprimees', icon: Trash2, label: 'Fiches Supprimées', highlight: 'red' },
-    { path: '/vendeur/mes-ventes', icon: BarChart3, label: 'Mes Ventes' },
-    { path: '/vendeur/rapport', icon: BarChart3, label: 'Rapport', highlight: 'blue' },
-    { path: '/vendeur/profil', icon: User, label: 'Mon Profil' },
+    { path: '/vendeur/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
+    { path: '/vendeur/nouvelle-vente', icon: ShoppingCart, label: t('vendeur.newSale') },
+    { path: '/vendeur/mes-tickets', icon: Ticket, label: t('vendeur.myTickets') },
+    { path: '/vendeur/recherche', icon: Search, label: t('nav.searchTickets', 'Recherche Fiches') },
+    { path: '/vendeur/tirages', icon: Calendar, label: t('nav.availableDraws', 'Tirages Disponibles') },
+    { path: '/vendeur/resultats', icon: Trophy, label: t('nav.results') },
+    { path: '/vendeur/fiches-gagnants', icon: Trophy, label: t('nav.winningTickets'), highlight: 'amber' },
+    { path: '/vendeur/fiches-supprimees', icon: Trash2, label: t('nav.deletedTickets', 'Fiches Supprimées'), highlight: 'red' },
+    { path: '/vendeur/mes-ventes', icon: BarChart3, label: t('nav.mySales') },
+    { path: '/vendeur/rapport', icon: BarChart3, label: t('nav.reports'), highlight: 'blue' },
+    { path: '/vendeur/profil', icon: User, label: t('common.profile') },
   ];
 
   const handleLogout = () => {

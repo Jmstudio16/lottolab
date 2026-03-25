@@ -7,6 +7,7 @@ import {
   DollarSign, Ticket, TrendingUp, Bell, Clock, 
   Trophy, AlertCircle, CheckCircle, XCircle, Percent
 } from 'lucide-react';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 
 const VendeurDashboard = () => {
@@ -152,14 +153,17 @@ const VendeurDashboard = () => {
             </p>
           )}
         </div>
-        <div className="text-left sm:text-right">
-          <p className="text-xs sm:text-sm text-slate-400">
-            {new Date().toLocaleDateString('fr-FR', { 
-              weekday: 'long', 
-              day: 'numeric', 
-              month: 'long'
-            })}
-          </p>
+        <div className="flex items-center gap-3">
+          <LanguageSwitcher />
+          <div className="text-left sm:text-right">
+            <p className="text-xs sm:text-sm text-slate-400">
+              {new Date().toLocaleDateString('fr-FR', { 
+                weekday: 'long', 
+                day: 'numeric', 
+                month: 'long'
+              })}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -248,7 +252,7 @@ const VendeurDashboard = () => {
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-3 sm:p-4">
           <h2 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center gap-2">
             <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
-            Derniers Résultats
+            {t('vendeur.latestResults')}
           </h2>
           <div className="space-y-2 sm:space-y-3">
             {latestResults.length === 0 ? (

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { 
   LayoutDashboard, 
   Building2, 
@@ -33,56 +34,58 @@ import {
 import { useAuth } from '@/api/auth';
 import Logo from './Logo';
 
-const SuperAdminMenu = [
-  { path: '/super/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/super/lottery-catalog', label: 'Lottery Catalog', icon: Globe },
-  { path: '/super/lottery-flags', label: 'Config Drapeaux', icon: Flag },
-  { path: '/super/global-schedules', label: 'Global Schedules', icon: Clock },
-  { path: '/super/publish-results', label: 'Publier Résultats', icon: Trophy },
-  { path: '/super/scheduled-results', label: 'Résultats Programmés', icon: Zap },
-  { path: '/super/companies', label: 'Companies', icon: Building2 },
-  { path: '/super/users', label: 'Users', icon: Users },
-  { path: '/super/plans', label: 'Plans & Licenses', icon: Package },
-  { path: '/super/activity-logs', label: 'Activity Logs', icon: Activity },
-  { path: '/super/settings', label: 'Settings', icon: Settings },
+// Menu items will be generated with translation keys
+const getSuperAdminMenu = (t) => [
+  { path: '/super/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+  { path: '/super/lottery-catalog', label: t('nav.lotteryCatalog'), icon: Globe },
+  { path: '/super/lottery-flags', label: t('nav.lotteryFlags', 'Config Drapeaux'), icon: Flag },
+  { path: '/super/global-schedules', label: t('nav.globalSchedules'), icon: Clock },
+  { path: '/super/publish-results', label: t('nav.publishResults', 'Publier Résultats'), icon: Trophy },
+  { path: '/super/scheduled-results', label: t('nav.scheduledResults', 'Résultats Programmés'), icon: Zap },
+  { path: '/super/companies', label: t('nav.companies'), icon: Building2 },
+  { path: '/super/users', label: t('nav.users'), icon: Users },
+  { path: '/super/plans', label: t('nav.plans'), icon: Package },
+  { path: '/super/activity-logs', label: t('nav.activityLogs'), icon: Activity },
+  { path: '/super/settings', label: t('nav.settings'), icon: Settings },
   { divider: true, label: 'LOTO PAM Online' },
-  { path: '/super/online/dashboard', label: 'LOTO PAM Dashboard', icon: Store },
-  { path: '/super/online/players', label: 'Joueurs Online', icon: Users },
-  { path: '/super/online/deposits', label: 'Dépôts', icon: Wallet },
-  { path: '/super/online/withdrawals', label: 'Retraits', icon: Banknote },
-  { path: '/super/online/tickets', label: 'Tickets Online', icon: Ticket },
-  { path: '/super/online/kyc', label: 'Vérification KYC', icon: Award },
-  { path: '/super/online/settings', label: 'Config LOTO PAM', icon: Sliders },
+  { path: '/super/online/dashboard', label: t('nav.lotopamDashboard', 'LOTO PAM Dashboard'), icon: Store },
+  { path: '/super/online/players', label: t('nav.onlinePlayers', 'Joueurs Online'), icon: Users },
+  { path: '/super/online/deposits', label: t('financial.deposit'), icon: Wallet },
+  { path: '/super/online/withdrawals', label: t('financial.withdraw'), icon: Banknote },
+  { path: '/super/online/tickets', label: t('nav.onlineTickets', 'Tickets Online'), icon: Ticket },
+  { path: '/super/online/kyc', label: t('lotopam.kyc'), icon: Award },
+  { path: '/super/online/settings', label: t('nav.lotopamConfig', 'Config LOTO PAM'), icon: Sliders },
 ];
 
-const CompanyAdminMenu = [
-  { path: '/company/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/company/succursales', label: 'Succursales', icon: Store },
-  { path: '/company/lotteries', label: 'Catalogue Loteries', icon: Ticket },
-  { path: '/company/lottery-flags', label: 'Config Drapeaux', icon: Flag },
-  { path: '/company/schedules', label: 'Horaires (Vue)', icon: CalendarClock },
-  { path: '/company/results', label: 'Résultats (Vue)', icon: Trophy },
-  { path: '/company/tickets', label: 'Tickets', icon: FileText },
-  { path: '/company/lots-gagnants', label: 'Lots Gagnants', icon: Trophy },
-  { path: '/company/deleted-tickets', label: 'Fiche Supprimée', icon: Trash2 },
-  { path: '/company/winning-tickets', label: 'Gagnants & Paiements', icon: Banknote },
-  { path: '/company/balance-management', label: 'Gestion Soldes', icon: Wallet },
-  { path: '/company/exports', label: 'Exports & Config', icon: FileSpreadsheet },
-  { path: '/company/configuration', label: 'Configuration', icon: Sliders },
-  { path: '/company/statistics', label: 'Statistiques', icon: ChartLine },
-  { path: '/company/rapport-ventes', label: 'Rapport de Ventes', icon: BarChart3 },
-  { path: '/company/daily-reports', label: 'Rapports Journaliers', icon: BarChart3 },
-  { path: '/company/users', label: 'Utilisateurs', icon: Users },
-  { path: '/company/activity-logs', label: 'Logs Activité', icon: Activity },
-  { path: '/company/profile-settings', label: 'Logo & Profil', icon: Image },
-  { path: '/company/settings', label: 'Paramètres', icon: Settings },
+const getCompanyAdminMenu = (t) => [
+  { path: '/company/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+  { path: '/company/succursales', label: t('nav.branches'), icon: Store },
+  { path: '/company/lotteries', label: t('nav.lotteryCatalog'), icon: Ticket },
+  { path: '/company/lottery-flags', label: t('nav.lotteryFlags', 'Config Drapeaux'), icon: Flag },
+  { path: '/company/schedules', label: t('nav.schedules'), icon: CalendarClock },
+  { path: '/company/results', label: t('nav.results'), icon: Trophy },
+  { path: '/company/tickets', label: t('nav.tickets'), icon: FileText },
+  { path: '/company/lots-gagnants', label: t('nav.winningTickets'), icon: Trophy },
+  { path: '/company/deleted-tickets', label: t('nav.deletedTickets', 'Fiche Supprimée'), icon: Trash2 },
+  { path: '/company/winning-tickets', label: t('nav.winnersPayments', 'Gagnants & Paiements'), icon: Banknote },
+  { path: '/company/balance-management', label: t('nav.balanceManagement', 'Gestion Soldes'), icon: Wallet },
+  { path: '/company/exports', label: t('nav.exports', 'Exports & Config'), icon: FileSpreadsheet },
+  { path: '/company/configuration', label: t('nav.configuration', 'Configuration'), icon: Sliders },
+  { path: '/company/statistics', label: t('nav.statistics', 'Statistiques'), icon: ChartLine },
+  { path: '/company/rapport-ventes', label: t('nav.salesReport', 'Rapport de Ventes'), icon: BarChart3 },
+  { path: '/company/daily-reports', label: t('nav.dailyReports', 'Rapports Journaliers'), icon: BarChart3 },
+  { path: '/company/users', label: t('nav.users'), icon: Users },
+  { path: '/company/activity-logs', label: t('nav.activityLogs'), icon: Activity },
+  { path: '/company/profile-settings', label: t('nav.logoProfile', 'Logo & Profil'), icon: Image },
+  { path: '/company/settings', label: t('nav.settings'), icon: Settings },
 ];
 
 export const Sidebar = ({ role, onNavigate }) => {
   const location = useLocation();
   const { logout, user } = useAuth();
+  const { t } = useTranslation();
   
-  const menu = role === 'SUPER_ADMIN' ? SuperAdminMenu : CompanyAdminMenu;
+  const menu = role === 'SUPER_ADMIN' ? getSuperAdminMenu(t) : getCompanyAdminMenu(t);
   
   const handleClick = () => {
     if (onNavigate) onNavigate();

@@ -550,7 +550,7 @@ const VendeurNouvelleVente = () => {
           <div>
             <h2 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2 mb-3">
               <CheckCircle className="w-5 h-5 text-emerald-400" />
-              Loteries Ouvertes ({openLotteries.length})
+              {t('lottery.openLotteries')} ({openLotteries.length})
             </h2>
             
             {loading ? (
@@ -560,7 +560,7 @@ const VendeurNouvelleVente = () => {
             ) : openLotteries.length === 0 ? (
               <div className="p-6 bg-slate-800/30 rounded-xl text-center">
                 <Clock className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-                <p className="text-slate-400 text-sm">Aucune loterie ouverte actuellement</p>
+                <p className="text-slate-400 text-sm">{t('lottery.noOpenLotteries')}</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-2 max-h-[200px] overflow-y-auto pr-1">

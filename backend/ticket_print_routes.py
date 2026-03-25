@@ -408,13 +408,13 @@ et ne gardez pas dans les pièces de monnaie."""
         if branch:
             branch_name = branch.get("name", "N/A")
         else:
-            # Try succursales collection
+            # Try succursales collection (check both 'name' and 'nom_succursale' fields)
             succursale = await db.succursales.find_one(
                 {"succursale_id": branch_id},
-                {"_id": 0, "name": 1}
+                {"_id": 0, "name": 1, "nom_succursale": 1}
             )
             if succursale:
-                branch_name = succursale.get("name", "N/A")
+                branch_name = succursale.get("name") or succursale.get("nom_succursale") or "N/A"
     
     # Get agent info
     agent = await db.users.find_one(
