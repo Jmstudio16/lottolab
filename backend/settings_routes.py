@@ -2,6 +2,7 @@
 System Settings and Logo Management Routes
 - Global system settings (Super Admin)
 - Company settings with logo upload (Company Admin)
+- Supports both local storage and Object Storage
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Request, UploadFile, File, Form
@@ -13,6 +14,8 @@ from pydantic import BaseModel, EmailStr
 import os
 import shutil
 import uuid
+import requests
+import logging
 
 from models import UserRole
 from auth import decode_token
@@ -21,9 +24,55 @@ from activity_logger import log_activity
 
 settings_router = APIRouter(prefix="/api", tags=["Settings"])
 security = HTTPBearer()
+logger = logging.getLogger(__name__)
 
 db = None
 UPLOAD_DIR = "/app/backend/uploads/company-logos"
+
+# Object Storage Configuration
+STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
+EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
+APP_NAME = "lottolab"
+storage_key = None
+
+def init_storage():
+    """Initialize Object Storage and return reusable storage_key"""
+    global storage_key
+    if storage_key:
+        return storage_key
+    if not EMERGENT_KEY:
+        return None
+    try:
+        resp = requests.post(
+            f"{STORAGE_URL}/init",
+            json={"emergent_key": EMERGENT_KEY},
+            timeout=30
+        )
+        resp.raise_for_status()
+        storage_key = resp.json()["storage_key"]
+        logger.info("[SETTINGS] Object Storage initialized")
+        return storage_key
+    except Exception as e:
+        logger.warning(f"[SETTINGS] Object Storage init failed, using local: {e}")
+        return None
+
+def upload_to_object_storage(path: str, data: bytes, content_type: str) -> Optional[str]:
+    """Upload to Object Storage. Returns URL path or None if failed"""
+    key = init_storage()
+    if not key:
+        return None
+    try:
+        resp = requests.put(
+            f"{STORAGE_URL}/objects/{path}",
+            headers={"X-Storage-Key": key, "Content-Type": content_type},
+            data=data,
+            timeout=120
+        )
+        resp.raise_for_status()
+        return resp.json().get("path", path)
+    except Exception as e:
+        logger.warning(f"[SETTINGS] Object Storage upload failed: {e}")
+        return None
 
 def set_settings_db(database):
     global db
@@ -290,7 +339,7 @@ async def upload_company_logo(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """Upload company logo"""
+    """Upload company logo - uses Object Storage if available, falls back to local"""
     await require_company_admin(current_user)
     
     if current_user.get("role") != UserRole.COMPANY_ADMIN:
@@ -303,27 +352,43 @@ async def upload_company_logo(
     if file.content_type not in allowed_types:
         raise HTTPException(status_code=400, detail="Type de fichier non supporté. Utilisez PNG, JPG, WEBP, GIF ou SVG")
     
-    # Validate file size (max 10MB for high resolution logos)
-    file.file.seek(0, 2)
-    size = file.file.tell()
-    file.file.seek(0)
-    if size > 10 * 1024 * 1024:
+    # Read file content
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Fichier trop volumineux (max 10MB)")
     
-    # Generate unique filename
+    # Generate filename
     ext = file.filename.split(".")[-1] if "." in file.filename else "png"
-    filename = f"{company_id}-logo-{uuid.uuid4().hex[:8]}.{ext}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
+    file_id = uuid.uuid4().hex[:8]
     
-    # Save file
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # Try Object Storage first
+    storage_path = f"{APP_NAME}/company-logos/{company_id}/{file_id}.{ext}"
+    stored_path = upload_to_object_storage(storage_path, content, file.content_type)
+    
+    if stored_path:
+        # Object Storage success
+        logo_url = f"/api/files/{stored_path}"
+        storage_type = "object_storage"
+        logger.info(f"[SETTINGS] Logo uploaded to Object Storage: {stored_path}")
+    else:
+        # Fallback to local storage
+        filename = f"{company_id}-logo-{file_id}.{ext}"
+        filepath = os.path.join(UPLOAD_DIR, filename)
+        with open(filepath, "wb") as buffer:
+            buffer.write(content)
+        logo_url = f"/api/uploads/company-logos/{filename}"
+        storage_type = "local"
+        logger.info(f"[SETTINGS] Logo uploaded locally: {filename}")
     
     # Update company
-    logo_url = f"/api/uploads/company-logos/{filename}"
     await db.companies.update_one(
         {"company_id": company_id},
-        {"$set": {"company_logo_url": logo_url, "updated_at": get_current_timestamp()}}
+        {"$set": {
+            "company_logo_url": logo_url,
+            "logo_url": logo_url,
+            "logo_storage_type": storage_type,
+            "updated_at": get_current_timestamp()
+        }}
     )
     
     # Increment config version for real-time sync
@@ -347,7 +412,7 @@ async def upload_company_logo(
         entity_id=company_id,
         performed_by=current_user["user_id"],
         company_id=company_id,
-        metadata={"filename": filename},
+        metadata={"logo_url": logo_url, "storage_type": storage_type},
         ip_address=request.client.host if request.client else None
     )
     

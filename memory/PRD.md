@@ -1,7 +1,7 @@
 # LOTTOLAB - Product Requirements Document
-**Version**: 17.0.0  
+**Version**: 18.0.0  
 **Date**: 25 Mars 2026  
-**Status**: ✅ SYSTÈME MULTILINGUE 100% COMPLET - PRÊT POUR DÉPLOIEMENT
+**Status**: ✅ SYSTÈME COMPLET AVEC UPLOAD IMAGES & TICKET 80mm - PRÊT POUR DÉPLOIEMENT
 
 ---
 
@@ -11,7 +11,104 @@
 
 ---
 
-## ✅ NOUVELLES FONCTIONNALITÉS (v17.0.0) - 25 Mars 2026
+## ✅ NOUVELLES FONCTIONNALITÉS (v18.0.0) - 25 Mars 2026
+
+### 📷 Système d'Upload Images (Object Storage)
+
+**Backend - `/app/backend/storage_routes.py`**:
+- ✅ **Upload Logo Entreprise**: `POST /api/company/logo/upload`
+  - Accepte PNG, JPG, WEBP, GIF, SVG (max 10MB)
+  - Stockage via Emergent Object Storage
+  - Logo affiché partout instantanément
+- ✅ **Upload Photo Vendeur**: `POST /api/vendeur/profile/photo`
+  - Photos de profil pour Vendeurs/Superviseurs
+  - Avatar affiché dans Header, Sidebar, Tableaux
+- ✅ **Service de fichiers**: `GET /api/files/{path}`
+  - Sert les images uploadées
+  - Cache optimisé (1 jour)
+
+**Endpoints consolidés** (`settings_routes.py`):
+- Object Storage prioritaire, fallback local si indisponible
+- `logo_storage_type` tracké dans la DB
+
+### 🎫 Ticket Thermique 80mm Professionnel
+
+**Template unifié - `/app/backend/ticket_template.py`**:
+- ✅ **Logo Entreprise** en haut (grayscale pour thermique)
+- ✅ **Nom Compagnie** + Téléphone + Adresse
+- ✅ **Succursale** dynamique (jamais "N/A")
+- ✅ **Vendeur** nom réel
+- ✅ **Machine/POS ID**
+- ✅ **Ticket ID** unique
+- ✅ **Heure Serveur temps réel** (timezone Haiti)
+- ✅ **Loterie + Tirage + Date**
+- ✅ **Numéros joués** avec montants alignés
+- ✅ **Total Mise** en gros caractères
+- ✅ **Statut VALIDÉ** encadré
+- ✅ **QR Code** base64 (configurable)
+- ✅ **Texte légal** personnalisable
+- ✅ **Watermark LOTTOLAB.TECH**
+
+**Format exact**:
+```
+================================
+        [LOGO COMPAGNIE]
+      LOTO PAM CENTER
+    Tel: +509XXXXXXXX
+  Succursale: PETION VILLE
+--------------------------------
+VENDEUR :          JEFFERSON
+MACHINE :          POS-01
+TICKET ID :        XXXXXXXX
+--------------------------------
+    LOTERIE : New York Evening
+    TIRAGE  : SOIR
+    DATE    : 24/03/2026
+    HEURE   : HH:MM:SS (Serveur)
+--------------------------------
+       NUMÉROS JOUÉS
+--------------------------------
+45                     10 HTG
+23                     20 HTG
+--------------------------------
+     TOTAL MISE : 30 HTG
+--------------------------------
+      STATUT : VALIDÉ
+--------------------------------
+    MERCI DE JOUER AVEC
+      LOTO PAM CENTER
+--------------------------------
+     CODE : 123456789012
+          [QR CODE]
+--------------------------------
+       LOTTOLAB.TECH
+================================
+```
+
+### 👤 Composant UserAvatar
+
+**Frontend - `/app/frontend/src/components/UserAvatar.jsx`**:
+- ✅ Affiche photo si disponible
+- ✅ Fallback vers initiales si pas de photo
+- ✅ Gradient de couleur pour initiales
+- ✅ Tailles configurables (xs, sm, md, lg, xl)
+- ✅ Affiché dans:
+  - Header (tous les rôles)
+  - Sidebar (Super Admin, Company Admin, Superviseur)
+  - VendeurLayout (sidebar vendeur)
+  - Tableaux d'utilisateurs
+
+### 🖼️ Composant Logo
+
+**Frontend - `/app/frontend/src/components/Logo.js`**:
+- ✅ Utilise LogoContext pour URL dynamique
+- ✅ Fallback vers logo système
+- ✅ Tailles configurables
+- ✅ Gestion erreur de chargement
+
+---
+
+## ✅ FONCTIONNALITÉS v17.0.0 (Session précédente)
 
 ### 🌍 Système Multilingue 100% Complet
 
