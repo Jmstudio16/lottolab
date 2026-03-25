@@ -1,7 +1,7 @@
 # LOTTOLAB - Product Requirements Document
-**Version**: 14.1.0  
+**Version**: 15.0.0  
 **Date**: 25 Mars 2026  
-**Status**: ✅ SYSTÈME MULTILINGUE COMPLET - Traduction Temps Réel Fonctionnelle
+**Status**: ✅ SYSTÈME MULTILINGUE 100% COMPLET
 
 ---
 
@@ -11,20 +11,31 @@
 
 ---
 
-## ✅ NOUVELLES FONCTIONNALITÉS (v14.1.0)
+## ✅ NOUVELLES FONCTIONNALITÉS (v15.0.0)
 
-### 🌐 Système Multilingue Temps Réel (4 Langues)
+### 🌐 Système Multilingue 100% Complet (4 Langues)
 - **Français** 🇫🇷 - Langue par défaut
 - **Créole Haïtien** 🇭🇹 - Kreyòl Ayisyen
 - **Anglais** 🇺🇸 - English
 - **Espagnol** 🇪🇸 - Español
-- ✅ **Changement de langue EN TEMPS RÉEL** (sans rechargement de page)
-- ✅ Sélecteur de langue visible sur TOUTES les pages
-- ✅ Persistance de la langue choisie (localStorage)
-- ✅ Traductions complètes pour:
-  - Dashboard Vendeur
-  - Page Nouvelle Vente
-  - Toasts et messages d'erreur
+
+**TOUS les éléments traduits:**
+- ✅ Menu latéral (Sidebar) - Tous les liens
+- ✅ Dashboard Vendeur - Toutes les cartes, labels, titres
+- ✅ Page Nouvelle Vente - Formulaire complet
+- ✅ Messages d'erreur et de succès
+- ✅ Navigation en temps réel (sans rechargement)
+- ✅ Persistance en localStorage
+
+### 📍 Nom Succursale sur Tickets
+- ✅ Le nom de la succursale apparaît sur TOUS les tickets imprimés
+- ✅ Format: "SUCCURSALE: [Nom de la succursale]"
+- ✅ Fonctionne avec le champ `nom_succursale` de la collection `succursales`
+
+### 🎰 Loteries Fermées Masquées
+- ✅ Seules les loteries OUVERTES sont affichées aux vendeurs
+- ✅ Les loteries fermées sont automatiquement cachées
+- ✅ Affichage dynamique basé sur `is_open`
 
 ### 💰 Limite de Mise Configurable
 - **Minimum**: Configurable par Admin Entreprise (défaut: 1 HTG)
