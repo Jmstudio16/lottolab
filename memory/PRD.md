@@ -1,7 +1,7 @@
 # LOTTOLAB - Product Requirements Document
-**Version**: 15.0.0  
+**Version**: 16.0.0  
 **Date**: 25 Mars 2026  
-**Status**: ✅ SYSTÈME MULTILINGUE 100% COMPLET
+**Status**: ✅ MOTEUR DE CALCUL AUTOMATIQUE DES GAINS IMPLÉMENTÉ
 
 ---
 
@@ -11,7 +11,63 @@
 
 ---
 
-## ✅ NOUVELLES FONCTIONNALITÉS (v15.0.0)
+## ✅ NOUVELLES FONCTIONNALITÉS (v16.0.0) - 25 Mars 2026
+
+### 🎰 Moteur de Calcul Automatique des Gains (PayoutEngine)
+
+**Backend - `/app/backend/payout_engine.py`**:
+- ✅ **Borlette 60|20|10**: 
+  - Extraction automatique des 2 derniers chiffres du 1er prix
+  - 1er rang = mise × 60, 2ème rang = mise × 20, 3ème rang = mise × 10
+- ✅ **Loto 3**: Match exact des 3 chiffres × prime configurée (défaut: 500)
+- ✅ **Loto 4**: Match exact des 4 chiffres × prime configurée (défaut: 5000)
+- ✅ **Loto 5**: Match exact des 5 chiffres × prime configurée (défaut: 50000)
+- ✅ **Mariage**: 2 numéros combinés × prime configurée (défaut: 750)
+- ✅ **Mariage Gratuit**: Même logique que Mariage
+
+**Exemple de calcul vérifié**:
+- Résultat: 1er=123, 2ème=45, 3ème=78
+- Joueur mise 10 HTG sur "23" (Borlette) → Gagne 600 HTG (23 = derniers chiffres de 123)
+- Joueur mise 10 HTG sur "45" (Borlette) → Gagne 200 HTG (2ème rang)
+- Joueur mise 10 HTG sur "123" (Loto3) → Gagne 5000 HTG (match exact)
+
+### 💰 Configuration des Primes par Company Admin
+
+**Page Paramètres** (`/company/profile-settings`):
+- ✅ Section "Configuration des Primes" avec 6 champs:
+  - Prime Borlette (format: 60|20|10)
+  - Prime Loto 3 (défaut: 500)
+  - Prime Loto 4 (défaut: 5000)
+  - Prime Loto 5 (défaut: 50000)
+  - Prime Mariage (défaut: 750)
+  - Prime Mariage Gratuit (défaut: 750)
+- ✅ Bouton "Enregistrer les primes" (jaune)
+- ✅ Boîte d'info explicative
+
+**APIs**:
+- `GET /api/company/primes` - Récupère les primes de la compagnie
+- `PUT /api/company/primes` - Met à jour les primes
+- `GET /api/company/primes/display` - Primes formatées pour le vendeur
+
+### 🔧 Bug Fix: enabled_lotteries: 0
+
+**Problème**: Les compagnies affichaient "enabled_lotteries: 0" bloquant les ventes.
+
+**Solution** (`/app/backend/lottery_sync_service.py`):
+- ✅ Synchronisation automatique au démarrage du serveur
+- ✅ API `/api/company/sync-lotteries` pour sync manuelle
+- ✅ API `/api/lottery-sync/repair-company/{company_id}` pour réparer une compagnie
+- ✅ **Résultat**: 236 loteries activées (était 0)
+
+### 📦 Snapshot des Primes à la Vente
+
+- ✅ La prime active au moment de la vente est sauvegardée sur chaque jeu du ticket
+- ✅ Champ `prime_at_sale` dans la structure `plays[]`
+- ✅ Les changements futurs de prime n'affectent PAS les tickets existants
+
+---
+
+## ✅ FONCTIONNALITÉS v15.0.0 (Session précédente)
 
 ### 🌐 Système Multilingue 100% Complet (4 Langues)
 - **Français** 🇫🇷 - Langue par défaut
