@@ -1,5 +1,6 @@
 import { API_URL } from '@/config/api';
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/api/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -12,6 +13,7 @@ import { Input } from '@/components/ui/input';
 
 
 const VendeurMesTickets = () => {
+  const { t } = useTranslation();
   const { token } = useAuth();
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState([]);
@@ -27,11 +29,11 @@ const VendeurMesTickets = () => {
       const res = await axios.get(`${API_URL}/api/vendeur/mes-tickets`, { headers });
       setTickets(res.data || []);
     } catch (error) {
-      toast.error('Erreur lors du chargement');
+      toast.error(t('common.error'));
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, t]);
 
   useEffect(() => {
     fetchTickets();
@@ -225,7 +227,7 @@ const VendeurMesTickets = () => {
                       variant="ghost"
                       onClick={() => setSelectedTicket(ticket)}
                       className="text-slate-400 hover:text-white"
-                      title="Voir détails"
+                      title={t('common.viewDetails')}
                     >
                       <Eye className="w-4 h-4" />
                     </Button>
@@ -234,7 +236,7 @@ const VendeurMesTickets = () => {
                       variant="ghost"
                       onClick={() => printTicket(ticket.ticket_id)}
                       className="text-slate-400 hover:text-blue-400"
-                      title="Imprimer"
+                      title={t('common.print')}
                     >
                       <Printer className="w-4 h-4" />
                     </Button>

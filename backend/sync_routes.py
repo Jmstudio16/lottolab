@@ -421,6 +421,9 @@ async def sync_device(
     for block in blocked_numbers:
         expires = block.get("expires_at")
         if not expires or expires > now_iso:
+            # Skip blocks without a number field
+            if "number" not in block:
+                continue
             active_blocks.append({
                 "number": block["number"],
                 "lottery_id": block.get("lottery_id"),

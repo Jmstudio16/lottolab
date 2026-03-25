@@ -1,5 +1,6 @@
 import { API_URL } from '@/config/api';
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLogoContext } from '../../contexts/LogoContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -13,6 +14,7 @@ import axios from 'axios';
 
 
 const CompanySettingsPage = () => {
+  const { t } = useTranslation();
   const { refreshLogo, displayLogoUrl, systemLogoUrl, companyLogoUrl, companyName } = useLogoContext();
   const { toast } = useToast();
   const fileInputRef = useRef(null);
@@ -225,15 +227,15 @@ const CompanySettingsPage = () => {
       fileInputRef.current.value = '';
       
       toast({
-        title: "Logo téléchargé",
-        description: "Votre logo a été mis à jour",
+        title: t('common.logoUploaded'),
+        description: t('common.success'),
       });
       
       refreshLogo();
     } catch (err) {
       toast({
-        title: "Erreur",
-        description: err.response?.data?.detail || "Échec du téléchargement",
+        title: t('common.error'),
+        description: err.response?.data?.detail || t('common.error'),
         variant: "destructive"
       });
     } finally {
@@ -242,7 +244,7 @@ const CompanySettingsPage = () => {
   };
 
   const handleDeleteLogo = async () => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer le logo personnalisé?")) return;
+    if (!window.confirm(t('common.confirm') + "?")) return;
 
     setDeleting(true);
     try {
@@ -255,15 +257,15 @@ const CompanySettingsPage = () => {
       setHasCompanyLogo(false);
       
       toast({
-        title: "Logo supprimé",
-        description: "Le logo système sera utilisé par défaut",
+        title: t('common.logoDeleted'),
+        description: t('common.success'),
       });
       
       refreshLogo();
     } catch (err) {
       toast({
-        title: "Erreur",
-        description: err.response?.data?.detail || "Échec de la suppression",
+        title: t('common.error'),
+        description: err.response?.data?.detail || t('common.error'),
         variant: "destructive"
       });
     } finally {
