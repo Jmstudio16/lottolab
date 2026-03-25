@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import Logo from '@/components/Logo';
 import { API_URL } from '@/config/api';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 const SupervisorSidebar = ({ isOpen, onClose }) => {
   const { logout, user } = useAuth();
@@ -119,9 +120,12 @@ const SupervisorHeader = ({ onMenuClick }) => {
           <span className="text-slate-400 text-sm">Espace Superviseur</span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span className="text-xs text-slate-400">Connecté</span>
+        <div className="flex items-center gap-3">
+          <LanguageSwitcher />
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="text-xs text-slate-400">Connecté</span>
+          </div>
         </div>
       </div>
     </header>

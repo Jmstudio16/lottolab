@@ -8,7 +8,7 @@ import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Switch } from '../../components/ui/switch';
 import { useToast } from '../../hooks/use-toast';
-import { Loader2, Upload, Trash2, Building2, Phone, Mail, MapPin, Image as ImageIcon, Check, QrCode, FileText } from 'lucide-react';
+import { Loader2, Upload, Trash2, Building2, Phone, Mail, MapPin, Image as ImageIcon, Check, QrCode, FileText, DollarSign } from 'lucide-react';
 import axios from 'axios';
 
 
@@ -31,7 +31,9 @@ const CompanySettingsPage = () => {
     ticket_footer_text: '',
     ticket_legal_text: '',
     ticket_thank_you_text: '',
-    qr_code_enabled: true
+    qr_code_enabled: true,
+    min_bet_amount: 1,
+    max_bet_amount: 999999
   });
 
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -59,7 +61,9 @@ const CompanySettingsPage = () => {
         ticket_footer_text: data.ticket_footer_text || '',
         ticket_legal_text: data.ticket_legal_text || '',
         ticket_thank_you_text: data.ticket_thank_you_text || '',
-        qr_code_enabled: data.qr_code_enabled !== false
+        qr_code_enabled: data.qr_code_enabled !== false,
+        min_bet_amount: data.min_bet_amount || 1,
+        max_bet_amount: data.max_bet_amount || 999999
       });
       setCurrentLogoUrl(data.company_logo_url || data.display_logo_url);
       setHasCompanyLogo(!!data.company_logo_url);
@@ -567,6 +571,83 @@ const CompanySettingsPage = () => {
                 <>
                   <Check className="h-4 w-4 mr-2" />
                   Enregistrer les paramètres du ticket
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Betting Limits Section */}
+      <Card className="bg-gray-800/50 border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-amber-400" />
+            Limites de Mise
+          </CardTitle>
+          <CardDescription>
+            Configurez les limites de mise pour vos vendeurs
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Minimum Bet Amount */}
+            <div className="space-y-2">
+              <Label htmlFor="min_bet_amount" className="text-gray-300 flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Montant Minimum de Mise (HTG)
+              </Label>
+              <Input
+                id="min_bet_amount"
+                name="min_bet_amount"
+                type="number"
+                min="1"
+                value={settings.min_bet_amount}
+                onChange={handleInputChange}
+                className="bg-gray-700 border-gray-600 text-white"
+                placeholder="1"
+                data-testid="min-bet-input"
+              />
+              <p className="text-xs text-gray-500">Montant minimum qu'un vendeur peut accepter (défaut: 1 HTG)</p>
+            </div>
+
+            {/* Maximum Bet Amount */}
+            <div className="space-y-2">
+              <Label htmlFor="max_bet_amount" className="text-gray-300 flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Montant Maximum de Mise (HTG)
+              </Label>
+              <Input
+                id="max_bet_amount"
+                name="max_bet_amount"
+                type="number"
+                min="1"
+                value={settings.max_bet_amount}
+                onChange={handleInputChange}
+                className="bg-gray-700 border-gray-600 text-white"
+                placeholder="999999"
+                data-testid="max-bet-input"
+              />
+              <p className="text-xs text-gray-500">Montant maximum par mise (laissez vide ou 999999 pour illimité)</p>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <Button
+              onClick={handleSaveSettings}
+              disabled={saving}
+              className="bg-amber-600 hover:bg-amber-700"
+              data-testid="save-bet-limits-btn"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Enregistrement...
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Enregistrer les limites
                 </>
               )}
             </Button>

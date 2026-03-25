@@ -109,15 +109,20 @@ async def get_full_device_config(current_agent: dict = Depends(get_current_agent
     # ---- 2. COMPANY CONFIGURATION ----
     config = await db.company_configurations.find_one({"company_id": company_id}, {"_id": 0})
     if not config:
+        # Try to get limits from company table itself (configured by Company Admin)
         config = {
-            "min_bet_amount": 0,  # Pas de limite minimum
-            "max_bet_amount": 999999999,  # Pas de limite maximum pratique
-            "max_bet_per_number": 999999999,
-            "stop_sales_before_draw_minutes": 5,
+            "min_bet_amount": company.get("min_bet_amount", 1),  # Configurable by Company Admin, default 1 HTG
+            "max_bet_amount": company.get("max_bet_amount", 999999999),  # No practical max
+            "max_bet_per_number": company.get("max_bet_per_number", 999999999),
+            "stop_sales_before_draw_minutes": company.get("stop_sales_before_draw_minutes", 5),
             "allow_ticket_void": True,
             "void_window_minutes": 5,
             "auto_print_ticket": True
         }
+    else:
+        # Merge company settings with config (Company Admin settings take precedence)
+        config["min_bet_amount"] = company.get("min_bet_amount", config.get("min_bet_amount", 1))
+        config["max_bet_amount"] = company.get("max_bet_amount", config.get("max_bet_amount", 999999999))
     
     # ---- 3. POS RULES ----
     pos_rules = await db.company_pos_rules.find_one({"company_id": company_id}, {"_id": 0})

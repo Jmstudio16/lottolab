@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { Menu, X } from 'lucide-react';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 export const AdminLayout = ({ children, title, subtitle, role }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -50,6 +51,7 @@ export const AdminLayout = ({ children, title, subtitle, role }) => {
             <span className="text-white font-semibold text-sm">{title || 'Super Admin'}</span>
             {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
           </div>
+          <LanguageSwitcher />
         </div>
         
         {/* Desktop Header */}

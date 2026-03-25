@@ -31,6 +31,9 @@ const VendeurNouvelleVente = () => {
   const [ticketResult, setTicketResult] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [mariageGratisCount, setMariageGratisCount] = useState(0); // Auto mariages gratis
+  // Configurable bet limits from company settings
+  const [minBetAmount, setMinBetAmount] = useState(1);
+  const [maxBetAmount, setMaxBetAmount] = useState(999999);
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -79,6 +82,11 @@ const VendeurNouvelleVente = () => {
         axios.get(`${API_URL}/api/vendeur/profile`, { headers }).catch(() => ({ data: null }))
       ]);
       setLotteries(lotteriesRes.data.enabled_lotteries || []);
+      
+      // Get configurable bet limits from company configuration
+      const config = lotteriesRes.data.configuration || {};
+      setMinBetAmount(config.min_bet_amount || 1);
+      setMaxBetAmount(config.max_bet_amount || 999999);
       
       // Get succursale and company name
       if (profileRes.data) {
@@ -251,9 +259,15 @@ const VendeurNouvelleVente = () => {
 
     const amount = parseFloat(currentPlay.amount) || 0;
     
-    // Minimum 1 HTG for all bet types (except Loto5 which has 20 HTG minimum)
-    if (amount < 1) {
-      toast.error('Montant minimum: 1 HTG');
+    // Use configurable min bet amount from company settings
+    if (amount < minBetAmount) {
+      toast.error(`Montant minimum: ${minBetAmount} HTG`);
+      return;
+    }
+    
+    // Use configurable max bet amount from company settings
+    if (amount > maxBetAmount) {
+      toast.error(`Montant maximum: ${maxBetAmount} HTG`);
       return;
     }
     
@@ -668,7 +682,9 @@ const VendeurNouvelleVente = () => {
                       step="1"
                       data-testid="amount-input"
                     />
-                    <p className="text-xs text-slate-500 mt-1">Montant libre - Aucune limite</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Min: {minBetAmount} HTG {maxBetAmount < 999999 ? `| Max: ${maxBetAmount} HTG` : ''}
+                    </p>
                     
                     {/* Mariages Gratis indicator */}
                     {totalAmount >= 50 && (

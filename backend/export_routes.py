@@ -384,7 +384,7 @@ async def remove_blocked_numbers(
 
 class BetLimitsRequest(BaseModel):
     lottery_id: Optional[str] = None  # None = global for all lotteries
-    min_bet: float = 10.0
+    min_bet: float = 1.0
     max_bet: float = 10000.0
     max_bet_per_number: float = 5000.0
     max_total_per_ticket: float = 50000.0
@@ -501,14 +501,14 @@ async def validate_ticket_sale(company_id: str, lottery_id: str, draw_date: str,
         )
         if config:
             limits = {
-                "min_bet": config.get("min_bet_amount", 10),
+                "min_bet": config.get("min_bet_amount", 1),
                 "max_bet": config.get("max_bet_amount", 10000),
                 "max_bet_per_number": config.get("max_bet_per_number", 5000),
                 "max_total_per_ticket": 50000
             }
     
     if limits:
-        min_bet = limits.get("min_bet", 10)
+        min_bet = limits.get("min_bet", 1)
         max_bet = limits.get("max_bet", 10000)
         max_per_num = limits.get("max_bet_per_number", 5000)
         max_total = limits.get("max_total_per_ticket", 50000)

@@ -1,0 +1,95 @@
+{
+  "summary": "Iteration 32 - Testing Language Switcher visibility on mobile and Min Bet Amount configuration. All backend APIs working correctly. Language Switcher is visible on mobile for all 3 roles (Vendeur, Company Admin, Supervisor). Min bet amount (Min: 1 HTG) displays correctly on Nouvelle Vente page when a lottery is selected. API /api/device/config returns min_bet_amount=1.0. API /api/company/profile allows Company Admin to modify min_bet_amount.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "VendeurNouvelleVente.jsx",
+        "issues": ["Page text is hardcoded in French - not using i18n translation keys. Language switcher changes flag but page content doesn't translate. Translation files (ht.json, fr.json, en.json, es.json) exist with proper translations but components need to use useTranslation() hook."]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_language_and_bet_limits.py",
+    "/app/test_reports/pytest/iteration32_results.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: Update VendeurNouvelleVente.jsx to use i18n translation keys instead of hardcoded French text for full multilingual support"
+  ],
+  "critical_code_review_comments": [
+    "Translation files exist with proper translations for all 4 languages (fr, en, es, ht) but VendeurNouvelleVente.jsx uses hardcoded French text instead of translation keys"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_language_and_bet_limits.py"
+  ],
+  "success_rate": {
+    "backend": "100% (8/8 tests passed)",
+    "frontend": "100% (Language switcher visible, Min bet amount displayed)"
+  },
+  "test_credentials": {
+    "vendeur": "vendeur@lotopam.com / Vendeur123!",
+    "company_admin": "admin@lotopam.com / Admin123!",
+    "supervisor": "supervisor@lotopam.com / Supervisor123!"
+  },
+  "seed_data_creation": "Used existing test data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Language switcher component works correctly - flag changes when language is selected. Translation files exist but page components use hardcoded French text. Min bet amount configuration works end-to-end.",
+  "features_tested": {
+    "language_switcher_vendeur_mobile": {
+      "status": "PASS",
+      "visible": true,
+      "data_testid": "language-switcher",
+      "dropdown_opens": true,
+      "language_options_visible": true,
+      "flag_changes_on_selection": true
+    },
+    "language_switcher_company_admin_mobile": {
+      "status": "PASS",
+      "visible": true
+    },
+    "language_switcher_supervisor_mobile": {
+      "status": "PASS",
+      "visible": true
+    },
+    "min_bet_amount_display": {
+      "status": "PASS",
+      "text_displayed": "Min: 1 HTG",
+      "location": "Below amount input field on Nouvelle Vente page"
+    },
+    "api_device_config": {
+      "status": "PASS",
+      "endpoint": "/api/device/config",
+      "returns_min_bet_amount": true,
+      "default_value": 1.0
+    },
+    "api_company_profile_get": {
+      "status": "PASS",
+      "endpoint": "/api/company/profile",
+      "returns_min_bet_amount": true,
+      "returns_max_bet_amount": true
+    },
+    "api_company_profile_update": {
+      "status": "PASS",
+      "endpoint": "/api/company/profile (PUT)",
+      "can_update_min_bet_amount": true
+    },
+    "language_change_to_kreyol": {
+      "status": "PARTIAL",
+      "flag_changes": true,
+      "page_text_translates": false,
+      "reason": "Page uses hardcoded French text instead of i18n keys"
+    }
+  },
+  "api_tests_summary": {
+    "total_tests": 8,
+    "passed": 8,
+    "failed": 0,
+    "test_file": "/app/backend/tests/test_language_and_bet_limits.py"
+  }
+}

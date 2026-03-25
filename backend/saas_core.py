@@ -820,7 +820,7 @@ async def create_company_full(
     config_doc = {
         "config_id": config_id,
         "company_id": company_id,
-        "min_bet_amount": 10.0,
+        "min_bet_amount": 1.0,
         "max_bet_amount": 10000.0,
         "max_bet_per_number": 5000.0,
         "max_bet_per_agent": 50000.0,

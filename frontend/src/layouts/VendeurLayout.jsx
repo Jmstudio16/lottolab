@@ -8,6 +8,7 @@ import {
   Trophy, BarChart3, User, LogOut, Menu, X, Store, Building2, Trash2,
   Banknote, Receipt
 } from 'lucide-react';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 
 const VendeurLayout = () => {
@@ -88,12 +89,15 @@ const VendeurLayout = () => {
             )}
           </div>
         </div>
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 text-slate-400 hover:text-white"
-        >
-          {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 text-slate-400 hover:text-white"
+          >
+            {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
       </div>
 
       <div className="flex">
@@ -167,6 +171,10 @@ const VendeurLayout = () => {
 
           {/* Logout */}
           <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-700">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs text-slate-500">Langue</span>
+              <LanguageSwitcher />
+            </div>
             <button
               onClick={handleLogout}
               className="flex items-center gap-3 w-full px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-all"

@@ -522,7 +522,7 @@ class CompanySettings(BaseModel):
     stop_sales_before_draw_minutes: int = 5
     allow_ticket_void: bool = True
     max_ticket_amount: float = 10000.0
-    min_ticket_amount: float = 10.0
+    min_ticket_amount: float = 1.0
     auto_print_ticket: bool = True
     receipt_header: Optional[str] = None
     receipt_footer: Optional[str] = None
@@ -824,7 +824,7 @@ class CompanyConfiguration(BaseModel):
     config_id: str
     company_id: str
     # Betting limits
-    min_bet_amount: float = 10.0
+    min_bet_amount: float = 1.0
     max_bet_amount: float = 10000.0
     max_bet_per_number: float = 5000.0
     max_bet_per_agent: float = 50000.0

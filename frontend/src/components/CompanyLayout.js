@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Menu, X } from 'lucide-react';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 const CompanyLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -49,6 +50,7 @@ const CompanyLayout = ({ children }) => {
             <span className="text-white font-semibold">Company Admin</span>
             <p className="text-xs text-slate-400">Gestion de l'entreprise</p>
           </div>
+          <LanguageSwitcher />
         </div>
         
         <main className="min-h-screen p-3 sm:p-4 lg:p-6">

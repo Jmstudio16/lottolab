@@ -3,6 +3,7 @@ import { Bell, X, Check, AlertCircle, Trophy, DollarSign, Users, Ticket, Clock, 
 import { useAuth } from '@/api/auth';
 import axios from 'axios';
 import { API_URL } from '@/config/api';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 const getNotificationIcon = (type) => {
   switch (type) {
@@ -191,6 +192,9 @@ export const Header = ({ title, subtitle }) => {
         </div>
         
         <div className="flex items-center gap-2 sm:gap-4">
+          {/* Language Switcher */}
+          <LanguageSwitcher />
+          
           {/* Real-time Clock */}
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-lg border border-slate-700">
             <Clock className="w-4 h-4 text-emerald-400" />

@@ -85,6 +85,8 @@ class CompanyProfileUpdate(BaseModel):
     ticket_legal_text: Optional[str] = None
     ticket_thank_you_text: Optional[str] = None
     qr_code_enabled: Optional[bool] = True
+    min_bet_amount: Optional[float] = 1.0
+    max_bet_amount: Optional[float] = 999999.0
 
 
 @company_router.get("/profile")
@@ -113,6 +115,8 @@ async def get_company_profile(current_user: dict = Depends(get_current_user)):
         "ticket_legal_text": company.get("ticket_legal_text", ""),
         "ticket_thank_you_text": company.get("ticket_thank_you_text", ""),
         "qr_code_enabled": company.get("qr_code_enabled", True),
+        "min_bet_amount": company.get("min_bet_amount", 1.0),
+        "max_bet_amount": company.get("max_bet_amount", 999999.0),
         "currency": company.get("currency", "HTG"),
         "timezone": company.get("timezone", "America/Port-au-Prince")
     }
@@ -146,6 +150,10 @@ async def update_company_profile(
         update_data["ticket_legal_text"] = data.ticket_legal_text
     if data.ticket_thank_you_text is not None:
         update_data["ticket_thank_you_text"] = data.ticket_thank_you_text
+    if data.min_bet_amount is not None:
+        update_data["min_bet_amount"] = data.min_bet_amount
+    if data.max_bet_amount is not None:
+        update_data["max_bet_amount"] = data.max_bet_amount
     if data.qr_code_enabled is not None:
         update_data["qr_code_enabled"] = data.qr_code_enabled
     
@@ -993,7 +1001,7 @@ async def get_company_settings(current_user: dict = Depends(get_current_user)):
             stop_sales_before_draw_minutes=5,
             allow_ticket_void=True,
             max_ticket_amount=10000.0,
-            min_ticket_amount=10.0,
+            min_ticket_amount=1.0,
             auto_print_ticket=True,
             updated_at=now
         )
