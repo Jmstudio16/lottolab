@@ -76,6 +76,7 @@ import {
 import VendeurLotsGagnants from '@/pages/vendeur/VendeurLotsGagnants';
 import VendeurFichesSupprimees from '@/pages/vendeur/VendeurFichesSupprimees';
 import VendeurRapportPage from '@/pages/vendeur/VendeurRapportPage';
+import VendeurConfigImprimante from '@/pages/vendeur/VendeurConfigImprimante';
 
 // Super Admin Results Page
 import SuperAdminResultsPage from '@/pages/super_admin/SuperAdminResultsPage';
@@ -639,6 +640,7 @@ const SaaSApp = () => {
                   <Route path="fiches-gagnants" element={<VendeurLotsGagnants />} />
                   <Route path="fiches-supprimees" element={<VendeurFichesSupprimees />} />
                   <Route path="rapport" element={<VendeurRapportPage />} />
+                  <Route path="imprimante" element={<VendeurConfigImprimante />} />
                   <Route index element={<Navigate to="/vendeur/dashboard" replace />} />
                 </Route>
 

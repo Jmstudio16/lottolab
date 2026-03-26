@@ -62,6 +62,7 @@ const VendeurLayout = () => {
     { path: '/vendeur/fiches-supprimees', icon: Trash2, label: t('nav.deletedTickets', 'Fiches Supprimées'), highlight: 'red' },
     { path: '/vendeur/mes-ventes', icon: BarChart3, label: t('nav.mySales') },
     { path: '/vendeur/rapport', icon: BarChart3, label: t('nav.reports'), highlight: 'blue' },
+    { path: '/vendeur/imprimante', icon: Receipt, label: 'Config. Imprimante', highlight: 'cyan' },
     { path: '/vendeur/profil', icon: User, label: t('common.profile') },
   ];
 

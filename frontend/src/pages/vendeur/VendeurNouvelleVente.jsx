@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import TicketPrintModal from '@/components/TicketPrintModal';
 
 
 const VendeurNouvelleVente = () => {
@@ -31,6 +32,7 @@ const VendeurNouvelleVente = () => {
     amount: ''
   });
   const [ticketResult, setTicketResult] = useState(null);
+  const [showPrintModal, setShowPrintModal] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [mariageGratisCount, setMariageGratisCount] = useState(0); // Auto mariages gratis
   // Configurable bet limits from company settings
@@ -422,6 +424,7 @@ const VendeurNouvelleVente = () => {
       const res = await axios.post(`${API_URL}/api/lottery/sell`, payload, { headers });
       
       setTicketResult(res.data);
+      setShowPrintModal(true); // Show print modal immediately
       setCart([]);
       toast.success('Vente validée avec succès!');
     } catch (error) {
@@ -433,53 +436,69 @@ const VendeurNouvelleVente = () => {
 
   const printTicket = () => {
     if (ticketResult?.ticket_id) {
-      window.open(`${API_URL}/api/ticket/print/${ticketResult.ticket_id}?token=${token}&format=thermal`, '_blank');
+      window.open(`${API_URL}/api/ticket/print/${ticketResult.ticket_id}?token=${token}&format=thermal&auto=true`, '_blank', 'width=400,height=700');
     }
   };
 
   const newSale = () => {
     setTicketResult(null);
+    setShowPrintModal(false);
     setSelectedLottery(null);
     setCart([]);
   };
 
-  // Success Modal
+  // Success Modal - Now uses TicketPrintModal component
   if (ticketResult) {
     return (
       <div className="p-4 sm:p-6 pb-24 lg:pb-6">
-        <div className="max-w-lg mx-auto bg-slate-800/50 border border-emerald-500/30 rounded-2xl p-4 sm:p-6 text-center">
-          <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-10 h-10 text-emerald-400" />
-          </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Vente Validée!</h2>
-          <p className="text-slate-400 mb-6">Ticket créé avec succès</p>
-          
-          <div className="bg-slate-700/50 rounded-xl p-4 mb-6 text-left">
-            <p className="text-sm text-slate-400">Numéro de ticket</p>
-            <p className="text-lg sm:text-xl font-mono font-bold text-emerald-400">{ticketResult.ticket_code}</p>
-            
-            <div className="mt-3 pt-3 border-t border-slate-600">
-              <p className="text-sm text-slate-400">Loterie</p>
-              <p className="text-base sm:text-lg font-semibold text-white">{selectedLottery?.lottery_name}</p>
+        {/* Print Modal */}
+        <TicketPrintModal
+          isOpen={showPrintModal}
+          onClose={() => setShowPrintModal(false)}
+          ticket={{
+            ...ticketResult,
+            lottery_name: selectedLottery?.lottery_name
+          }}
+          token={token}
+          onNewSale={newSale}
+        />
+        
+        {/* Fallback simple view when modal is closed */}
+        {!showPrintModal && (
+          <div className="max-w-lg mx-auto bg-slate-800/50 border border-emerald-500/30 rounded-2xl p-4 sm:p-6 text-center">
+            <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-10 h-10 text-emerald-400" />
             </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Vente Validée!</h2>
+            <p className="text-slate-400 mb-6">Ticket créé avec succès</p>
             
-            <div className="mt-3 pt-3 border-t border-slate-600">
-              <p className="text-sm text-slate-400">Montant total</p>
-              <p className="text-lg sm:text-xl font-bold text-white">{ticketResult.total_amount} HTG</p>
+            <div className="bg-slate-700/50 rounded-xl p-4 mb-6 text-left">
+              <p className="text-sm text-slate-400">Numéro de ticket</p>
+              <p className="text-lg sm:text-xl font-mono font-bold text-emerald-400">{ticketResult.ticket_code}</p>
+              
+              <div className="mt-3 pt-3 border-t border-slate-600">
+                <p className="text-sm text-slate-400">Loterie</p>
+                <p className="text-base sm:text-lg font-semibold text-white">{selectedLottery?.lottery_name}</p>
+              </div>
+              
+              <div className="mt-3 pt-3 border-t border-slate-600">
+                <p className="text-sm text-slate-400">Montant total</p>
+                <p className="text-lg sm:text-xl font-bold text-white">{ticketResult.total_amount} HTG</p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex gap-3">
-            <Button onClick={printTicket} className="flex-1 bg-blue-600 hover:bg-blue-700">
-              <Printer className="w-4 h-4 mr-2" />
-              {t('vendeur.print')}
-            </Button>
-            <Button onClick={newSale} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
-              <Plus className="w-4 h-4 mr-2" />
-              {t('vendeur.newSale')}
-            </Button>
+            <div className="flex gap-3">
+              <Button onClick={() => setShowPrintModal(true)} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                <Printer className="w-4 h-4 mr-2" />
+                {t('vendeur.print')}
+              </Button>
+              <Button onClick={newSale} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="w-4 h-4 mr-2" />
+                {t('vendeur.newSale')}
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   }
