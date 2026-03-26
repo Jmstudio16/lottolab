@@ -1,5 +1,44 @@
 # LOTTOLAB - Changelog
 
+## v19.0.0 - 26 Mars 2026
+
+### 🖨️ Système d'Impression POS / Android COMPLET
+
+#### Flux d'impression
+- TicketPrintModal s'affiche automatiquement après validation
+- Auto-impression si activée (défaut: OUI pour POS)
+- Boutons: Imprimer, Aperçu, Réimprimer, PDF, Nouvelle Vente
+
+#### PrinterService (Frontend)
+- Détection automatique: Bluetooth, USB OTG, WiFi/LAN, POS intégré, Navigateur
+- Persistance localStorage
+- Test d'impression
+
+#### Page Configuration Imprimante (/vendeur/imprimante)
+- Largeur papier: 58mm / 80mm
+- Taille police: Petit / Normal / Grand
+- Nombre de copies: 1-5
+- 6 Toggles:
+  - Impression automatique
+  - Coupe papier
+  - Ouvrir tiroir-caisse
+  - Imprimer logo
+  - Imprimer QR Code
+  - Mode noir intense
+
+#### Ticket PRO 80mm Thermal
+- VENDEUR = nom réel (jamais N/A)
+- SUCCURSALE = nom réel (jamais N/A)
+- Heure format 12h (08:59 PM)
+- Code formaté XXXX-XXXX-XXXX
+- QR Code base64
+- Type de jeu affiché (Borl., L3, Mar.)
+
+### ✅ Tests
+- 16/16 tests passés (iteration_37.json)
+
+---
+
 ## v18.0.0 - 25 Mars 2026
 
 ### 🆕 Nouvelles Fonctionnalités

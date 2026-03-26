@@ -1,7 +1,7 @@
 # LOTTOLAB - Product Requirements Document
-**Version**: 18.0.0  
-**Date**: 25 Mars 2026  
-**Status**: ✅ SYSTÈME COMPLET AVEC UPLOAD IMAGES & TICKET 80mm - PRÊT POUR DÉPLOIEMENT
+**Version**: 19.0.0  
+**Date**: 26 Mars 2026  
+**Status**: ✅ SYSTÈME D'IMPRESSION POS 100% FONCTIONNEL - PRÊT PRODUCTION
 
 ---
 
@@ -11,104 +11,109 @@
 
 ---
 
-## ✅ NOUVELLES FONCTIONNALITÉS (v18.0.0) - 25 Mars 2026
+## ✅ NOUVELLES FONCTIONNALITÉS (v19.0.0) - 26 Mars 2026
 
-### 📷 Système d'Upload Images (Object Storage)
+### 🖨️ Système d'Impression POS / Android COMPLET
 
-**Backend - `/app/backend/storage_routes.py`**:
-- ✅ **Upload Logo Entreprise**: `POST /api/company/logo/upload`
-  - Accepte PNG, JPG, WEBP, GIF, SVG (max 10MB)
-  - Stockage via Emergent Object Storage
-  - Logo affiché partout instantanément
-- ✅ **Upload Photo Vendeur**: `POST /api/vendeur/profile/photo`
-  - Photos de profil pour Vendeurs/Superviseurs
-  - Avatar affiché dans Header, Sidebar, Tableaux
-- ✅ **Service de fichiers**: `GET /api/files/{path}`
-  - Sert les images uploadées
-  - Cache optimisé (1 jour)
+**Flux après création ticket**:
+1. Vendeur remplit les jeux et montants
+2. Clic sur "Valider"
+3. Ticket sauvegardé en base
+4. **TicketPrintModal** s'affiche automatiquement
+5. **Auto-impression** si activée (défaut: OUI pour POS)
+6. Boutons: Imprimer, Aperçu, Réimprimer, PDF, Nouvelle Vente
 
-**Endpoints consolidés** (`settings_routes.py`):
-- Object Storage prioritaire, fallback local si indisponible
-- `logo_storage_type` tracké dans la DB
+**Service d'imprimantes** (`/app/frontend/src/services/PrinterService.js`):
+- ✅ Détection automatique: Bluetooth, USB OTG, WiFi/LAN, POS intégré, Navigateur
+- ✅ Persistance localStorage
+- ✅ Paramètres configurables
+- ✅ Test d'impression
 
-### 🎫 Ticket Thermique 80mm Professionnel
+**Page Configuration Imprimante** (`/vendeur/imprimante`):
+- Largeur papier: 58mm (portable) / **80mm (POS)** par défaut
+- Taille police: Petit / Normal / Grand
+- Nombre de copies: 1-5
+- **Toggles**:
+  - ✅ Impression automatique après validation
+  - ✅ Coupe automatique du papier
+  - ⬜ Ouvrir tiroir-caisse (désactivé par défaut)
+  - ✅ Imprimer le logo
+  - ✅ Imprimer QR Code
+  - ✅ Mode noir intense (thermique)
+- Marges haute/basse configurables
 
-**Template unifié - `/app/backend/ticket_template.py`**:
-- ✅ **Logo Entreprise** en haut (grayscale pour thermique)
-- ✅ **Nom Compagnie** + Téléphone + Adresse
-- ✅ **Succursale** dynamique (jamais "N/A")
-- ✅ **Vendeur** nom réel
-- ✅ **Machine/POS ID**
-- ✅ **Ticket ID** unique
-- ✅ **Heure Serveur temps réel** (timezone Haiti)
-- ✅ **Loterie + Tirage + Date**
-- ✅ **Numéros joués** avec montants alignés
-- ✅ **Total Mise** en gros caractères
-- ✅ **Statut VALIDÉ** encadré
-- ✅ **QR Code** base64 (configurable)
-- ✅ **Texte légal** personnalisable
-- ✅ **Watermark LOTTOLAB.TECH**
+### 🎫 Ticket Thermique PRO 80mm (Format Exact)
 
-**Format exact**:
 ```
 ================================
         [LOGO COMPAGNIE]
       LOTO PAM CENTER
+    "JOUER POU GENYEN"
     Tel: +509XXXXXXXX
-  Succursale: PETION VILLE
+       Pétion-Ville
+================================
+VENDEUR      : JEAN PIERRE
+SUCCURSALE   : DELMAS 33
+POS          : POS-1023
+TICKET ID    : 3PQ4XD7LRPQK
 --------------------------------
-VENDEUR :          JEFFERSON
-MACHINE :          POS-01
-TICKET ID :        XXXXXXXX
---------------------------------
-    LOTERIE : New York Evening
+    LOTERIE : IL Pick 3 Evening
     TIRAGE  : SOIR
     DATE    : 24/03/2026
-    HEURE   : HH:MM:SS (Serveur)
+    HEURE   : 08:59 PM
 --------------------------------
        NUMÉROS JOUÉS
 --------------------------------
-45                     10 HTG
-23                     20 HTG
+45          Borl.        10 HTG
+23          L3           20 HTG
 --------------------------------
-     TOTAL MISE : 30 HTG
+   ╔════════════════════════╗
+   ║  TOTAL MISE : 30 HTG  ║
+   ╚════════════════════════╝
 --------------------------------
-      STATUT : VALIDÉ
---------------------------------
+    [ STATUT : VALIDÉ ✓ ]
+================================
+    CODE : A9X7-23F8-PLK9
+         [QR CODE]
+================================
     MERCI DE JOUER AVEC
       LOTO PAM CENTER
 --------------------------------
-     CODE : 123456789012
-          [QR CODE]
+⚠ Vérifiez votre ticket
+⚠ Valable UNE SEULE FOIS
+⚠ Valide 90 jours
 --------------------------------
        LOTTOLAB.TECH
 ================================
 ```
 
-### 👤 Composant UserAvatar
+**Améliorations techniques**:
+- ✅ VENDEUR = nom réel (JAMAIS "N/A")
+- ✅ SUCCURSALE = nom réel (JAMAIS "N/A")
+- ✅ Heure format 12h (08:59 PM)
+- ✅ Code formaté XXXX-XXXX-XXXX
+- ✅ QR Code base64 intégré
+- ✅ Logo grayscale + contrast pour thermique
+- ✅ Type de jeu affiché (Borl., L3, Mar., L4, L5)
 
-**Frontend - `/app/frontend/src/components/UserAvatar.jsx`**:
-- ✅ Affiche photo si disponible
-- ✅ Fallback vers initiales si pas de photo
-- ✅ Gradient de couleur pour initiales
-- ✅ Tailles configurables (xs, sm, md, lg, xl)
-- ✅ Affiché dans:
-  - Header (tous les rôles)
-  - Sidebar (Super Admin, Company Admin, Superviseur)
-  - VendeurLayout (sidebar vendeur)
-  - Tableaux d'utilisateurs
+### 📱 Composants Frontend
 
-### 🖼️ Composant Logo
+**TicketPrintModal** (`/app/frontend/src/components/TicketPrintModal.jsx`):
+- Modal plein écran mobile-first
+- Succès visuel avec animation
+- Code ticket grand format + copie
+- Sélection imprimante intégrée
+- Boutons gros et tactiles pour POS
 
-**Frontend - `/app/frontend/src/components/Logo.js`**:
-- ✅ Utilise LogoContext pour URL dynamique
-- ✅ Fallback vers logo système
-- ✅ Tailles configurables
-- ✅ Gestion erreur de chargement
+**PrinterSelector** (`/app/frontend/src/components/PrinterSelector.jsx`):
+- Liste des imprimantes détectées
+- Statut: Connectée / Non connectée
+- Boutons: Jumeler Bluetooth, Connecter USB, Ajouter Réseau
+- Test d'impression par imprimante
 
 ---
 
-## ✅ FONCTIONNALITÉS v17.0.0 (Session précédente)
+## ✅ FONCTIONNALITÉS v18.0.0 (Session précédente)
 
 ### 🌍 Système Multilingue 100% Complet
 
