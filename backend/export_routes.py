@@ -661,3 +661,304 @@ async def get_ticket_settings(current_user: dict = Depends(get_company_user)):
         "company_phone": company.get("ticket_company_phone") or company.get("phone"),
         "logo_exists": bool(company.get("logo_base64"))
     }
+
+
+
+# ============================================================================
+# TICKET PDF GENERATION (Individual Ticket)
+# ============================================================================
+
+@export_router.get("/ticket/pdf/{ticket_id}")
+async def generate_single_ticket_pdf(
+    ticket_id: str,
+    token: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """
+    Generate professional PDF for a single ticket.
+    Can be shared via WhatsApp, Email, etc.
+    """
+    from ticket_template import generate_ticket_html
+    
+    # Get token
+    auth_token = token or (credentials.credentials if credentials else None)
+    if not auth_token:
+        raise HTTPException(status_code=401, detail="Token requis")
+    
+    payload = decode_token(auth_token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token invalide")
+    
+    user_id = payload.get("user_id")
+    company_id = payload.get("company_id")
+    
+    # Find ticket
+    ticket = await db.lottery_transactions.find_one({
+        "ticket_id": ticket_id
+    }, {"_id": 0})
+    
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket non trouvé")
+    
+    # Get company info
+    company = await db.companies.find_one({"company_id": ticket.get("company_id")}, {"_id": 0})
+    
+    # Get agent info
+    agent = await db.users.find_one(
+        {"user_id": ticket.get("agent_id")},
+        {"_id": 0, "name": 1, "full_name": 1, "pos_serial_number": 1, "branch_id": 1}
+    )
+    
+    # Get branch info
+    branch_id = ticket.get("branch_id") or ticket.get("succursale_id")
+    branch = None
+    if branch_id:
+        branch = await db.branches.find_one({"branch_id": branch_id}, {"_id": 0})
+        if not branch:
+            branch = await db.succursales.find_one({"succursale_id": branch_id}, {"_id": 0})
+    
+    # Generate HTML for PDF
+    html_content = generate_ticket_html(
+        ticket=ticket,
+        company=company,
+        agent=agent,
+        branch=branch,
+        auto_print=False,
+        base_url="https://lottolab.tech"
+    )
+    
+    # Create PDF using ReportLab
+    buffer = BytesIO()
+    
+    # PDF with 80mm width (approximately 226 points)
+    from reportlab.lib.pagesizes import mm
+    page_width = 80 * mm
+    page_height = 200 * mm  # Variable height
+    
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=(page_width, page_height),
+        rightMargin=5*mm,
+        leftMargin=5*mm,
+        topMargin=5*mm,
+        bottomMargin=5*mm
+    )
+    
+    styles = getSampleStyleSheet()
+    
+    # Custom styles for ticket
+    title_style = ParagraphStyle(
+        'TicketTitle',
+        parent=styles['Normal'],
+        fontName='Courier',
+        fontSize=14,
+        alignment=TA_CENTER,
+        spaceAfter=6
+    )
+    
+    normal_style = ParagraphStyle(
+        'TicketNormal',
+        parent=styles['Normal'],
+        fontName='Courier',
+        fontSize=10,
+        alignment=TA_CENTER,
+        spaceAfter=3
+    )
+    
+    small_style = ParagraphStyle(
+        'TicketSmall',
+        parent=styles['Normal'],
+        fontName='Courier',
+        fontSize=8,
+        alignment=TA_CENTER,
+        spaceAfter=2
+    )
+    
+    elements = []
+    
+    # Company name
+    company_name = company.get("name", "LOTTOLAB") if company else "LOTTOLAB"
+    elements.append(Paragraph(f"<b>{company_name}</b>", title_style))
+    
+    # Phone/Address
+    if company:
+        if company.get("phone"):
+            elements.append(Paragraph(f"Tél: {company.get('phone')}", small_style))
+        if company.get("address"):
+            elements.append(Paragraph(company.get("address"), small_style))
+    
+    elements.append(Spacer(1, 10))
+    elements.append(Paragraph("=" * 35, normal_style))
+    
+    # Ticket info
+    agent_name = agent.get("name") or agent.get("full_name") if agent else ticket.get("agent_name", "Vendeur")
+    branch_name = branch.get("name") or branch.get("nom_succursale") if branch else "Principal"
+    
+    elements.append(Paragraph(f"VENDEUR: {agent_name}", normal_style))
+    elements.append(Paragraph(f"SUCCURSALE: {branch_name}", normal_style))
+    elements.append(Paragraph(f"TICKET: {ticket.get('ticket_code', ticket_id[:12])}", normal_style))
+    
+    elements.append(Spacer(1, 5))
+    elements.append(Paragraph("-" * 35, normal_style))
+    
+    # Lottery info
+    elements.append(Paragraph(f"LOTERIE: {ticket.get('lottery_name', 'N/A')}", normal_style))
+    elements.append(Paragraph(f"TIRAGE: {ticket.get('draw_name', 'Standard')}", normal_style))
+    
+    created = ticket.get("created_at", "")
+    if created:
+        date_str = created[:10] if len(created) >= 10 else created
+        time_str = created[11:19] if len(created) >= 19 else ""
+        elements.append(Paragraph(f"DATE: {date_str}", normal_style))
+        elements.append(Paragraph(f"HEURE: {time_str}", normal_style))
+    
+    elements.append(Spacer(1, 5))
+    elements.append(Paragraph("-" * 35, normal_style))
+    elements.append(Paragraph("<b>NUMÉROS JOUÉS</b>", normal_style))
+    
+    # Plays
+    for play in ticket.get("plays", []):
+        numbers = play.get("numbers", "-")
+        amount = play.get("amount", 0)
+        elements.append(Paragraph(f"{numbers} ............. {amount} HTG", normal_style))
+    
+    elements.append(Spacer(1, 5))
+    elements.append(Paragraph("-" * 35, normal_style))
+    
+    # Total
+    total = ticket.get("total_amount", 0)
+    elements.append(Paragraph(f"<b>TOTAL: {total} HTG</b>", title_style))
+    
+    elements.append(Spacer(1, 5))
+    elements.append(Paragraph("=" * 35, normal_style))
+    elements.append(Paragraph("<b>STATUT: VALIDÉ</b>", title_style))
+    elements.append(Paragraph("=" * 35, normal_style))
+    
+    # Footer
+    elements.append(Spacer(1, 10))
+    elements.append(Paragraph(f"MERCI DE JOUER AVEC<br/>{company_name}", normal_style))
+    elements.append(Spacer(1, 5))
+    elements.append(Paragraph("-" * 35, small_style))
+    elements.append(Paragraph("Ticket valable 90 jours", small_style))
+    elements.append(Paragraph("Paiement UNE SEULE FOIS", small_style))
+    elements.append(Paragraph("-" * 35, small_style))
+    elements.append(Paragraph("<b>LOTTOLAB.TECH</b>", normal_style))
+    
+    # Build PDF
+    doc.build(elements)
+    
+    buffer.seek(0)
+    
+    ticket_code = ticket.get('ticket_code', ticket_id[:12])
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=ticket_{ticket_code}.pdf"
+        }
+    )
+
+
+# ============================================================================
+# TICKET CONFIGURATION FOR ADMIN
+# ============================================================================
+
+class TicketTextConfig(BaseModel):
+    slogan: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    ticket_header_text: Optional[str] = None
+    ticket_footer_text: Optional[str] = None
+    ticket_thank_you_text: Optional[str] = None
+    ticket_legal_text: Optional[str] = None
+    qr_code_enabled: Optional[bool] = True
+    ticket_font_size: Optional[str] = "normal"  # small, normal, large
+    paper_width: Optional[str] = "80mm"  # 58mm, 80mm
+
+
+@export_router.get("/ticket-text-config")
+async def get_ticket_text_config(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get all ticket text configuration for admin editing"""
+    payload = decode_token(credentials.credentials)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token invalide")
+    
+    company_id = payload.get("company_id")
+    
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
+    if not company:
+        raise HTTPException(status_code=404, detail="Compagnie non trouvée")
+    
+    return {
+        "company_name": company.get("name", ""),
+        "slogan": company.get("slogan", "JOUER POU GENYEN"),
+        "phone": company.get("phone", ""),
+        "address": company.get("address", ""),
+        "logo_url": company.get("logo_url") or company.get("company_logo_url", ""),
+        "ticket_header_text": company.get("ticket_header_text", ""),
+        "ticket_footer_text": company.get("ticket_footer_text", ""),
+        "ticket_thank_you_text": company.get("ticket_thank_you_text", f"MERCI DE JOUER AVEC {company.get('name', 'LOTTOLAB')}"),
+        "ticket_legal_text": company.get("ticket_legal_text", """Vérifiez votre ticket avant de vous déplacer.
+Ce ticket doit être payé UNE SEULE FOIS dans les 90 jours.
+Le PREMIER qui présente ce ticket est le bénéficiaire.
+Si le numéro est effacé, on ne paie pas.
+Protégez le ticket de la chaleur, humidité et ne gardez pas dans les pièces de monnaie."""),
+        "qr_code_enabled": company.get("qr_code_enabled", True),
+        "ticket_font_size": company.get("ticket_font_size", "normal"),
+        "paper_width": company.get("paper_width", "80mm")
+    }
+
+
+@export_router.put("/ticket-text-config")
+async def update_ticket_text_config(
+    config: TicketTextConfig,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Update ticket text configuration - Admin only"""
+    payload = decode_token(credentials.credentials)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token invalide")
+    
+    role = payload.get("role")
+    if role not in ["SUPER_ADMIN", "COMPANY_ADMIN"]:
+        raise HTTPException(status_code=403, detail="Accès réservé aux administrateurs")
+    
+    company_id = payload.get("company_id")
+    
+    # Build update data from config
+    update_data = {}
+    if config.slogan is not None:
+        update_data["slogan"] = config.slogan
+    if config.phone is not None:
+        update_data["phone"] = config.phone
+    if config.address is not None:
+        update_data["address"] = config.address
+    if config.ticket_header_text is not None:
+        update_data["ticket_header_text"] = config.ticket_header_text
+    if config.ticket_footer_text is not None:
+        update_data["ticket_footer_text"] = config.ticket_footer_text
+    if config.ticket_thank_you_text is not None:
+        update_data["ticket_thank_you_text"] = config.ticket_thank_you_text
+    if config.ticket_legal_text is not None:
+        update_data["ticket_legal_text"] = config.ticket_legal_text
+    if config.qr_code_enabled is not None:
+        update_data["qr_code_enabled"] = config.qr_code_enabled
+    if config.ticket_font_size is not None:
+        update_data["ticket_font_size"] = config.ticket_font_size
+    if config.paper_width is not None:
+        update_data["paper_width"] = config.paper_width
+    
+    update_data["updated_at"] = get_current_timestamp()
+    
+    result = await db.companies.update_one(
+        {"company_id": company_id},
+        {"$set": update_data}
+    )
+    
+    return {
+        "message": "Configuration du ticket mise à jour",
+        "modified": result.modified_count > 0
+    }

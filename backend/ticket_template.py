@@ -65,53 +65,7 @@ def generate_ticket_html(
 ) -> str:
     """
     Generate professional 80mm thermal ticket HTML.
-    EXACT FORMAT matching user specification:
-    
-            [ LOGO LOTTOLAB ]
-          (centré automatiquement)
-
-         LOTO PAM CENTER
-        Tél: +509345401544
-          Pétion Ville
-        JOUER POU GENYEN
-
-    ================================
-
-    VENDEUR : Jean Pierre       POS : POS-1023
-    SUCCURSALE : Delmas 33
-    TICKET : 3PQ4XD7LRPQK
-
-    --------------------------------
-    LOTERIE : IL Pick 3 Evening
-    TIRAGE  : Soir
-    DATE    : 24/03/2026
-    HEURE   : 08:59 PM
-    --------------------------------
-
-              NUMÉROS JOUÉS
-
-    45                        10.0 HTG
-
-    --------------------------------
-
-    TOTAL MISE :             10 HTG
-
-    ================================
-
-            [ STATUT : VALIDÉ ]
-
-    --------------------------------
-
-    MERCI DE JOUER AVEC
-    LOTO PAM CENTER
-
-    --------------------------------
-    Legal text...
-    --------------------------------
-
-               LOTTOLAB.TECH
-
-    ================================
+    EXACT FORMAT matching user specification with configurable font sizes.
     """
     
     company = company or {}
@@ -126,6 +80,15 @@ def generate_ticket_html(
     company_logo_url = company.get("logo_url") or company.get("company_logo_url", "")
     qr_code_enabled = company.get("qr_code_enabled", True)
     
+    # Font size configuration (small, normal, large)
+    font_size_config = company.get("ticket_font_size", "normal")
+    font_sizes = {
+        "small": {"base": 10, "title": 14, "numbers": 11, "total": 16},
+        "normal": {"base": 12, "title": 16, "numbers": 13, "total": 18},
+        "large": {"base": 14, "title": 18, "numbers": 15, "total": 22}
+    }
+    fs = font_sizes.get(font_size_config, font_sizes["normal"])
+    
     # Legal text
     legal_text = company.get("ticket_legal_text", "")
     if not legal_text:
@@ -136,6 +99,11 @@ présente ce ticket est le bénéficiaire.
 Si le numéro est effacé, on ne paie pas.
 Protégez le ticket de la chaleur, humidité
 et ne gardez pas dans les pièces de monnaie."""
+    
+    # Thank you text
+    thank_you_text = company.get("ticket_thank_you_text", "")
+    if not thank_you_text:
+        thank_you_text = "MERCI POUR VOTRE CONFIANCE"
     
     # Branch/Succursale - NEVER show N/A
     branch_name = branch.get("name") or branch.get("nom_succursale") or ticket.get("succursale_name") or ticket.get("branch_name")
@@ -214,7 +182,7 @@ et ne gardez pas dans les pièces de monnaie."""
     if auto_print:
         auto_print_script = '<script>window.onload=function(){setTimeout(function(){window.print();},500);}</script>'
     
-    # Generate HTML - EXACT FORMAT
+    # Generate HTML - EXACT FORMAT with configurable font sizes
     html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -226,7 +194,7 @@ et ne gardez pas dans les pièces de monnaie."""
 *{{margin:0;padding:0;box-sizing:border-box}}
 body{{
 font-family:'Courier New',Courier,monospace;
-font-size:12px;
+font-size:{fs['base']}px;
 width:80mm;
 max-width:80mm;
 padding:3mm;
@@ -236,14 +204,14 @@ line-height:1.4;
 }}
 
 /* Separators */
-.sep-double{{text-align:center;font-size:11px;margin:6px 0;letter-spacing:0}}
-.sep-single{{text-align:center;font-size:11px;margin:4px 0;letter-spacing:0}}
+.sep-double{{text-align:center;font-size:{fs['base']}px;margin:6px 0;letter-spacing:0}}
+.sep-single{{text-align:center;font-size:{fs['base']}px;margin:4px 0;letter-spacing:0}}
 
 /* Logo Section */
 .logo-section{{text-align:center;margin-bottom:6px}}
 .logo-img{{
-max-width:45mm;
-max-height:16mm;
+max-width:50mm;
+max-height:20mm;
 margin:0 auto;
 display:block;
 filter:grayscale(100%) contrast(1.3);
@@ -251,36 +219,36 @@ filter:grayscale(100%) contrast(1.3);
 
 /* Header - Company Info */
 .header{{text-align:center;margin-bottom:4px}}
-.company-name{{font-size:16px;font-weight:bold;letter-spacing:1px}}
-.company-phone{{font-size:11px;margin:2px 0}}
-.company-address{{font-size:11px;margin:2px 0}}
-.company-slogan{{font-size:10px;font-style:italic;margin:4px 0}}
+.company-name{{font-size:{fs['title']}px;font-weight:bold;letter-spacing:1px}}
+.company-phone{{font-size:{fs['base']}px;margin:2px 0}}
+.company-address{{font-size:{fs['base']}px;margin:2px 0}}
+.company-slogan{{font-size:{fs['base'] - 1}px;font-style:italic;margin:4px 0}}
 
 /* Info Section */
 .info-section{{margin:6px 0}}
-.info-line{{font-size:11px;margin:3px 0}}
+.info-line{{font-size:{fs['base']}px;margin:3px 0}}
 .info-row{{display:flex;justify-content:space-between}}
 .info-label{{}}
 .info-value{{font-weight:bold}}
 
 /* Lottery Info */
 .lottery-section{{margin:6px 0}}
-.lottery-line{{font-size:11px;margin:2px 0}}
+.lottery-line{{font-size:{fs['base']}px;margin:2px 0}}
 
 /* Numbers Section */
-.numbers-title{{text-align:center;font-weight:bold;font-size:11px;margin:8px 0 4px 0}}
+.numbers-title{{text-align:center;font-weight:bold;font-size:{fs['base']}px;margin:8px 0 4px 0}}
 .play-line{{
 display:flex;
 justify-content:space-between;
 margin:4px 0;
 padding:2px 0;
 }}
-.play-num{{font-weight:bold;font-size:13px;letter-spacing:1px}}
-.play-amt{{font-size:12px}}
+.play-num{{font-weight:bold;font-size:{fs['numbers']}px;letter-spacing:1px}}
+.play-amt{{font-size:{fs['base']}px}}
 
 /* Total */
 .total-section{{text-align:center;margin:10px 0;padding:4px 0}}
-.total-text{{font-size:12px;font-weight:bold}}
+.total-text{{font-size:{fs['total']}px;font-weight:bold}}
 
 /* Status */
 .status-section{{text-align:center;margin:10px 0}}
@@ -289,16 +257,16 @@ display:inline-block;
 padding:6px 16px;
 border:2px solid #000;
 font-weight:bold;
-font-size:12px;
+font-size:{fs['base']}px;
 }}
 
 /* Footer */
-.thank-you{{text-align:center;font-weight:bold;font-size:11px;margin:10px 0}}
-.legal-text{{font-size:9px;line-height:1.3;margin:6px 0;text-align:center}}
+.thank-you{{text-align:center;font-weight:bold;font-size:{fs['base']}px;margin:10px 0}}
+.legal-text{{font-size:{fs['base'] - 2}px;line-height:1.3;margin:6px 0;text-align:center}}
 .qr-section{{text-align:center;margin:8px 0}}
 .qr-img{{width:26mm;height:26mm;margin:4px auto}}
-.code-text{{font-family:monospace;font-size:11px;letter-spacing:1px;margin:4px 0}}
-.watermark{{text-align:center;font-weight:bold;font-size:11px;margin:8px 0;letter-spacing:2px}}
+.code-text{{font-family:monospace;font-size:{fs['base']}px;letter-spacing:1px;margin:4px 0}}
+.watermark{{text-align:center;font-weight:bold;font-size:{fs['base']}px;margin:8px 0;letter-spacing:2px}}
 
 @media print{{
 body{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
@@ -358,7 +326,7 @@ body{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 <div class="sep-single">--------------------------------</div>
 
 <div class="thank-you">
-MERCI DE JOUER AVEC<br>
+{thank_you_text}<br>
 {company_name}
 </div>
 

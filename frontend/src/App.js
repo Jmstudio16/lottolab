@@ -48,6 +48,8 @@ import CompanyRapportVentes from '@/pages/CompanyRapportVentes';
 import CompanyLotteryFlagsPage from '@/pages/CompanyLotteryFlagsPage';
 import CompanyLotsGagnants from '@/pages/CompanyLotsGagnants';
 import CompanyFichesSupprimees from '@/pages/CompanyFichesSupprimees';
+import CompanyTicketConfigPage from '@/pages/company/CompanyTicketConfigPage';
+import CompanyPrinterConfigPage from '@/pages/company/CompanyPrinterConfigPage';
 
 // Supervisor Pages
 import { SupervisorLayout } from '@/layouts/SupervisorLayout';
@@ -594,6 +596,22 @@ const SaaSApp = () => {
                   element={
                     <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
                       <CompanyExportsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/company/ticket-config"
+                  element={
+                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
+                      <CompanyTicketConfigPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/company/printer-config"
+                  element={
+                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
+                      <CompanyPrinterConfigPage />
                     </ProtectedRoute>
                   }
                 />
