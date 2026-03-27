@@ -351,6 +351,27 @@ async def get_results(
     return results
 
 
+@results_router.get("/results/lotteries")
+async def get_lotteries_for_results(
+    current_user: dict = Depends(get_current_user)
+):
+    """Get list of lotteries that can have results published"""
+    # Get global lotteries
+    lotteries = await db.global_lotteries.find(
+        {"is_active": True},
+        {"_id": 0, "lottery_id": 1, "lottery_name": 1, "state_code": 1}
+    ).sort("lottery_name", 1).to_list(500)
+    
+    # Also check master_lotteries
+    if not lotteries:
+        lotteries = await db.master_lotteries.find(
+            {"is_active": True},
+            {"_id": 0, "lottery_id": 1, "lottery_name": 1, "state_code": 1}
+        ).sort("lottery_name", 1).to_list(500)
+    
+    return lotteries
+
+
 @results_router.get("/results/{result_id}")
 async def get_result_detail(
     result_id: str,
@@ -374,6 +395,235 @@ async def get_result_detail(
     result["winners"] = winners
     
     return result
+
+
+# ============================================================================
+# RECALCULATE WINNINGS FOR A RESULT
+# ============================================================================
+
+@results_router.post("/results/{result_id}/recalculate")
+async def recalculate_result_winnings(
+    result_id: str,
+    request: Request,
+    current_user: dict = Depends(require_super_admin)
+):
+    """
+    Recalculate all winnings for a specific result.
+    Useful when result was modified or if there was an error.
+    
+    Process:
+    1. Get the result
+    2. Reset all tickets for this lottery/draw to PENDING_RESULT
+    3. Remove existing payouts
+    4. Re-run the PayoutEngine
+    """
+    # Get the result
+    result = await db.global_results.find_one(
+        {"result_id": result_id},
+        {"_id": 0}
+    )
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Résultat non trouvé")
+    
+    lottery_id = result.get("lottery_id")
+    draw_date = result.get("draw_date")
+    draw_name = result.get("draw_name")
+    winning_numbers = result.get("winning_numbers")
+    
+    # Reset tickets for this draw to PENDING_RESULT
+    reset_result = await db.lottery_transactions.update_many(
+        {
+            "lottery_id": lottery_id,
+            "draw_date": draw_date,
+            "$or": [
+                {"draw_name": draw_name},
+                {"draw_name": {"$exists": False}}
+            ]
+        },
+        {
+            "$set": {
+                "status": "PENDING_RESULT",
+                "winnings": 0,
+                "payment_status": "UNPAID"
+            },
+            "$unset": {
+                "winning_plays": "",
+                "total_win_amount": ""
+            }
+        }
+    )
+    
+    # Remove existing payouts for this draw
+    await db.payouts.delete_many({
+        "lottery_id": lottery_id,
+        "draw_date": draw_date
+    })
+    
+    # Re-run PayoutEngine
+    payout_result = await process_result_for_all_tickets({
+        "result_id": result_id,
+        "lottery_id": lottery_id,
+        "draw_date": draw_date,
+        "draw_name": draw_name,
+        "winning_numbers": winning_numbers
+    })
+    
+    # Log activity
+    await log_activity(
+        db=db,
+        action_type="RESULT_RECALCULATED",
+        entity_type="result",
+        entity_id=result_id,
+        performed_by=current_user["user_id"],
+        metadata={
+            "lottery_id": lottery_id,
+            "draw_date": draw_date,
+            "draw_name": draw_name,
+            "tickets_reset": reset_result.modified_count,
+            "tickets_processed": payout_result.get("processed", 0),
+            "winners": payout_result.get("winners", 0),
+            "total_payouts": payout_result.get("total_payout", 0)
+        },
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {
+        "message": "Recalcul terminé",
+        "result_id": result_id,
+        "lottery_id": lottery_id,
+        "draw_date": draw_date,
+        "tickets_reset": reset_result.modified_count,
+        "tickets_processed": payout_result.get("processed", 0),
+        "winners_count": payout_result.get("winners", 0),
+        "losers_count": payout_result.get("losers", 0),
+        "total_payouts": payout_result.get("total_payout", 0)
+    }
+
+
+@results_router.delete("/results/{result_id}")
+async def delete_result(
+    result_id: str,
+    request: Request,
+    current_user: dict = Depends(require_super_admin)
+):
+    """
+    Delete a result and reset all affected tickets.
+    """
+    result = await db.global_results.find_one(
+        {"result_id": result_id},
+        {"_id": 0}
+    )
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Résultat non trouvé")
+    
+    lottery_id = result.get("lottery_id")
+    draw_date = result.get("draw_date")
+    draw_name = result.get("draw_name")
+    
+    # Reset tickets to PENDING_RESULT
+    reset_result = await db.lottery_transactions.update_many(
+        {
+            "lottery_id": lottery_id,
+            "draw_date": draw_date
+        },
+        {
+            "$set": {
+                "status": "PENDING_RESULT",
+                "winnings": 0,
+                "payment_status": "UNPAID"
+            }
+        }
+    )
+    
+    # Remove payouts
+    await db.payouts.delete_many({
+        "lottery_id": lottery_id,
+        "draw_date": draw_date
+    })
+    
+    # Delete result
+    await db.global_results.delete_one({"result_id": result_id})
+    
+    # Log activity
+    await log_activity(
+        db=db,
+        action_type="RESULT_DELETED",
+        entity_type="result",
+        entity_id=result_id,
+        performed_by=current_user["user_id"],
+        metadata={
+            "lottery_id": lottery_id,
+            "draw_date": draw_date,
+            "draw_name": draw_name,
+            "tickets_reset": reset_result.modified_count
+        },
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {
+        "message": "Résultat supprimé",
+        "result_id": result_id,
+        "tickets_reset": reset_result.modified_count
+    }
+
+
+@results_router.put("/results/{result_id}")
+async def update_result(
+    result_id: str,
+    updates: dict,
+    request: Request,
+    current_user: dict = Depends(require_super_admin)
+):
+    """
+    Update a result's winning numbers.
+    Note: You should recalculate after updating.
+    """
+    result = await db.global_results.find_one(
+        {"result_id": result_id},
+        {"_id": 0}
+    )
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Résultat non trouvé")
+    
+    # Only allow updating specific fields
+    allowed_updates = {}
+    if "winning_numbers" in updates:
+        allowed_updates["winning_numbers"] = updates["winning_numbers"]
+    if "official_source" in updates:
+        allowed_updates["official_source"] = updates["official_source"]
+    if "notes" in updates:
+        allowed_updates["notes"] = updates["notes"]
+    
+    if not allowed_updates:
+        raise HTTPException(status_code=400, detail="Aucune mise à jour valide")
+    
+    allowed_updates["updated_at"] = get_current_timestamp()
+    allowed_updates["updated_by"] = current_user["user_id"]
+    
+    await db.global_results.update_one(
+        {"result_id": result_id},
+        {"$set": allowed_updates}
+    )
+    
+    # Log activity
+    await log_activity(
+        db=db,
+        action_type="RESULT_UPDATED",
+        entity_type="result",
+        entity_id=result_id,
+        performed_by=current_user["user_id"],
+        metadata={
+            "updates": allowed_updates
+        },
+        ip_address=request.client.host if request.client else None
+    )
+    
+    # Return updated result
+    updated = await db.global_results.find_one({"result_id": result_id}, {"_id": 0})
+    return updated
 
 
 # ============================================================================
