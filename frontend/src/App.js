@@ -77,6 +77,8 @@ import {
   VendeurRecherche
 } from '@/pages/vendeur';
 import VendeurLotsGagnants from '@/pages/vendeur/VendeurLotsGagnants';
+import VendeurPayerGagnants from '@/pages/vendeur/VendeurPayerGagnants';
+import VendeurFicheGagnant from '@/pages/vendeur/VendeurFicheGagnant';
 import VendeurFichesSupprimees from '@/pages/vendeur/VendeurFichesSupprimees';
 import VendeurRapportPage from '@/pages/vendeur/VendeurRapportPage';
 import VendeurConfigImprimante from '@/pages/vendeur/VendeurConfigImprimante';
@@ -665,6 +667,8 @@ const SaaSApp = () => {
                   <Route path="mes-ventes" element={<VendeurMesVentes />} />
                   <Route path="profil" element={<VendeurProfil />} />
                   <Route path="fiches-gagnants" element={<VendeurLotsGagnants />} />
+                  <Route path="payer-gagnants" element={<VendeurPayerGagnants />} />
+                  <Route path="fiches-payees" element={<VendeurFicheGagnant />} />
                   <Route path="fiches-supprimees" element={<VendeurFichesSupprimees />} />
                   <Route path="rapport" element={<VendeurRapportPage />} />
                   <Route path="imprimante" element={<VendeurConfigImprimante />} />

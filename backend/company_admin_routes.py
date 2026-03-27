@@ -1784,7 +1784,7 @@ async def get_rapport_ventes_detaillees(
             {"_id": 0, "commission_percent": 1}
         )
         if policy:
-            agents_data[agent_id]["pourcentage_agent"] = policy.get("commission_percent", 10)
+            agents_data[agent_id]["pourcentage_agent"] = policy.get("commission_percent", 0)
         
         # Get agent's succursale to find supervisor percentage
         agent = await db.users.find_one(
@@ -1797,7 +1797,7 @@ async def get_rapport_ventes_detaillees(
                 {"_id": 0, "supervisor_commission_percent": 1}
             )
             if succursale:
-                agents_data[agent_id]["pourcentage_superviseur"] = succursale.get("supervisor_commission_percent", 10)
+                agents_data[agent_id]["pourcentage_superviseur"] = succursale.get("supervisor_commission_percent", 0)
     
     # Calculate totals
     agents_list = list(agents_data.values())

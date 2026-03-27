@@ -53,12 +53,39 @@ export const CompanyWinningTicketsPage = () => {
     setLoading(true);
     try {
       const [winnersRes, payoutsRes] = await Promise.all([
-        apiClient.get('/company/winning-tickets'),
-        apiClient.get('/company/payouts')
+        apiClient.get('/company/winning-tickets').catch(() => ({ data: { tickets: [] } })),
+        apiClient.get('/company/payouts').catch(() => ({ data: { payouts: [] } }))
       ]);
-      setTickets(winnersRes.data || []);
-      setPayouts(payoutsRes.data || []);
+      // Handle both array and object responses
+      const winnersData = winnersRes.data;
+      const payoutsData = payoutsRes.data;
+      
+      // Extract tickets array from response (API returns {tickets: [...], summary: {...}})
+      setTickets(
+        Array.isArray(winnersData) 
+          ? winnersData 
+          : winnersData?.tickets || winnersData?.winners || []
+      );
+      
+      // Extract payouts array
+      setPayouts(
+        Array.isArray(payoutsData) 
+          ? payoutsData 
+          : payoutsData?.payouts || payoutsData?.data || []
+      );
+      
+      // If summary is available, update it
+      if (winnersData?.summary) {
+        setSummary(prev => ({
+          ...prev,
+          winners_count: winnersData.summary.total_count,
+          total_wins_amount: winnersData.summary.total_win_amount
+        }));
+      }
     } catch (error) {
+      console.error('Error loading data:', error);
+      setTickets([]);
+      setPayouts([]);
       toast.error('Échec du chargement des données');
     } finally {
       setLoading(false);
@@ -318,7 +345,7 @@ export const CompanyWinningTicketsPage = () => {
                             {formatCurrency(ticket.total_amount)}
                           </td>
                           <td className="px-4 py-3 text-right font-mono text-green-400 font-bold">
-                            {formatCurrency(ticket.win_amount)}
+                            {formatCurrency(ticket.win_amount || ticket.winnings || ticket.payout_amount || 0)}
                           </td>
                           <td className="px-4 py-3 text-center">
                             <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${status.bg} ${status.color}`}>

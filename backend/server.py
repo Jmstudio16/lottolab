@@ -380,16 +380,50 @@ async def get_company_dashboard_stats(current_user: dict = Depends(get_current_u
         raise HTTPException(status_code=403, detail="Access denied")
     
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-    tickets_today = await db.tickets.count_documents({"company_id": company_id, "created_at": {"$gte": today_start}})
     
+    # Count tickets from lottery_transactions (primary collection)
+    tickets_today = await db.lottery_transactions.count_documents({
+        "company_id": company_id, 
+        "created_at": {"$gte": today_start}
+    })
+    
+    # Fallback to tickets collection if no results
+    if tickets_today == 0:
+        tickets_today = await db.tickets.count_documents({
+            "company_id": company_id, 
+            "created_at": {"$gte": today_start}
+        })
+    
+    # Calculate sales from lottery_transactions
     pipeline = [
         {"$match": {"company_id": company_id, "created_at": {"$gte": today_start}}},
         {"$group": {"_id": None, "total": {"$sum": "$total_amount"}}}
     ]
-    result = await db.tickets.aggregate(pipeline).to_list(1)
+    result = await db.lottery_transactions.aggregate(pipeline).to_list(1)
     sales_today = result[0]["total"] if result else 0.0
     
-    active_agents = await db.agents.count_documents({"company_id": company_id, "status": AgentStatus.ACTIVE})
+    # Fallback to tickets collection
+    if sales_today == 0:
+        result = await db.tickets.aggregate(pipeline).to_list(1)
+        sales_today = result[0]["total"] if result else 0.0
+    
+    # Count active agents from users collection (role=VENDEUR/AGENT, is_active=true or not set)
+    active_agents = await db.users.count_documents({
+        "company_id": company_id, 
+        "role": {"$in": ["VENDEUR", "AGENT", "AGENT_POS", "vendeur", "agent", "agent_pos", UserRole.AGENT_POS, UserRole.BRANCH_USER]},
+        "$or": [
+            {"is_active": True},
+            {"is_active": {"$exists": False}},
+            {"is_active": None}
+        ]
+    })
+    
+    # Fallback to agents collection
+    if active_agents == 0:
+        active_agents = await db.agents.count_documents({
+            "company_id": company_id, 
+            "status": AgentStatus.ACTIVE
+        })
     
     # Get Haiti time
     from pytz import timezone as pytz_timezone

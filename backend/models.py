@@ -828,8 +828,8 @@ class CompanyConfiguration(BaseModel):
     max_bet_amount: float = 10000.0
     max_bet_per_number: float = 5000.0
     max_bet_per_agent: float = 50000.0
-    # Agent commission
-    agent_commission_percent: float = 10.0
+    # Agent commission - DEFAULT TO 0 (configured per agent)
+    agent_commission_percent: float = 0.0
     # Marriage config
     marriage_enabled: bool = True
     marriage_min_amount: float = 25.0
