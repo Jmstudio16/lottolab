@@ -53,6 +53,7 @@ from payout_engine import set_payout_engine_db, process_result_for_all_tickets
 from prime_config_routes import prime_config_router, set_prime_config_db
 from lottery_sync_service import lottery_sync_router, set_lottery_sync_db, startup_lottery_sync
 from storage_routes import storage_router, set_storage_db
+from report_export_routes import report_export_router, set_report_export_db
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -998,6 +999,7 @@ set_payout_engine_db(db)
 set_prime_config_db(db)
 set_lottery_sync_db(db)
 set_storage_db(db)
+set_report_export_db(db)
 
 # Initialize staff endpoints with dependency
 create_staff_endpoints(get_current_user)
@@ -1052,6 +1054,9 @@ app.include_router(lottery_sync_router)
 
 # Include storage router (company logos, user avatars)
 app.include_router(storage_router)
+
+# Include report export router (Excel exports for all reports)
+app.include_router(report_export_router)
 
 # Include staff router under /api prefix
 api_router.include_router(staff_router)

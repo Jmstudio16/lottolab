@@ -17,7 +17,7 @@ import io
 from models import UserRole
 from utils import generate_id, get_current_timestamp
 from activity_logger import log_activity
-from ticket_template import generate_ticket_html
+from ticket_template import generate_ticket_html, generate_combined_paginated_html
 
 ticket_print_router = APIRouter(prefix="/api", tags=["Ticket Printing"])
 
@@ -345,17 +345,20 @@ async def print_ticket_80mm(
     ticket_id: str,
     token: Optional[str] = None,
     auto: bool = False,
-    format: str = "thermal"
+    format: str = "thermal",
+    paginate: bool = True
 ):
     """
     Generate 80mm POS thermal printer optimized ticket.
     Uses unified ticket_template.py for consistent formatting.
+    Supports smart pagination for long tickets (>15 plays).
     
-    IMPORTANT: This ticket does NOT display:
-    - "En attente" status text
-    - "Gains potentiels" section
-    
-    Only shows: VALIDÉ status, actual ticket data
+    Args:
+        ticket_id: ID of the ticket to print
+        token: Auth token (optional)
+        auto: Auto-print on load
+        format: Output format (thermal, pdf)
+        paginate: Enable smart pagination for long tickets
     """
     # Try both collections for backward compatibility
     ticket = await db.lottery_transactions.find_one({"ticket_id": ticket_id}, {"_id": 0})
@@ -396,15 +399,30 @@ async def print_ticket_80mm(
                 {"_id": 0, "name": 1, "nom_succursale": 1}
             )
     
-    # Generate HTML using unified template
-    html = generate_ticket_html(
-        ticket=ticket,
-        company=company,
-        agent=agent,
-        branch=branch,
-        auto_print=auto,
-        base_url="https://lottolab.tech"
-    )
+    # Check if ticket needs pagination (more than 15 plays)
+    plays = ticket.get("plays", [])
+    use_pagination = paginate and len(plays) > 15
+    
+    if use_pagination:
+        # Generate HTML with smart pagination
+        html = generate_combined_paginated_html(
+            ticket=ticket,
+            company=company,
+            agent=agent,
+            branch=branch,
+            auto_print=auto,
+            base_url="https://lottolab.tech"
+        )
+    else:
+        # Generate standard single-page ticket
+        html = generate_ticket_html(
+            ticket=ticket,
+            company=company,
+            agent=agent,
+            branch=branch,
+            auto_print=auto,
+            base_url="https://lottolab.tech"
+        )
     
     return HTMLResponse(content=html)
 

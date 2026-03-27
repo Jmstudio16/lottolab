@@ -80,6 +80,7 @@ const getCompanyAdminMenu = (t) => [
   { path: '/company/profile-settings', label: t('nav.logoProfile', 'Logo & Profil'), icon: Image },
   { path: '/company/ticket-config', label: 'Config. Ticket', icon: FileText },
   { path: '/company/printer-config', label: 'Config. Imprimante', icon: Monitor },
+  { path: '/company/reports-export', label: 'Rapports Excel', icon: FileSpreadsheet },
   { path: '/company/settings', label: t('nav.settings'), icon: Settings },
 ];
 

@@ -50,6 +50,7 @@ import CompanyLotsGagnants from '@/pages/CompanyLotsGagnants';
 import CompanyFichesSupprimees from '@/pages/CompanyFichesSupprimees';
 import CompanyTicketConfigPage from '@/pages/company/CompanyTicketConfigPage';
 import CompanyPrinterConfigPage from '@/pages/company/CompanyPrinterConfigPage';
+import CompanyReportsExportPage from '@/pages/company/CompanyReportsExportPage';
 
 // Supervisor Pages
 import { SupervisorLayout } from '@/layouts/SupervisorLayout';
@@ -612,6 +613,14 @@ const SaaSApp = () => {
                   element={
                     <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
                       <CompanyPrinterConfigPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/company/reports-export"
+                  element={
+                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
+                      <CompanyReportsExportPage />
                     </ProtectedRoute>
                   }
                 />
