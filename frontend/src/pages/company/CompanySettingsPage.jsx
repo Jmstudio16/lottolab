@@ -186,16 +186,7 @@ const CompanySettingsPage = () => {
       return;
     }
 
-    // Validate file size (max 10MB - increased for high resolution logos)
-    if (file.size > 10 * 1024 * 1024) {
-      toast({
-        title: "Fichier trop volumineux",
-        description: "Taille maximale: 10MB",
-        variant: "destructive"
-      });
-      return;
-    }
-
+    // No file size limit - accept any size
     // Create preview
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -351,7 +342,7 @@ const CompanySettingsPage = () => {
               <div>
                 <Label className="text-gray-300">Télécharger un nouveau logo</Label>
                 <p className="text-xs text-gray-500 mb-2">
-                  Formats: PNG, JPG, WEBP, GIF, SVG • Taille max: 10MB
+                  Formats: PNG, JPG, WEBP, GIF, SVG • Aucune limite de taille
                 </p>
                 <div className="flex items-center gap-2">
                   <Input

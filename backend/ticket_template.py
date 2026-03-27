@@ -96,7 +96,27 @@ def generate_ticket_html(
     company_slogan = company.get("slogan", "JOUER POU GENYEN")
     company_phone = company.get("phone", "")
     company_address = company.get("address", "")
-    company_logo_url = company.get("logo_url") or company.get("company_logo_url", "")
+    
+    # Logo URL - Priority: company_logo_url > logo_url > logo_storage_path
+    # This ensures company's own logo is always used if available
+    company_logo_url = None
+    
+    # First check logo_storage_path (Object Storage - new system)
+    if company.get("logo_storage_path"):
+        company_logo_url = f"/api/files/{company.get('logo_storage_path')}"
+    # Then check company_logo_url (may be old format or new format)
+    elif company.get("company_logo_url"):
+        url = company.get("company_logo_url")
+        # Skip if it's a system logo URL
+        if not url.startswith("http") and not "lottolab-logo" in url.lower():
+            company_logo_url = url
+    # Then check logo_url
+    elif company.get("logo_url"):
+        url = company.get("logo_url")
+        # Skip if it's a system logo URL (starts with http and contains lottolab)
+        if not (url.startswith("http") and "lottolab" in url.lower()):
+            company_logo_url = url
+    
     qr_code_enabled = company.get("qr_code_enabled", True)
     
     # Font size configuration (small, normal, large)

@@ -339,7 +339,7 @@ async def upload_company_logo(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """Upload company logo - uses Object Storage if available, falls back to local"""
+    """Upload company logo - uses Object Storage if available, falls back to local - NO SIZE LIMIT"""
     await require_company_admin(current_user)
     
     if current_user.get("role") != UserRole.COMPANY_ADMIN:
@@ -352,10 +352,8 @@ async def upload_company_logo(
     if file.content_type not in allowed_types:
         raise HTTPException(status_code=400, detail="Type de fichier non supporté. Utilisez PNG, JPG, WEBP, GIF ou SVG")
     
-    # Read file content
+    # Read file content - NO SIZE LIMIT
     content = await file.read()
-    if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Fichier trop volumineux (max 10MB)")
     
     # Generate filename
     ext = file.filename.split(".")[-1] if "." in file.filename else "png"
@@ -377,15 +375,17 @@ async def upload_company_logo(
         with open(filepath, "wb") as buffer:
             buffer.write(content)
         logo_url = f"/api/uploads/company-logos/{filename}"
+        stored_path = filename  # Store local filename as path
         storage_type = "local"
         logger.info(f"[SETTINGS] Logo uploaded locally: {filename}")
     
-    # Update company
+    # Update company with ALL logo fields for consistency
     await db.companies.update_one(
         {"company_id": company_id},
         {"$set": {
             "company_logo_url": logo_url,
             "logo_url": logo_url,
+            "logo_storage_path": stored_path,
             "logo_storage_type": storage_type,
             "updated_at": get_current_timestamp()
         }}

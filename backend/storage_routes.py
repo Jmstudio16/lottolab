@@ -98,7 +98,7 @@ MIME_TYPES = {
 }
 
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp", "svg"}
-MAX_FILE_SIZE = None  # No limit - accept any size for company logos
+MAX_FILE_SIZE = 0  # No limit - accept any size for company logos (0 = unlimited)
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
@@ -123,7 +123,7 @@ async def upload_company_logo(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """Upload company logo - Company Admin only"""
+    """Upload company logo - Company Admin only - NO SIZE LIMIT"""
     if current_user.get("role") not in [UserRole.COMPANY_ADMIN, "COMPANY_ADMIN", UserRole.SUPER_ADMIN, "SUPER_ADMIN"]:
         raise HTTPException(status_code=403, detail="Accès réservé aux administrateurs")
     
@@ -139,10 +139,8 @@ async def upload_company_logo(
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"Format non supporté. Utilisez: {', '.join(ALLOWED_EXTENSIONS)}")
     
-    # Read file content
+    # Read file content - NO SIZE LIMIT
     content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="Fichier trop volumineux (max 10MB)")
     
     # Generate storage path
     file_id = str(uuid.uuid4())
@@ -233,7 +231,7 @@ async def upload_vendeur_photo(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """Upload vendeur/supervisor profile photo"""
+    """Upload vendeur/supervisor profile photo - NO SIZE LIMIT"""
     user_id = current_user.get("user_id")
     company_id = current_user.get("company_id")
     
@@ -245,10 +243,8 @@ async def upload_vendeur_photo(
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"Format non supporté. Utilisez: {', '.join(ALLOWED_EXTENSIONS)}")
     
-    # Read file content
+    # Read file content - NO SIZE LIMIT
     content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="Fichier trop volumineux (max 10MB)")
     
     # Generate storage path
     file_id = str(uuid.uuid4())
@@ -338,8 +334,9 @@ async def serve_file(
     """
     Serve files from Object Storage.
     Supports both authenticated and public access for company logos.
+    Works with files stored via any upload route.
     """
-    # Check if file exists in DB
+    # First check if file exists in DB
     file_record = await db.files.find_one(
         {"storage_path": path, "is_deleted": False},
         {"_id": 0}
@@ -352,27 +349,42 @@ async def serve_file(
             {"_id": 0}
         )
     
-    if not file_record:
-        raise HTTPException(status_code=404, detail="Fichier non trouvé")
-    
+    # Try to serve directly from Object Storage even without DB record
+    # This handles files uploaded through settings_routes.py
     try:
-        content, content_type = get_object(file_record["storage_path"])
+        storage_path = file_record["storage_path"] if file_record else path
+        content, content_type = get_object(storage_path)
         
         # Use stored content type if available
-        final_content_type = file_record.get("content_type", content_type)
+        final_content_type = file_record.get("content_type", content_type) if file_record else content_type
+        
+        # Guess content type from extension if not set
+        if not final_content_type or final_content_type == "application/octet-stream":
+            ext = path.split(".")[-1].lower() if "." in path else ""
+            ext_types = {
+                "png": "image/png",
+                "jpg": "image/jpeg",
+                "jpeg": "image/jpeg",
+                "gif": "image/gif",
+                "webp": "image/webp",
+                "svg": "image/svg+xml"
+            }
+            final_content_type = ext_types.get(ext, "application/octet-stream")
+        
+        original_filename = file_record.get("original_filename", path.split("/")[-1]) if file_record else path.split("/")[-1]
         
         return Response(
             content=content,
             media_type=final_content_type,
             headers={
                 "Cache-Control": "public, max-age=86400",  # Cache for 1 day
-                "Content-Disposition": f"inline; filename=\"{file_record.get('original_filename', 'file')}\""
+                "Content-Disposition": f"inline; filename=\"{original_filename}\""
             }
         )
         
     except requests.exceptions.RequestException as e:
         logger.error(f"[STORAGE] Serve failed for {path}: {e}")
-        raise HTTPException(status_code=500, detail="Erreur lors de la récupération du fichier")
+        raise HTTPException(status_code=404, detail="Fichier non trouvé")
 
 
 # ============================================================================
