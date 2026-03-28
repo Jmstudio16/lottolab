@@ -557,13 +557,81 @@ async def sell_lottery_ticket(
             potential_win += play["amount"] * default_payout
     
     # Generate ticket
+    from security_system import (
+        check_duplicate_ticket, generate_ticket_signature,
+        get_unique_ticket_code, get_unique_verification_code,
+        create_audit_log, AuditAction, check_suspicious_activity
+    )
+    
     now = get_current_timestamp()
     ticket_id = generate_id("tkt_")
-    ticket_code = generate_ticket_code()
-    verification_code = generate_verification_code()
+    
+    # Anti-duplicate check
+    duplicate_check = await check_duplicate_ticket(
+        db=db,
+        lottery_id=sale_data.lottery_id,
+        draw_name=sale_data.draw_name,
+        plays=validated_plays,
+        agent_id=agent_id,
+        company_id=company_id
+    )
+    
+    if duplicate_check["is_duplicate"]:
+        # Log duplicate attempt
+        await create_audit_log(
+            db=db,
+            action=AuditAction.DUPLICATE_ATTEMPT,
+            user_id=agent_id,
+            request=request,
+            details={
+                "existing_ticket_code": duplicate_check.get("existing_ticket_code"),
+                "lottery_id": sale_data.lottery_id,
+                "draw_name": sale_data.draw_name
+            },
+            entity_type="ticket",
+            entity_id=duplicate_check.get("existing_ticket_id"),
+            severity="WARNING",
+            company_id=company_id
+        )
+        
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ticket similaire créé récemment: {duplicate_check.get('existing_ticket_code')}. Attendez ou modifiez les numéros."
+        )
+    
+    # Generate unique codes
+    ticket_code = await get_unique_ticket_code(db, "TK")
+    verification_code = await get_unique_verification_code(db)
     
     qr_payload = f"{ticket_code}|{verification_code}|{company_id}"
     qr_code = generate_qr_code_base64(qr_payload)
+    
+    # Generate cryptographic signature
+    ticket_signature = generate_ticket_signature(
+        ticket_id=ticket_id,
+        ticket_code=ticket_code,
+        verification_code=verification_code,
+        total_amount=total_amount,
+        created_at=now
+    )
+    
+    # Check for suspicious activity
+    alerts = await check_suspicious_activity(db, agent_id, company_id, AuditAction.TICKET_CREATE)
+    if alerts:
+        for alert in alerts:
+            # Create fraud alert
+            await db.fraud_alerts.insert_one({
+                "alert_id": generate_id("fraud_"),
+                "alert_type": alert["type"],
+                "description": alert["message"],
+                "entity_type": "agent",
+                "entity_id": agent_id,
+                "severity": alert["severity"],
+                "status": "OPEN",
+                "created_by": "SYSTEM",
+                "company_id": company_id,
+                "created_at": now
+            })
     
     # Create transaction record
     transaction = {
@@ -571,6 +639,8 @@ async def sell_lottery_ticket(
         "ticket_id": ticket_id,
         "ticket_code": ticket_code,
         "verification_code": verification_code,
+        "ticket_hash": duplicate_check.get("ticket_hash"),
+        "ticket_signature": ticket_signature,
         "qr_payload": qr_payload,
         "agent_id": agent_id,
         "agent_name": current_agent["name"],
@@ -589,10 +659,30 @@ async def sell_lottery_ticket(
         "potential_win": potential_win,
         "currency": company.get("currency", "HTG"),
         "status": "VALIDATED",
-        "created_at": now
+        "created_at": now,
+        "client_ip": request.client.host if request.client else None
     }
     
     await db.lottery_transactions.insert_one(transaction)
+    
+    # Create security audit log
+    await create_audit_log(
+        db=db,
+        action=AuditAction.TICKET_CREATE,
+        user_id=agent_id,
+        request=request,
+        details={
+            "ticket_code": ticket_code,
+            "total_amount": total_amount,
+            "lottery_name": lottery["lottery_name"],
+            "draw_name": sale_data.draw_name,
+            "plays_count": len(validated_plays)
+        },
+        entity_type="ticket",
+        entity_id=ticket_id,
+        severity="INFO",
+        company_id=company_id
+    )
     
     # Update agent balance after successful sale
     new_current_balance = agent_balance.get("current_balance", 0) + total_amount

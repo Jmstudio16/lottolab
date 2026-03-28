@@ -8,66 +8,130 @@ Application de loterie professionnelle pour Haïti avec système POS, gestion de
 - **Backend**: FastAPI + MongoDB (Motor async)
 - **Impression**: HTML thermique optimisé 80mm
 - **Exports**: Excel (xlsxwriter), PDF (ReportLab)
-- **Auth**: JWT avec rate limiting (10/minute)
+- **Auth**: JWT avec rate limiting + blocage temporaire
+- **Sécurité**: Anti-fraude, audit trail, signatures cryptographiques
 
-## Fonctionnalités Implémentées
+## État Actuel des Phases
 
-### Phase 1: Core System (COMPLÉTÉ)
-- ✅ Authentification multi-rôles (Super Admin, Company Admin, Manager, Supervisor, Agent)
-- ✅ Gestion des entreprises et succursales
-- ✅ Catalogue des loteries (236 loteries US)
-- ✅ Création de tickets avec numéros et montants
-- ✅ Impression tickets 80mm avec pagination intelligente
+### PRIORITÉ 0: Système Fonctionnel (✅ COMPLÉTÉ)
+- ✅ Login fonctionne en preview
+- ✅ API loteries retourne 236 loteries
+- ✅ Publication résultats opérationnelle
+- ✅ Synchronisation temps réel via polling
+- ✅ Notifications lu/non lu persistantes
 
-### Phase 2: Gestion des Gains (COMPLÉTÉ)
-- ✅ Moteur de paiement `payout_engine.py` (60/20/10)
-- ✅ Calcul automatique Borlette, Loto 3, Loto 4, Loto 5, Mariage
-- ✅ Publication des résultats Super Admin
-- ✅ Recalcul des gains sur modification
+### PHASE 1: Sécurité Anti-Fraude (✅ COMPLÉTÉ - 28/03/2026)
 
-### Phase 3: Fonctionnalités Production (COMPLÉTÉ - 28/03/2026)
-- ✅ **Système de Notifications** - Lu/Non lu persistant, Mark All Read
-- ✅ **Gestion Heures de Tirage** - CRUD Super Admin exclusif
-- ✅ **Synchronisation Temps Réel** - Polling /api/sync/global chaque 10s
-- ✅ **Dropdown Loteries** - 236 loteries maintenant affichées (bug fixé)
-- ✅ **Company Settings Complet**:
-  - Logo entreprise avec upload
-  - Nom, Téléphone, Adresse, Email
-  - Toggle QR Code (Activé/Désactivé)
-  - Header/Footer du ticket personnalisés
-  - Configuration des primes (60|20|10)
+#### 1. Audit Trail (✅)
+- Fichier: `/app/backend/security_system.py`
+- Logge: user_id, IP, device, timestamp, action
+- Actions: LOGIN, TICKET_CREATE, PAYOUT, FRAUD_ALERT, etc.
+- Stockage: collection `security_audit_logs`
 
-## APIs Critiques
+#### 2. Anti-Doublon Tickets (✅)
+- Fonction: `check_duplicate_ticket()`
+- Hash SHA256 basé sur: lottery_id, draw_name, plays, agent_id, time_window
+- Fenêtre: 10 minutes
+- Bloque tickets identiques
 
-### Authentification
-- `POST /api/auth/login` - Connexion (rate limit: 10/min)
-- `GET /api/auth/me` - Info utilisateur connecté
+#### 3. Signature Cryptographique (✅)
+- Fonction: `generate_ticket_signature()`
+- HMAC-SHA256 sur: ticket_id, ticket_code, verification_code, amount, created_at
+- Vérification lors du paiement
 
-### Notifications
-- `GET /api/notifications` - Liste des notifications
-- `PUT /api/notifications/{id}/read` - Marquer comme lu
-- `PUT /api/notifications/mark-all-read` - Tout marquer lu
-- `POST /api/notifications` - Créer notification (Admin)
+#### 4. Protection Login (✅)
+- Classe: `LoginProtection`
+- Max tentatives: 5
+- Durée blocage: 15 minutes
+- Fenêtre tentatives: 10 minutes
+- Stockage: collections `login_attempts`, `login_blocks`
 
-### Heures de Tirage (Super Admin)
-- `GET /api/super/draw-times` - Liste des tirages
-- `POST /api/super/draw-times` - Créer tirage
-- `PUT /api/super/draw-times/{id}` - Modifier tirage
-- `DELETE /api/super/draw-times/{id}` - Supprimer tirage
+#### 5. Anti-Collision Codes (✅)
+- Fonctions: `get_unique_ticket_code()`, `get_unique_verification_code()`
+- Codes cryptographiquement sécurisés (secrets module)
+- Vérification unicité en base
 
-### Synchronisation Temps Réel
-- `GET /api/sync/global` - Sync complète (poll 10s)
-- `GET /api/sync/ping` - Ping léger (poll 5s)
-- `GET /api/sync/latest-results` - Derniers résultats
+#### 6. Dashboard Sécurité (✅)
+- Page: `/super/security`
+- Onglets: Vue d'ensemble, Audit Trail, Alertes Fraude, Tentatives Login, Blocages, Liste Noire
+- Temps réel avec auto-refresh 30s
 
-### Résultats
-- `GET /api/results/lotteries` - Liste 236 loteries (Super Admin)
-- `POST /api/results/publish` - Publier résultats
+### PHASE 2: Gestion Financière (🔄 À FAIRE)
+- [ ] Caisse journalière (ouverture/fermeture)
+- [ ] Réconciliation automatique
+- [ ] Gestion crédit/avance agents
+- [ ] Rapports financiers
 
-### Company Settings
-- `GET /api/company/profile` - Paramètres entreprise
-- `PUT /api/company/profile` - Sauvegarder paramètres
-- `POST /api/company/logo/upload` - Upload logo
+### PHASE 3: Limites Intelligentes (🔄 À FAIRE)
+- [ ] Limite par numéro
+- [ ] Blocage automatique
+- [ ] Alertes admin
+
+### PHASE 4: Communication SMS (🔄 À FAIRE)
+- [ ] Intégration Twilio
+- [ ] SMS résultats automatiques
+- [ ] Alertes fraude par SMS
+
+### PHASE 5: Application Mobile (🔄 À FAIRE)
+- [ ] APK React Native
+- [ ] Mode offline
+- [ ] Impression Bluetooth
+
+### PHASE 6: Analytics Pro (🔄 À FAIRE)
+- [ ] Dashboard temps réel
+- [ ] Rapports tendances
+- [ ] Export comptable
+
+## APIs Sécurité (PHASE 1)
+
+### Audit Logs
+- `GET /api/security/audit-logs` - Liste avec filtres
+- `GET /api/security/audit-logs/actions` - Types d'actions
+
+### Login Protection
+- `GET /api/security/login-attempts` - Historique tentatives
+- `GET /api/security/login-blocks` - Blocages actifs
+- `POST /api/security/login-blocks/remove` - Débloquer
+
+### Fraud Alerts
+- `GET /api/security/fraud-alerts` - Alertes ouvertes
+- `POST /api/security/fraud-alerts` - Créer alerte
+- `PUT /api/security/fraud-alerts/{id}/resolve` - Résoudre
+
+### IP Blacklist
+- `GET /api/security/ip-blacklist` - Liste noire
+- `POST /api/security/ip-blacklist` - Ajouter IP
+- `DELETE /api/security/ip-blacklist/{ip}` - Retirer IP
+
+### Statistics
+- `GET /api/security/stats` - Dashboard stats
+
+## Collections MongoDB Ajoutées
+
+```
+security_audit_logs: {
+  audit_id, timestamp, action, user_id, company_id,
+  entity_type, entity_id, severity, client_ip,
+  user_agent, device_type, device_id, details
+}
+
+login_attempts: {
+  attempt_id, email, ip_address, success, timestamp, user_agent
+}
+
+login_blocks: {
+  block_id, email, ip_address, reason, created_at, blocked_until
+}
+
+fraud_alerts: {
+  alert_id, alert_type, description, entity_type, entity_id,
+  severity, status, company_id, created_at, resolved_at
+}
+
+ip_blacklist: {
+  entry_id, ip_address, reason, active, created_by, created_at
+}
+```
 
 ## Comptes de Test
 
@@ -79,32 +143,20 @@ Application de loterie professionnelle pour Haïti avec système POS, gestion de
 - Email: `admin@lotopam.com`
 - Mot de passe: `Admin@2026!`
 
-## Prochaines Tâches (Backlog)
-
-### P1 - Priorité Haute
-- [ ] Refactoring templates tickets (unifier sync_routes.py et ticket_print_routes.py)
-- [ ] Tests E2E complets avec Playwright
-
-### P2 - Priorité Moyenne
-- [ ] Support multilingue (Espagnol, Anglais)
-- [ ] Mode hors ligne APK pour POS Android
-
-### P3 - Priorité Basse
-- [ ] Rapport détaillé Mariages Gratis
-- [ ] Intégration Bluetooth imprimante ESC/POS
-
 ## Changelog
 
-### 28 Mars 2026 - Iteration 39
-- Ajout système notifications persistant (read/unread)
-- Ajout page Heures de Tirage Super Admin CRUD
-- Ajout synchronisation temps réel (polling)
-- Correction bug dropdown loteries (1 → 236)
-- Ajout toggle QR Code dans Company Settings
-- Tests: 13/13 backend, 100% frontend
+### 28 Mars 2026 - Iteration 40 (PHASE 1)
+- Implémenté système anti-fraude complet
+- Audit trail avec logging IP/device
+- Anti-doublon tickets avec hash SHA256
+- Signature cryptographique HMAC-SHA256
+- Protection login (5 tentatives, blocage 15min)
+- Dashboard sécurité Super Admin
+- APIs sécurité complètes
+- Tests: Blocage fonctionne après 5 échecs
 
-### 27 Mars 2026 - Iteration 38
-- Moteur de paiement 60/20/10
-- Page Publication Résultats Super Admin
-- Exports Excel/PDF
-- Pagination intelligente tickets
+### 28 Mars 2026 - Iteration 39 (PRIORITÉ 0)
+- Corrigé bug dropdown loteries (1 → 236)
+- Système notifications lu/non lu
+- Synchronisation temps réel polling
+- Page heures de tirage Super Admin

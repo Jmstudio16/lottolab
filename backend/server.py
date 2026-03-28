@@ -57,6 +57,7 @@ from report_export_routes import report_export_router, set_report_export_db
 from notification_routes import notification_router, set_notification_db
 from draw_times_routes import draw_times_router, set_draw_times_db
 from realtime_sync_routes import realtime_sync_router, set_realtime_sync_db
+from security_routes import security_api_router, set_security_api_db
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -139,20 +140,67 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 @api_router.post("/auth/login", response_model=LoginResponse)
 @limiter.limit("10/minute")  # 10 login attempts per minute per IP
 async def login(request: Request, credentials: LoginRequest):
+    from security_system import LoginProtection, create_audit_log, AuditAction, get_client_info
+    
     # Log incoming request for debugging
     origin = request.headers.get("origin", "no-origin")
-    logger.info(f"[LOGIN] Attempt from origin: {origin}, email: {credentials.email}")
+    client_info = get_client_info(request)
+    client_ip = client_info["client_ip"]
+    
+    logger.info(f"[LOGIN] Attempt from origin: {origin}, email: {credentials.email}, IP: {client_ip}")
+    
+    # Check if blocked
+    block_status = await LoginProtection.check_blocked(db, credentials.email, client_ip)
+    if block_status["is_blocked"]:
+        logger.warning(f"[SECURITY] Blocked login attempt: {credentials.email} from {client_ip}")
+        raise HTTPException(
+            status_code=429, 
+            detail=f"Trop de tentatives échouées. Réessayez dans {LoginProtection.BLOCK_DURATION_MINUTES} minutes."
+        )
     
     user_doc = await db.users.find_one({"email": credentials.email}, {"_id": 0})
     if not user_doc:
         logger.warning(f"[LOGIN] User not found: {credentials.email}")
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        # Record failed attempt
+        await LoginProtection.record_attempt(db, credentials.email, client_ip, False, client_info["user_agent"])
+        await LoginProtection.check_and_block_if_needed(db, credentials.email, client_ip)
+        raise HTTPException(status_code=401, detail="Email ou mot de passe invalide")
     
     if not verify_password(credentials.password, user_doc.get("password_hash", "")):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        # Record failed attempt
+        await LoginProtection.record_attempt(db, credentials.email, client_ip, False, client_info["user_agent"])
+        was_blocked = await LoginProtection.check_and_block_if_needed(db, credentials.email, client_ip)
+        
+        # Create audit log for failed login
+        await create_audit_log(
+            db=db,
+            action=AuditAction.LOGIN_FAILED,
+            user_id=user_doc.get("user_id", "unknown"),
+            request=request,
+            details={"reason": "invalid_password"},
+            severity="WARNING",
+            company_id=user_doc.get("company_id")
+        )
+        
+        if was_blocked:
+            raise HTTPException(
+                status_code=429, 
+                detail=f"Compte bloqué temporairement après {LoginProtection.MAX_ATTEMPTS} tentatives échouées."
+            )
+        
+        raise HTTPException(status_code=401, detail="Email ou mot de passe invalide")
     
     # Check if user is suspended or deleted
     if user_doc.get("status") in ["SUSPENDED", "DELETED"]:
+        await create_audit_log(
+            db=db,
+            action=AuditAction.LOGIN_FAILED,
+            user_id=user_doc.get("user_id"),
+            request=request,
+            details={"reason": "account_suspended"},
+            severity="WARNING",
+            company_id=user_doc.get("company_id")
+        )
         raise HTTPException(status_code=403, detail="Compte suspendu ou supprimé. Contactez l'administrateur.")
     
     # Check if company is suspended or expired (for non-super-admin)
@@ -183,11 +231,14 @@ async def login(request: Request, credentials: LoginRequest):
                 except ValueError:
                     pass
     
+    # Record successful login
+    await LoginProtection.record_attempt(db, credentials.email, client_ip, True, client_info["user_agent"])
+    
     # Update last_login
     now = get_current_timestamp()
     await db.users.update_one(
         {"user_id": user_doc["user_id"]},
-        {"$set": {"last_login": now}}
+        {"$set": {"last_login": now, "last_ip": client_ip}}
     )
     
     user_doc["last_login"] = now
@@ -196,7 +247,18 @@ async def login(request: Request, credentials: LoginRequest):
     
     token = create_access_token({"user_id": user.user_id, "role": user.role, "company_id": user.company_id})
     
-    # Log login activity
+    # Create audit log for successful login
+    await create_audit_log(
+        db=db,
+        action=AuditAction.LOGIN,
+        user_id=user.user_id,
+        request=request,
+        details={"role": user.role},
+        severity="INFO",
+        company_id=user.company_id
+    )
+    
+    # Log login activity (legacy)
     await log_activity(
         db=db,
         action_type="USER_LOGIN",
@@ -205,7 +267,7 @@ async def login(request: Request, credentials: LoginRequest):
         performed_by=user.user_id,
         company_id=user.company_id,
         metadata={"email": user.email, "role": user.role},
-        ip_address=request.client.host if request.client else None
+        ip_address=client_ip
     )
     
     redirect_map = {
@@ -1041,6 +1103,7 @@ set_report_export_db(db)
 set_notification_db(db)
 set_draw_times_db(db)
 set_realtime_sync_db(db)
+set_security_api_db(db)
 
 # Initialize staff endpoints with dependency
 create_staff_endpoints(get_current_user)
@@ -1107,6 +1170,9 @@ app.include_router(draw_times_router)
 
 # Include real-time sync router (global polling sync)
 app.include_router(realtime_sync_router)
+
+# Include security router (audit logs, fraud detection)
+app.include_router(security_api_router)
 
 # Include staff router under /api prefix
 api_router.include_router(staff_router)
