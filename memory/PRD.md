@@ -90,10 +90,36 @@ Application de loterie professionnelle pour Haïti avec système POS, gestion de
 - Modals pour toutes les actions
 - RBAC: onglets Agents/Réconciliation réservés ADMIN
 
-### PHASE 3: Limites Intelligentes (🔄 À FAIRE)
-- [ ] Limite par numéro
-- [ ] Blocage automatique
-- [ ] Alertes admin
+### PHASE 3: Limites Intelligentes (✅ COMPLÉTÉ - 28/03/2026)
+
+#### 1. Limite par numéro (✅)
+- Fichier: `/app/backend/limits_routes.py`
+- Max mise par numéro configurable (défaut: 5000 HTG)
+- Limites spécifiques par numéro possibles
+- Appliqué par tirage (Matin/Midi/Soir)
+
+#### 2. Blocage automatique (✅)
+- Auto-blocage quand limite atteinte
+- Blocage manuel par Super Admin
+- Déblocage possible
+- Reset automatique au prochain tirage
+
+#### 3. Alertes temps réel (✅)
+- Seuil configurable (défaut: 80%)
+- Alertes THRESHOLD_WARNING, LIMIT_EXCEEDED, NUMBER_BLOCKED
+- Sévérités: CRITICAL, HIGH, MEDIUM, LOW
+- Acquittement individuel ou groupé
+
+#### 4. Intégration avec création ticket (✅)
+- `validate_bet_limits()` appelé avant création
+- Refus si numéro bloqué ou limite dépassée
+- Message d'erreur détaillé retourné
+
+#### 5. Dashboard Limites (✅)
+- Page: `/super/limits`
+- 4 onglets: Vue d'ensemble, Numéros Bloqués, Alertes, Statut Numéros
+- Configuration via modal
+- Blocage/déblocage via interface
 
 ### PHASE 4: Communication SMS (🔄 À FAIRE)
 - [ ] Intégration Twilio
@@ -158,6 +184,31 @@ Application de loterie professionnelle pour Haïti avec système POS, gestion de
 - `GET /api/financial/reports/agent-performance` - Perf agents
 - `GET /api/financial/reports/profit-loss` - P&L détaillé
 
+## APIs Limites (PHASE 3)
+
+### Configuration
+- `GET /api/limits/config` - Config actuelle
+- `PUT /api/limits/config` - Modifier config (Super Admin)
+- `PUT /api/limits/config/number` - Limite spécifique numéro
+- `DELETE /api/limits/config/number/{number}` - Supprimer limite spécifique
+
+### Blocage Numéros
+- `POST /api/limits/numbers/block` - Bloquer numéro
+- `DELETE /api/limits/numbers/block/{block_id}` - Débloquer
+- `GET /api/limits/numbers/blocked` - Numéros bloqués
+
+### Vérification
+- `POST /api/limits/check` - Vérifier si mise autorisée
+- `GET /api/limits/numbers/status` - Statut par tirage
+
+### Alertes
+- `GET /api/limits/alerts` - Liste alertes
+- `POST /api/limits/alerts/acknowledge` - Acquitter une
+- `POST /api/limits/alerts/acknowledge-all` - Acquitter toutes
+
+### Dashboard
+- `GET /api/limits/dashboard/stats` - Stats temps réel
+
 ## Collections MongoDB Ajoutées
 
 ```
@@ -205,6 +256,24 @@ reconciliation_reports: {
   report_id, company_id, date, system_totals,
   register_totals, anomalies, status, net_profit
 }
+
+limit_config: {
+  config_id, default_max_bet_per_number, default_max_bet_per_ticket,
+  alert_threshold_percentage, auto_block_enabled, block_duration_minutes,
+  number_specific_limits, lottery_specific_limits, updated_at, updated_by
+}
+
+blocked_numbers: {
+  block_id, number, lottery_id, draw_name, draw_date,
+  reason, blocked_by, block_type (MANUAL/AUTOMATIC), active,
+  created_at, unblocked_by, unblocked_at
+}
+
+limit_alerts: {
+  alert_id, alert_type, number, lottery_id, draw_name, draw_date,
+  current_total, limit, percentage, message, severity, acknowledged,
+  acknowledged_by, acknowledged_at, created_at
+}
 ```
 
 ## Comptes de Test
@@ -218,6 +287,18 @@ reconciliation_reports: {
 - Mot de passe: `Admin@2026!`
 
 ## Changelog
+
+### 28 Mars 2026 - Iteration 42 (PHASE 3)
+- Implémenté module limites intelligentes complet
+- Backend: 15+ endpoints API (limits_routes.py)
+- Frontend: Dashboard 4 onglets (SuperAdminLimitsPage.jsx)
+- Max mise par numéro configurable (défaut: 5000 HTG)
+- Blocage automatique quand limite atteinte
+- Alertes temps réel avec seuil configurable (défaut: 80%)
+- Intégration avec création de tickets (refus si limite dépassée)
+- Documentation: /docs/limits_module.md
+- Tests: 100% backend (22/22) et frontend passés
+- Collections MongoDB: limit_config, blocked_numbers, limit_alerts
 
 ### 28 Mars 2026 - Iteration 41 (PHASE 2)
 - Implémenté module financier complet
