@@ -180,12 +180,32 @@ async def get_lotteries_for_results(
     """
     Get all master lotteries for result management.
     Returns lottery_id, lottery_name, state_code for dropdown selection.
+    Fallback to global_lotteries if master_lotteries is empty.
     """
     try:
+        # Try master_lotteries first
         lotteries = await db.master_lotteries.find(
-            {},
+            {"is_active_global": {"$ne": False}},  # Include active or unset
             {"_id": 0, "lottery_id": 1, "lottery_name": 1, "state_code": 1}
-        ).to_list(length=None)
+        ).to_list(length=500)
+        
+        # Fallback to global_lotteries
+        if not lotteries:
+            lotteries = await db.global_lotteries.find(
+                {"is_active": {"$ne": False}},
+                {"_id": 0, "lottery_id": 1, "lottery_name": 1, "state_code": 1}
+            ).to_list(length=500)
+        
+        # Final fallback to lotteries collection
+        if not lotteries:
+            lotteries = await db.lotteries.find(
+                {},
+                {"_id": 0, "lottery_id": 1, "lottery_name": 1, "state_code": 1}
+            ).to_list(length=500)
+        
+        # Sort by state_code then name
+        lotteries.sort(key=lambda x: (x.get("state_code", ""), x.get("lottery_name", "")))
+        
         return lotteries
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -349,27 +369,6 @@ async def get_results(
     ).sort("created_at", -1).limit(limit).to_list(limit)
     
     return results
-
-
-@results_router.get("/results/lotteries")
-async def get_lotteries_for_results(
-    current_user: dict = Depends(get_current_user)
-):
-    """Get list of lotteries that can have results published"""
-    # Get global lotteries
-    lotteries = await db.global_lotteries.find(
-        {"is_active": True},
-        {"_id": 0, "lottery_id": 1, "lottery_name": 1, "state_code": 1}
-    ).sort("lottery_name", 1).to_list(500)
-    
-    # Also check master_lotteries
-    if not lotteries:
-        lotteries = await db.master_lotteries.find(
-            {"is_active": True},
-            {"_id": 0, "lottery_id": 1, "lottery_name": 1, "state_code": 1}
-        ).sort("lottery_name", 1).to_list(500)
-    
-    return lotteries
 
 
 @results_router.get("/results/{result_id}")

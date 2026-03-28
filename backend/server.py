@@ -42,7 +42,7 @@ from scheduler_tasks import set_scheduler_db, check_expired_subscriptions, check
 from staff_permissions import staff_router, set_staff_db, create_staff_endpoints
 from ticket_print_routes import ticket_print_router, set_ticket_print_db
 from supervisor_routes import supervisor_router
-from results_routes import results_router, set_results_db
+from results_routes import results_router as main_results_router, set_results_db as set_main_results_db
 from validation_routes import validation_router, set_validation_db, activate_all_lotteries_for_company
 from branch_lottery_routes import branch_lottery_router, set_branch_lottery_db
 from vendeur.vendeur_routes import vendeur_router, set_vendeur_db
@@ -54,6 +54,9 @@ from prime_config_routes import prime_config_router, set_prime_config_db
 from lottery_sync_service import lottery_sync_router, set_lottery_sync_db, startup_lottery_sync
 from storage_routes import storage_router, set_storage_db
 from report_export_routes import report_export_router, set_report_export_db
+from notification_routes import notification_router, set_notification_db
+from draw_times_routes import draw_times_router, set_draw_times_db
+from realtime_sync_routes import realtime_sync_router, set_realtime_sync_db
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -1027,6 +1030,7 @@ set_results_db(db)
 set_validation_db(db)
 set_branch_lottery_db(db)
 set_vendeur_db(db)
+set_main_results_db(db)
 set_results_db(db)
 set_scheduled_results_db(db)
 set_payout_engine_db(db)
@@ -1034,6 +1038,9 @@ set_prime_config_db(db)
 set_lottery_sync_db(db)
 set_storage_db(db)
 set_report_export_db(db)
+set_notification_db(db)
+set_draw_times_db(db)
+set_realtime_sync_db(db)
 
 # Initialize staff endpoints with dependency
 create_staff_endpoints(get_current_user)
@@ -1059,8 +1066,8 @@ app.include_router(supervisor_router)
 # Include ticket print router (PUBLIC routes for verification)
 app.include_router(ticket_print_router)
 
-# Include results router
-app.include_router(results_router)
+# Include main results router (with /api/results/lotteries for Super Admin)
+app.include_router(main_results_router)
 
 # Include scheduled results router
 app.include_router(scheduled_results_router)
@@ -1077,7 +1084,7 @@ app.include_router(vendeur_router)
 # Include export router
 app.include_router(export_router)
 
-# Include lottery results router
+# Include lottery results router (legacy)
 app.include_router(results_router)
 
 # Include prime config router (company admin)
@@ -1091,6 +1098,15 @@ app.include_router(storage_router)
 
 # Include report export router (Excel exports for all reports)
 app.include_router(report_export_router)
+
+# Include notification router (read/unread states, mark all read)
+app.include_router(notification_router)
+
+# Include draw times router (Super Admin CRUD for draw times)
+app.include_router(draw_times_router)
+
+# Include real-time sync router (global polling sync)
+app.include_router(realtime_sync_router)
 
 # Include staff router under /api prefix
 api_router.include_router(staff_router)

@@ -41,6 +41,7 @@ const getSuperAdminMenu = (t) => [
   { path: '/super/lottery-catalog', label: t('nav.lotteryCatalog'), icon: Globe },
   { path: '/super/lottery-flags', label: t('nav.lotteryFlags', 'Config Drapeaux'), icon: Flag },
   { path: '/super/global-schedules', label: t('nav.globalSchedules'), icon: Clock },
+  { path: '/super/draw-times', label: t('nav.drawTimes', 'Heures de Tirage'), icon: CalendarClock },
   { path: '/super/publish-results', label: t('nav.publishResults', 'Publier Résultats'), icon: Trophy },
   { path: '/super/scheduled-results', label: t('nav.scheduledResults', 'Résultats Programmés'), icon: Zap },
   { path: '/super/companies', label: t('nav.companies'), icon: Building2 },

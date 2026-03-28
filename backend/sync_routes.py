@@ -317,7 +317,15 @@ async def get_full_device_config(current_agent: dict = Depends(get_current_agent
             "currency": company.get("currency", "HTG"),
             "timezone": company.get("timezone", "America/Port-au-Prince"),
             "company_logo_url": company_logo,
-            "status": company.get("status", "ACTIVE")
+            "status": company.get("status", "ACTIVE"),
+            # Ticket customization fields
+            "phone": company.get("company_phone", company.get("phone", "")),
+            "address": company.get("company_address", company.get("address", "")),
+            "ticket_header_text": company.get("ticket_header_text", ""),
+            "ticket_footer_text": company.get("ticket_footer_text", ""),
+            "ticket_legal_text": company.get("ticket_legal_text", ""),
+            "ticket_thank_you_text": company.get("ticket_thank_you_text", ""),
+            "qr_code_enabled": company.get("qr_code_enabled", True)
         },
         "logos": {
             "display_logo_url": display_logo,

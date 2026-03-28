@@ -85,6 +85,7 @@ import VendeurConfigImprimante from '@/pages/vendeur/VendeurConfigImprimante';
 
 // Super Admin Results Page
 import SuperAdminResultsPage from '@/pages/super_admin/SuperAdminResultsPage';
+import SuperAdminDrawTimesPage from '@/pages/super_admin/SuperAdminDrawTimesPage';
 import FichesJoueesPage from '@/pages/FichesJoueesPage';
 
 // LOTO PAM Public Platform Pages
@@ -347,6 +348,14 @@ const SaaSApp = () => {
                   element={
                     <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
                       <SuperAdminResultsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/super/draw-times"
+                  element={
+                    <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                      <SuperAdminDrawTimesPage />
                     </ProtectedRoute>
                   }
                 />
