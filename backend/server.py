@@ -31,7 +31,7 @@ from agent_routes import agent_router, set_agent_db
 from universal_pos_routes import universal_pos_router, set_universal_pos_db
 from sync_routes import sync_router, set_sync_db
 from settings_routes import settings_router, set_settings_db
-from financial_routes import financial_router, set_financial_db, process_all_tickets_for_result
+from financial_routes import financial_router, set_financial_db
 from online_routes import online_router, online_admin_router, set_online_db
 from error_handlers import validation_exception_handler, generic_exception_handler
 from websocket_manager import ws_manager, notify_player, notify_admins, NotificationType
@@ -1104,6 +1104,7 @@ set_notification_db(db)
 set_draw_times_db(db)
 set_realtime_sync_db(db)
 set_security_api_db(db)
+set_financial_db(db)
 
 # Initialize staff endpoints with dependency
 create_staff_endpoints(get_current_user)
@@ -1173,6 +1174,9 @@ app.include_router(realtime_sync_router)
 
 # Include security router (audit logs, fraud detection)
 app.include_router(security_api_router)
+
+# Include financial router (cash register, reconciliation, agent credits)
+app.include_router(financial_router)
 
 # Include staff router under /api prefix
 api_router.include_router(staff_router)

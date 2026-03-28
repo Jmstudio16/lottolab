@@ -1,92 +1,46 @@
 """
-Financial Routes - Agent Balance, Ticket Check & Payout System
-LOTTOLAB - Enterprise Lottery SaaS Platform
+LOTTOLAB - Financial Management System (PHASE 2)
+=================================================
+Complete financial management for lottery operations:
+1. Daily Cash Register (Opening/Closing)
+2. Automatic Reconciliation
+3. Agent Credit/Advance Management
+4. Financial Reports & Analytics
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, Request, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from typing import Optional, List, Dict, Any
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from decimal import Decimal
+import logging
 
-from models import UserRole, TicketStatus
+from models import UserRole
 from auth import decode_token
 from utils import generate_id, get_current_timestamp
+from security_system import create_audit_log, AuditAction
 
-financial_router = APIRouter(prefix="/api", tags=["Financial"])
+financial_router = APIRouter(prefix="/api/financial", tags=["Financial Management"])
 security = HTTPBearer()
+logger = logging.getLogger(__name__)
 
-db: AsyncIOMotorDatabase = None
+db = None
 
-def set_financial_db(database: AsyncIOMotorDatabase):
+def set_financial_db(database):
     global db
     db = database
 
 
-# ============ PYDANTIC MODELS ============
+# ============================================================================
+# AUTHENTICATION HELPERS
+# ============================================================================
 
-class TicketCheckRequest(BaseModel):
-    ticket_code: str
-
-class TicketCheckResponse(BaseModel):
-    ticket_id: str
-    ticket_code: str
-    status: str
-    is_winner: bool
-    payout_amount: float
-    numbers_played: List[Dict[str, Any]]
-    winning_numbers: Optional[Dict[str, str]] = None
-    draw_date: str
-    draw_name: str
-    lottery_name: str
-    can_be_paid: bool
-    message: str
-
-class TicketPayoutRequest(BaseModel):
-    ticket_id: str
-    payout_method: str = "CASH"  # CASH, TRANSFER, CREDIT
-    notes: Optional[str] = None
-
-class TicketPayoutResponse(BaseModel):
-    payout_id: str
-    ticket_id: str
-    ticket_code: str
-    payout_amount: float
-    payout_method: str
-    paid_by: str
-    paid_at: str
-    agent_new_balance: float
-    message: str
-
-class AgentBalanceResponse(BaseModel):
-    agent_id: str
-    agent_name: str
-    company_id: str
-    credit_limit: float
-    current_balance: float
-    available_balance: float
-    total_sales: float
-    total_payouts: float
-    total_winnings: float
-    last_updated: str
-
-class AgentBalanceAdjustRequest(BaseModel):
-    agent_id: str
-    adjustment_type: str  # CREDIT_ADD, CREDIT_REMOVE, BALANCE_RESET
-    amount: float
-    reason: str
-
-
-# ============ AUTH DEPENDENCIES ============
-
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Get current authenticated user"""
-    token = credentials.credentials
-    payload = decode_token(token)
+    payload = decode_token(credentials.credentials)
     if not payload:
-        raise HTTPException(status_code=401, detail="Token invalide ou expiré")
+        raise HTTPException(status_code=401, detail="Token invalide")
     
     user_id = payload.get("user_id")
     user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
@@ -96,804 +50,1039 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     return user
 
 
-async def get_current_agent(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
-    """Get current agent user"""
+async def require_financial_access(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Require roles that can access financial data"""
     user = await get_current_user(credentials)
-    if user.get("role") != UserRole.AGENT_POS:
-        raise HTTPException(status_code=403, detail="Accès réservé aux agents")
-    
-    if user.get("status") != "ACTIVE":
-        raise HTTPException(status_code=403, detail="Compte agent suspendu")
-    
+    allowed_roles = [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.COMPANY_MANAGER, UserRole.BRANCH_SUPERVISOR]
+    if user.get("role") not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Accès financier requis")
     return user
 
 
-async def get_company_admin(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
-    """Get current company admin"""
+async def require_admin(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Require admin roles"""
     user = await get_current_user(credentials)
-    if user.get("role") not in [UserRole.COMPANY_ADMIN, UserRole.COMPANY_MANAGER, UserRole.SUPER_ADMIN]:
-        raise HTTPException(status_code=403, detail="Accès réservé aux administrateurs")
-    
+    allowed_roles = [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN]
+    if user.get("role") not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Accès administrateur requis")
     return user
 
 
-# ============ HELPER FUNCTIONS ============
+# ============================================================================
+# MODELS
+# ============================================================================
 
-async def get_or_create_agent_balance(agent_id: str, company_id: str) -> dict:
-    """Get or create agent balance record"""
-    balance = await db.agent_balances.find_one({"agent_id": agent_id}, {"_id": 0})
+class CashRegisterOpen(BaseModel):
+    opening_balance: float = Field(..., ge=0, description="Solde d'ouverture en HTG")
+    notes: Optional[str] = None
+    succursale_id: Optional[str] = None
+
+
+class CashRegisterClose(BaseModel):
+    closing_balance: float = Field(..., ge=0, description="Solde de fermeture en HTG")
+    cash_counted: float = Field(..., ge=0, description="Espèces comptées")
+    notes: Optional[str] = None
+
+
+class AgentCreditRequest(BaseModel):
+    agent_id: str
+    amount: float = Field(..., gt=0)
+    transaction_type: str  # CREDIT, DEBIT, ADVANCE, REPAYMENT, DEPOSIT, WITHDRAWAL
+    notes: Optional[str] = None
+
+
+class ReconciliationRequest(BaseModel):
+    date: str  # YYYY-MM-DD
+    succursale_id: Optional[str] = None
+
+
+# ============================================================================
+# 1. DAILY CASH REGISTER
+# ============================================================================
+
+@financial_router.post("/cash-register/open")
+async def open_cash_register(
+    request: Request,
+    data: CashRegisterOpen,
+    current_user: dict = Depends(require_financial_access)
+):
+    """
+    Open daily cash register.
+    Each agent/supervisor can have one open register per day.
+    """
+    company_id = current_user.get("company_id")
+    user_id = current_user.get("user_id")
+    role = current_user.get("role")
+    now = get_current_timestamp()
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     
+    # Check if register already open today
+    existing = await db.cash_registers.find_one({
+        "company_id": company_id,
+        "opened_by": user_id,
+        "date": today,
+        "status": "OPEN"
+    })
+    
+    if existing:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Caisse déjà ouverte aujourd'hui (ID: {existing['register_id']})"
+        )
+    
+    # Get previous closing balance if exists
+    previous = await db.cash_registers.find_one(
+        {"company_id": company_id, "opened_by": user_id, "status": "CLOSED"},
+        sort=[("closed_at", -1)]
+    )
+    previous_closing = previous.get("closing_balance", 0) if previous else 0
+    
+    register_id = generate_id("reg_")
+    
+    register = {
+        "register_id": register_id,
+        "company_id": company_id,
+        "succursale_id": data.succursale_id or current_user.get("succursale_id"),
+        "opened_by": user_id,
+        "opened_by_name": current_user.get("name", ""),
+        "opened_by_role": role,
+        "date": today,
+        "opening_balance": data.opening_balance,
+        "previous_closing_balance": previous_closing,
+        "balance_difference": data.opening_balance - previous_closing,
+        "current_balance": data.opening_balance,
+        "total_sales": 0.0,
+        "total_payouts": 0.0,
+        "total_deposits": 0.0,
+        "total_withdrawals": 0.0,
+        "transaction_count": 0,
+        "status": "OPEN",
+        "notes": data.notes,
+        "opened_at": now,
+        "closed_at": None,
+        "closing_balance": None,
+        "cash_counted": None,
+        "variance": None
+    }
+    
+    await db.cash_registers.insert_one(register)
+    
+    # Create audit log
+    await create_audit_log(
+        db=db,
+        action="CASH_REGISTER_OPEN",
+        user_id=user_id,
+        request=request,
+        details={
+            "register_id": register_id,
+            "opening_balance": data.opening_balance,
+            "previous_closing": previous_closing
+        },
+        entity_type="cash_register",
+        entity_id=register_id,
+        severity="INFO",
+        company_id=company_id
+    )
+    
+    return {
+        "message": "Caisse ouverte avec succès",
+        "register_id": register_id,
+        "opening_balance": data.opening_balance,
+        "previous_closing_balance": previous_closing,
+        "date": today
+    }
+
+
+@financial_router.post("/cash-register/close")
+async def close_cash_register(
+    request: Request,
+    data: CashRegisterClose,
+    current_user: dict = Depends(require_financial_access)
+):
+    """
+    Close daily cash register.
+    Calculates variance and creates reconciliation record.
+    """
+    company_id = current_user.get("company_id")
+    user_id = current_user.get("user_id")
+    now = get_current_timestamp()
+    
+    # Find open register
+    register = await db.cash_registers.find_one({
+        "company_id": company_id,
+        "opened_by": user_id,
+        "status": "OPEN"
+    })
+    
+    if not register:
+        raise HTTPException(status_code=404, detail="Aucune caisse ouverte trouvée")
+    
+    # Calculate expected balance
+    expected_balance = (
+        register.get("opening_balance", 0) +
+        register.get("total_sales", 0) +
+        register.get("total_deposits", 0) -
+        register.get("total_payouts", 0) -
+        register.get("total_withdrawals", 0)
+    )
+    
+    # Calculate variance
+    variance = data.cash_counted - expected_balance
+    variance_type = "NONE"
+    if variance > 0:
+        variance_type = "SURPLUS"
+    elif variance < 0:
+        variance_type = "SHORTAGE"
+    
+    # Update register
+    await db.cash_registers.update_one(
+        {"register_id": register["register_id"]},
+        {"$set": {
+            "status": "CLOSED",
+            "closing_balance": data.closing_balance,
+            "cash_counted": data.cash_counted,
+            "expected_balance": expected_balance,
+            "variance": variance,
+            "variance_type": variance_type,
+            "variance_percentage": (variance / expected_balance * 100) if expected_balance > 0 else 0,
+            "closed_at": now,
+            "closing_notes": data.notes
+        }}
+    )
+    
+    # Create daily reconciliation record
+    recon_id = generate_id("recon_")
+    reconciliation = {
+        "reconciliation_id": recon_id,
+        "register_id": register["register_id"],
+        "company_id": company_id,
+        "succursale_id": register.get("succursale_id"),
+        "date": register["date"],
+        "performed_by": user_id,
+        "opening_balance": register.get("opening_balance", 0),
+        "total_sales": register.get("total_sales", 0),
+        "total_payouts": register.get("total_payouts", 0),
+        "total_deposits": register.get("total_deposits", 0),
+        "total_withdrawals": register.get("total_withdrawals", 0),
+        "expected_balance": expected_balance,
+        "actual_balance": data.cash_counted,
+        "variance": variance,
+        "variance_type": variance_type,
+        "status": "COMPLETED",
+        "created_at": now
+    }
+    
+    await db.daily_reconciliations.insert_one(reconciliation)
+    
+    # Create audit log
+    await create_audit_log(
+        db=db,
+        action="CASH_REGISTER_CLOSE",
+        user_id=user_id,
+        request=request,
+        details={
+            "register_id": register["register_id"],
+            "expected_balance": expected_balance,
+            "actual_balance": data.cash_counted,
+            "variance": variance,
+            "variance_type": variance_type
+        },
+        entity_type="cash_register",
+        entity_id=register["register_id"],
+        severity="WARNING" if abs(variance) > 100 else "INFO",
+        company_id=company_id
+    )
+    
+    return {
+        "message": "Caisse fermée avec succès",
+        "register_id": register["register_id"],
+        "reconciliation_id": recon_id,
+        "summary": {
+            "opening_balance": register.get("opening_balance", 0),
+            "total_sales": register.get("total_sales", 0),
+            "total_payouts": register.get("total_payouts", 0),
+            "total_deposits": register.get("total_deposits", 0),
+            "total_withdrawals": register.get("total_withdrawals", 0),
+            "expected_balance": expected_balance,
+            "cash_counted": data.cash_counted,
+            "variance": variance,
+            "variance_type": variance_type
+        }
+    }
+
+
+@financial_router.get("/cash-register/current")
+async def get_current_register(
+    current_user: dict = Depends(require_financial_access)
+):
+    """Get current open cash register for the user"""
+    company_id = current_user.get("company_id")
+    user_id = current_user.get("user_id")
+    
+    register = await db.cash_registers.find_one(
+        {"company_id": company_id, "opened_by": user_id, "status": "OPEN"},
+        {"_id": 0}
+    )
+    
+    if not register:
+        return {"is_open": False, "register": None}
+    
+    # Calculate current expected balance
+    expected_balance = (
+        register.get("opening_balance", 0) +
+        register.get("total_sales", 0) +
+        register.get("total_deposits", 0) -
+        register.get("total_payouts", 0) -
+        register.get("total_withdrawals", 0)
+    )
+    register["expected_balance"] = expected_balance
+    
+    return {"is_open": True, "register": register}
+
+
+@financial_router.get("/cash-register/history")
+async def get_register_history(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    succursale_id: Optional[str] = None,
+    limit: int = Query(default=30, le=100),
+    current_user: dict = Depends(require_financial_access)
+):
+    """Get cash register history"""
+    company_id = current_user.get("company_id")
+    user_id = current_user.get("user_id")
+    role = current_user.get("role")
+    
+    query = {"company_id": company_id}
+    
+    # Non-admin users can only see their own registers
+    if role not in [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.COMPANY_MANAGER]:
+        query["opened_by"] = user_id
+    
+    if succursale_id:
+        query["succursale_id"] = succursale_id
+    
+    if start_date:
+        query["date"] = {"$gte": start_date}
+    if end_date:
+        if "date" in query:
+            query["date"]["$lte"] = end_date
+        else:
+            query["date"] = {"$lte": end_date}
+    
+    registers = await db.cash_registers.find(
+        query,
+        {"_id": 0}
+    ).sort("date", -1).limit(limit).to_list(limit)
+    
+    return registers
+
+
+# ============================================================================
+# 2. AUTOMATIC RECONCILIATION
+# ============================================================================
+
+@financial_router.post("/reconciliation/generate")
+async def generate_reconciliation(
+    request: Request,
+    data: ReconciliationRequest,
+    current_user: dict = Depends(require_admin)
+):
+    """Generate automatic reconciliation report for a specific date."""
+    company_id = current_user.get("company_id")
+    target_date = data.date
+    now = get_current_timestamp()
+    
+    query = {"company_id": company_id, "date": target_date}
+    if data.succursale_id:
+        query["succursale_id"] = data.succursale_id
+    
+    registers = await db.cash_registers.find(
+        {**query, "status": "CLOSED"},
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Aggregate sales
+    sales_pipeline = [
+        {"$match": {
+            "company_id": company_id,
+            "created_at": {"$regex": f"^{target_date}"}
+        }},
+        {"$group": {
+            "_id": None,
+            "total_sales": {"$sum": "$total_amount"},
+            "ticket_count": {"$sum": 1}
+        }}
+    ]
+    sales_result = await db.lottery_transactions.aggregate(sales_pipeline).to_list(1)
+    total_sales = sales_result[0]["total_sales"] if sales_result else 0
+    ticket_count = sales_result[0]["ticket_count"] if sales_result else 0
+    
+    # Aggregate payouts
+    payouts_pipeline = [
+        {"$match": {
+            "company_id": company_id,
+            "paid_at": {"$regex": f"^{target_date}"}
+        }},
+        {"$group": {
+            "_id": None,
+            "total_payouts": {"$sum": "$amount_paid"},
+            "payout_count": {"$sum": 1}
+        }}
+    ]
+    payouts_result = await db.payouts.aggregate(payouts_pipeline).to_list(1)
+    total_payouts = payouts_result[0]["total_payouts"] if payouts_result else 0
+    payout_count = payouts_result[0]["payout_count"] if payouts_result else 0
+    
+    # Calculate register totals
+    register_totals = {
+        "opening_balance": sum(r.get("opening_balance", 0) for r in registers),
+        "total_sales": sum(r.get("total_sales", 0) for r in registers),
+        "total_payouts": sum(r.get("total_payouts", 0) for r in registers),
+        "closing_balance": sum(r.get("closing_balance", 0) or 0 for r in registers),
+        "total_variance": sum(r.get("variance", 0) or 0 for r in registers)
+    }
+    
+    # Detect anomalies
+    anomalies = []
+    
+    sales_diff = abs(total_sales - register_totals["total_sales"])
+    if sales_diff > 100:
+        anomalies.append({
+            "type": "SALES_MISMATCH",
+            "description": f"Différence ventes: Système={total_sales:.2f}, Caisses={register_totals['total_sales']:.2f}",
+            "amount": sales_diff,
+            "severity": "HIGH" if sales_diff > 1000 else "MEDIUM"
+        })
+    
+    if abs(register_totals["total_variance"]) > 500:
+        anomalies.append({
+            "type": "HIGH_VARIANCE",
+            "description": f"Écart de caisse élevé: {register_totals['total_variance']:.2f} HTG",
+            "amount": abs(register_totals["total_variance"]),
+            "severity": "HIGH"
+        })
+    
+    # Create report
+    report_id = generate_id("report_")
+    report = {
+        "report_id": report_id,
+        "company_id": company_id,
+        "succursale_id": data.succursale_id,
+        "date": target_date,
+        "generated_by": current_user.get("user_id"),
+        "generated_at": now,
+        "register_count": len(registers),
+        "system_totals": {
+            "total_sales": total_sales,
+            "ticket_count": ticket_count,
+            "total_payouts": total_payouts,
+            "payout_count": payout_count
+        },
+        "register_totals": register_totals,
+        "anomalies": anomalies,
+        "anomaly_count": len(anomalies),
+        "status": "NEEDS_REVIEW" if anomalies else "OK",
+        "net_profit": total_sales - total_payouts
+    }
+    
+    await db.reconciliation_reports.insert_one(report)
+    
+    # Remove _id before returning
+    report.pop("_id", None)
+    
+    return report
+
+
+@financial_router.get("/reconciliation/reports")
+async def get_reconciliation_reports(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = Query(default=30, le=100),
+    current_user: dict = Depends(require_admin)
+):
+    """Get reconciliation reports"""
+    company_id = current_user.get("company_id")
+    
+    query = {"company_id": company_id}
+    
+    if start_date:
+        query["date"] = {"$gte": start_date}
+    if end_date:
+        if "date" in query:
+            query["date"]["$lte"] = end_date
+        else:
+            query["date"] = {"$lte": end_date}
+    if status:
+        query["status"] = status
+    
+    reports = await db.reconciliation_reports.find(
+        query,
+        {"_id": 0}
+    ).sort("date", -1).limit(limit).to_list(limit)
+    
+    return reports
+
+
+# ============================================================================
+# 3. AGENT CREDIT/ADVANCE MANAGEMENT
+# ============================================================================
+
+@financial_router.post("/agent/transaction")
+async def create_agent_transaction(
+    request: Request,
+    data: AgentCreditRequest,
+    current_user: dict = Depends(require_admin)
+):
+    """Create a financial transaction for an agent."""
+    company_id = current_user.get("company_id")
+    admin_id = current_user.get("user_id")
+    now = get_current_timestamp()
+    
+    # Verify agent exists
+    agent = await db.users.find_one({
+        "user_id": data.agent_id,
+        "company_id": company_id,
+        "role": {"$in": [UserRole.AGENT_POS, "AGENT_POS", "VENDEUR"]}
+    }, {"_id": 0, "name": 1, "user_id": 1})
+    
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent non trouvé")
+    
+    # Get or create agent balance
+    balance = await db.agent_balances.find_one({"agent_id": data.agent_id})
     if not balance:
-        now = get_current_timestamp()
-        # Get agent policy for credit limit
-        policy = await db.agent_policies.find_one({"agent_id": agent_id}, {"_id": 0})
-        credit_limit = policy.get("max_credit_limit", 50000.0) if policy else 50000.0
-        
         balance = {
             "balance_id": generate_id("bal_"),
-            "agent_id": agent_id,
+            "agent_id": data.agent_id,
             "company_id": company_id,
-            "credit_limit": credit_limit,
-            "current_balance": 0.0,  # Positive = owes money, Negative = credit available
-            "available_balance": credit_limit,  # How much can still sell
+            "credit_limit": 50000.0,
+            "current_balance": 0.0,
+            "available_balance": 50000.0,
+            "total_advances": 0.0,
+            "outstanding_advances": 0.0,
             "total_sales": 0.0,
             "total_payouts": 0.0,
-            "total_winnings": 0.0,
-            "created_at": now,
-            "updated_at": now
+            "created_at": now
         }
         await db.agent_balances.insert_one(balance)
-        balance.pop("_id", None)
+    
+    available_balance = balance.get("available_balance", 0)
+    outstanding_advances = balance.get("outstanding_advances", 0)
+    
+    valid_types = ["CREDIT", "DEBIT", "ADVANCE", "REPAYMENT", "DEPOSIT", "WITHDRAWAL"]
+    if data.transaction_type not in valid_types:
+        raise HTTPException(status_code=400, detail=f"Type invalide. Utilisez: {', '.join(valid_types)}")
+    
+    new_available = available_balance
+    
+    if data.transaction_type == "CREDIT":
+        new_available = available_balance + data.amount
+    elif data.transaction_type == "DEBIT":
+        if data.amount > available_balance:
+            raise HTTPException(status_code=400, detail="Solde disponible insuffisant")
+        new_available = available_balance - data.amount
+    elif data.transaction_type == "ADVANCE":
+        new_available = available_balance + data.amount
+        outstanding_advances += data.amount
+    elif data.transaction_type == "REPAYMENT":
+        if data.amount > outstanding_advances:
+            raise HTTPException(status_code=400, detail="Montant supérieur aux avances en cours")
+        outstanding_advances -= data.amount
+    elif data.transaction_type == "DEPOSIT":
+        new_available = available_balance + data.amount
+    elif data.transaction_type == "WITHDRAWAL":
+        if data.amount > available_balance:
+            raise HTTPException(status_code=400, detail="Solde disponible insuffisant")
+        new_available = available_balance - data.amount
+    
+    # Create transaction record
+    txn_id = generate_id("ftxn_")
+    transaction = {
+        "transaction_id": txn_id,
+        "agent_id": data.agent_id,
+        "agent_name": agent.get("name"),
+        "company_id": company_id,
+        "transaction_type": data.transaction_type,
+        "amount": data.amount,
+        "balance_before": available_balance,
+        "balance_after": new_available,
+        "performed_by": admin_id,
+        "performed_by_name": current_user.get("name"),
+        "notes": data.notes,
+        "created_at": now
+    }
+    
+    await db.agent_financial_transactions.insert_one(transaction)
+    
+    # Update agent balance
+    update_data = {
+        "available_balance": new_available,
+        "outstanding_advances": outstanding_advances,
+        "updated_at": now
+    }
+    if data.transaction_type == "ADVANCE":
+        update_data["total_advances"] = balance.get("total_advances", 0) + data.amount
+    
+    await db.agent_balances.update_one(
+        {"agent_id": data.agent_id},
+        {"$set": update_data}
+    )
+    
+    await create_audit_log(
+        db=db,
+        action="AGENT_FINANCIAL_TRANSACTION",
+        user_id=admin_id,
+        request=request,
+        details={
+            "transaction_id": txn_id,
+            "agent_id": data.agent_id,
+            "type": data.transaction_type,
+            "amount": data.amount
+        },
+        entity_type="agent_balance",
+        entity_id=data.agent_id,
+        severity="INFO",
+        company_id=company_id
+    )
+    
+    return {
+        "message": f"Transaction {data.transaction_type} de {data.amount:.2f} HTG effectuée",
+        "transaction_id": txn_id,
+        "new_available_balance": new_available,
+        "outstanding_advances": outstanding_advances
+    }
+
+
+@financial_router.get("/agent/{agent_id}/balance")
+async def get_agent_balance(
+    agent_id: str,
+    current_user: dict = Depends(require_financial_access)
+):
+    """Get agent's current balance"""
+    company_id = current_user.get("company_id")
+    
+    balance = await db.agent_balances.find_one(
+        {"agent_id": agent_id, "company_id": company_id},
+        {"_id": 0}
+    )
+    
+    if not balance:
+        return {
+            "agent_id": agent_id,
+            "credit_limit": 50000.0,
+            "current_balance": 0.0,
+            "available_balance": 50000.0,
+            "outstanding_advances": 0.0,
+            "total_sales": 0.0,
+            "total_payouts": 0.0
+        }
+    
+    agent = await db.users.find_one(
+        {"user_id": agent_id},
+        {"_id": 0, "name": 1, "email": 1}
+    )
+    
+    if agent:
+        balance["agent_name"] = agent.get("name")
+        balance["agent_email"] = agent.get("email")
     
     return balance
 
 
-def calculate_payout_for_play(play: dict, winning_numbers: dict, prime_configs: List[dict]) -> float:
-    """
-    Calculate payout for a single play against winning numbers.
-    
-    Winning numbers format: {"first": "123", "second": "456", "third": "789"}
-    Play format: {"numbers": "123", "bet_type": "BORLETTE", "amount": 100}
-    """
-    numbers = str(play.get("numbers", "")).strip()
-    bet_type = play.get("bet_type", "BORLETTE").upper()
-    amount = float(play.get("amount", 0))
-    
-    first = winning_numbers.get("first", "")
-    second = winning_numbers.get("second", "")
-    third = winning_numbers.get("third", "")
-    
-    # Find prime config for this bet type
-    prime = None
-    for p in prime_configs:
-        if p.get("bet_type", "").upper() == bet_type:
-            prime = p
-            break
-    
-    if not prime:
-        return 0.0
-    
-    # Parse payout formula (format: "60|20|10" for 1st|2nd|3rd position)
-    formula = prime.get("payout_formula", "50")
-    payouts = [float(x) for x in formula.split("|")] if "|" in formula else [float(formula)]
-    
-    payout_first = payouts[0] if len(payouts) > 0 else 0
-    payout_second = payouts[1] if len(payouts) > 1 else 0
-    payout_third = payouts[2] if len(payouts) > 2 else 0
-    
-    total_payout = 0.0
-    
-    # Check match positions
-    if numbers == first:
-        total_payout += amount * payout_first
-    if numbers == second and payout_second > 0:
-        total_payout += amount * payout_second
-    if numbers == third and payout_third > 0:
-        total_payout += amount * payout_third
-    
-    # Special case for MARIAGE (two numbers combined)
-    if bet_type == "MARIAGE":
-        # Marriage wins if both numbers appear in winning (any position)
-        nums = numbers.split("-") if "-" in numbers else numbers.split("x")
-        if len(nums) == 2:
-            n1, n2 = nums[0].strip(), nums[1].strip()
-            winning_set = {first, second, third}
-            if n1 in winning_set and n2 in winning_set:
-                total_payout = amount * payout_first
-    
-    return total_payout
-
-
-async def process_ticket_winning(ticket: dict, result: dict) -> dict:
-    """
-    Process a ticket against lottery results.
-    Returns updated ticket data with win status and amount.
-    """
-    company_id = ticket.get("company_id")
-    plays = ticket.get("plays", [])
-    
-    # Get prime configs for payout calculation
-    prime_configs = await db.prime_configs.find(
-        {"company_id": company_id, "is_active": True},
-        {"_id": 0}
-    ).to_list(100)
-    
-    # Parse winning numbers
-    winning_numbers = result.get("winning_numbers_parsed", {})
-    if not winning_numbers:
-        # Try to parse from string format "123-456-789"
-        wn_str = result.get("winning_numbers", "")
-        parts = wn_str.replace(" ", "").split("-")
-        winning_numbers = {
-            "first": parts[0] if len(parts) > 0 else "",
-            "second": parts[1] if len(parts) > 1 else "",
-            "third": parts[2] if len(parts) > 2 else ""
-        }
-    
-    # Calculate total win
-    total_win = 0.0
-    winning_plays = []
-    
-    for play in plays:
-        payout = calculate_payout_for_play(play, winning_numbers, prime_configs)
-        if payout > 0:
-            winning_plays.append({
-                **play,
-                "win_amount": payout
-            })
-            total_win += payout
-    
-    # Determine status
-    is_winner = total_win > 0
-    new_status = TicketStatus.WINNER.value if is_winner else TicketStatus.LOSER.value
-    
-    return {
-        "is_winner": is_winner,
-        "status": new_status,
-        "win_amount": total_win,
-        "winning_plays": winning_plays,
-        "winning_numbers": winning_numbers
-    }
-
-
-# ============ TICKET CHECK ENDPOINT ============
-
-@financial_router.post("/tickets/check", response_model=TicketCheckResponse)
-async def check_ticket(
-    check_data: TicketCheckRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Check if a ticket is a winner.
-    Can be called by agents or admins.
-    Compares ticket numbers against global_results and calculates payout.
-    """
-    company_id = current_user.get("company_id")
-    
-    # Find ticket by code
-    query = {"ticket_code": check_data.ticket_code}
-    
-    # If not super admin, filter by company
-    if current_user.get("role") != UserRole.SUPER_ADMIN:
-        if not company_id:
-            raise HTTPException(status_code=403, detail="Entreprise non trouvée")
-        query["company_id"] = company_id
-    
-    ticket = await db.lottery_transactions.find_one(query, {"_id": 0})
-    
-    if not ticket:
-        raise HTTPException(status_code=404, detail="Ticket non trouvé")
-    
-    ticket_id = ticket.get("ticket_id")
-    ticket_status = ticket.get("status", "PENDING_RESULT")
-    
-    # If already processed, return cached result
-    if ticket_status in [TicketStatus.WINNER.value, TicketStatus.LOSER.value, TicketStatus.PAID.value]:
-        is_winner = ticket_status in [TicketStatus.WINNER.value, TicketStatus.PAID.value]
-        win_amount = ticket.get("win_amount", 0.0)
-        
-        return TicketCheckResponse(
-            ticket_id=ticket_id,
-            ticket_code=ticket.get("ticket_code"),
-            status=ticket_status,
-            is_winner=is_winner,
-            payout_amount=win_amount,
-            numbers_played=ticket.get("plays", []),
-            winning_numbers=ticket.get("winning_numbers"),
-            draw_date=ticket.get("draw_date"),
-            draw_name=ticket.get("draw_name"),
-            lottery_name=ticket.get("lottery_name"),
-            can_be_paid=ticket_status == TicketStatus.WINNER.value,
-            message="Ticket gagnant!" if is_winner else "Ticket perdant"
-        )
-    
-    # Check if voided
-    if ticket_status == TicketStatus.VOID.value:
-        return TicketCheckResponse(
-            ticket_id=ticket_id,
-            ticket_code=ticket.get("ticket_code"),
-            status=ticket_status,
-            is_winner=False,
-            payout_amount=0.0,
-            numbers_played=ticket.get("plays", []),
-            winning_numbers=None,
-            draw_date=ticket.get("draw_date"),
-            draw_name=ticket.get("draw_name"),
-            lottery_name=ticket.get("lottery_name"),
-            can_be_paid=False,
-            message="Ticket annulé"
-        )
-    
-    # Find result for this ticket's draw
-    result = await db.global_results.find_one({
-        "lottery_id": ticket.get("lottery_id"),
-        "draw_date": ticket.get("draw_date"),
-        "draw_name": ticket.get("draw_name")
-    }, {"_id": 0})
-    
-    if not result:
-        return TicketCheckResponse(
-            ticket_id=ticket_id,
-            ticket_code=ticket.get("ticket_code"),
-            status="PENDING_RESULT",
-            is_winner=False,
-            payout_amount=0.0,
-            numbers_played=ticket.get("plays", []),
-            winning_numbers=None,
-            draw_date=ticket.get("draw_date"),
-            draw_name=ticket.get("draw_name"),
-            lottery_name=ticket.get("lottery_name"),
-            can_be_paid=False,
-            message="Résultat du tirage non encore disponible"
-        )
-    
-    # Process winning
-    win_result = await process_ticket_winning(ticket, result)
-    
-    # Update ticket in database
-    now = get_current_timestamp()
-    await db.lottery_transactions.update_one(
-        {"ticket_id": ticket_id},
-        {"$set": {
-            "status": win_result["status"],
-            "win_amount": win_result["win_amount"],
-            "winning_numbers": win_result["winning_numbers"],
-            "checked_at": now,
-            "checked_by": current_user.get("user_id")
-        }}
-    )
-    
-    # Log activity
-    await db.activity_logs.insert_one({
-        "log_id": generate_id("log_"),
-        "action_type": "TICKET_CHECKED",
-        "entity_type": "ticket",
-        "entity_id": ticket_id,
-        "performed_by": current_user.get("user_id"),
-        "company_id": ticket.get("company_id"),
-        "metadata": {
-            "ticket_code": ticket.get("ticket_code"),
-            "is_winner": win_result["is_winner"],
-            "win_amount": win_result["win_amount"]
-        },
-        "created_at": now
-    })
-    
-    # Update agent's total winnings if winner
-    if win_result["is_winner"]:
-        agent_id = ticket.get("agent_id")
-        await db.agent_balances.update_one(
-            {"agent_id": agent_id},
-            {"$inc": {"total_winnings": win_result["win_amount"]}}
-        )
-    
-    message = f"Ticket gagnant! Gain: {win_result['win_amount']:.2f}" if win_result["is_winner"] else "Ticket perdant"
-    
-    return TicketCheckResponse(
-        ticket_id=ticket_id,
-        ticket_code=ticket.get("ticket_code"),
-        status=win_result["status"],
-        is_winner=win_result["is_winner"],
-        payout_amount=win_result["win_amount"],
-        numbers_played=ticket.get("plays", []),
-        winning_numbers=win_result["winning_numbers"],
-        draw_date=ticket.get("draw_date"),
-        draw_name=ticket.get("draw_name"),
-        lottery_name=ticket.get("lottery_name"),
-        can_be_paid=win_result["is_winner"],
-        message=message
-    )
-
-
-# ============ TICKET PAYOUT ENDPOINT ============
-
-@financial_router.post("/tickets/payout", response_model=TicketPayoutResponse)
-async def payout_ticket(
-    payout_data: TicketPayoutRequest,
-    request: Request,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Process payout for a winning ticket.
-    - Verifies ticket is winner and not already paid
-    - Creates ticket_payout record
-    - Updates ticket status to PAID
-    - Updates agent_balances (deducts from agent's debt)
-    - Logs activity
-    """
-    company_id = current_user.get("company_id")
-    user_id = current_user.get("user_id")
-    
-    # Find ticket
-    query = {"ticket_id": payout_data.ticket_id}
-    if current_user.get("role") != UserRole.SUPER_ADMIN:
-        if not company_id:
-            raise HTTPException(status_code=403, detail="Entreprise non trouvée")
-        query["company_id"] = company_id
-    
-    ticket = await db.lottery_transactions.find_one(query, {"_id": 0})
-    
-    if not ticket:
-        raise HTTPException(status_code=404, detail="Ticket non trouvé")
-    
-    ticket_id = ticket.get("ticket_id")
-    ticket_status = ticket.get("status")
-    
-    # Verify ticket is a winner
-    if ticket_status != TicketStatus.WINNER.value:
-        if ticket_status == TicketStatus.PAID.value:
-            raise HTTPException(status_code=400, detail="Ce ticket a déjà été payé")
-        elif ticket_status == TicketStatus.LOSER.value:
-            raise HTTPException(status_code=400, detail="Ce ticket n'est pas gagnant")
-        elif ticket_status == TicketStatus.VOID.value:
-            raise HTTPException(status_code=400, detail="Ce ticket a été annulé")
-        else:
-            raise HTTPException(status_code=400, detail="Ce ticket n'a pas encore été vérifié")
-    
-    payout_amount = ticket.get("win_amount", 0.0)
-    if payout_amount <= 0:
-        raise HTTPException(status_code=400, detail="Montant de gain invalide")
-    
-    agent_id = ticket.get("agent_id")
-    now = get_current_timestamp()
-    
-    # Create payout record
-    payout_id = generate_id("pay_")
-    payout_record = {
-        "payout_id": payout_id,
-        "ticket_id": ticket_id,
-        "ticket_code": ticket.get("ticket_code"),
-        "agent_id": agent_id,
-        "company_id": ticket.get("company_id"),
-        "payout_amount": payout_amount,
-        "payout_method": payout_data.payout_method,
-        "currency": ticket.get("currency", "HTG"),
-        "notes": payout_data.notes,
-        "paid_by": user_id,
-        "paid_by_name": current_user.get("name"),
-        "paid_at": now,
-        "ip_address": request.client.host if request.client else None,
-        "status": "COMPLETED"
-    }
-    
-    await db.ticket_payouts.insert_one(payout_record)
-    
-    # Update ticket status
-    await db.lottery_transactions.update_one(
-        {"ticket_id": ticket_id},
-        {"$set": {
-            "status": TicketStatus.PAID.value,
-            "paid_at": now,
-            "paid_by": user_id,
-            "payout_id": payout_id
-        }}
-    )
-    
-    # Update agent balance
-    # When paying out, the agent's current_balance decreases (they owe less)
-    # and available_balance stays the same (credit doesn't change)
-    balance = await get_or_create_agent_balance(agent_id, ticket.get("company_id"))
-    
-    new_current_balance = balance.get("current_balance", 0.0) - payout_amount
-    new_total_payouts = balance.get("total_payouts", 0.0) + payout_amount
-    
-    await db.agent_balances.update_one(
-        {"agent_id": agent_id},
-        {"$set": {
-            "current_balance": new_current_balance,
-            "total_payouts": new_total_payouts,
-            "updated_at": now
-        }}
-    )
-    
-    # Log activity
-    await db.activity_logs.insert_one({
-        "log_id": generate_id("log_"),
-        "action_type": "TICKET_PAID",
-        "entity_type": "ticket",
-        "entity_id": ticket_id,
-        "performed_by": user_id,
-        "company_id": ticket.get("company_id"),
-        "metadata": {
-            "ticket_code": ticket.get("ticket_code"),
-            "payout_amount": payout_amount,
-            "payout_method": payout_data.payout_method,
-            "agent_id": agent_id
-        },
-        "ip_address": request.client.host if request.client else None,
-        "created_at": now
-    })
-    
-    return TicketPayoutResponse(
-        payout_id=payout_id,
-        ticket_id=ticket_id,
-        ticket_code=ticket.get("ticket_code"),
-        payout_amount=payout_amount,
-        payout_method=payout_data.payout_method,
-        paid_by=current_user.get("name"),
-        paid_at=now,
-        agent_new_balance=new_current_balance,
-        message=f"Paiement de {payout_amount:.2f} {ticket.get('currency', 'HTG')} effectué avec succès"
-    )
-
-
-# ============ AGENT BALANCE ENDPOINTS ============
-
-@financial_router.get("/agent/balance", response_model=AgentBalanceResponse)
-async def get_my_balance(current_agent: dict = Depends(get_current_agent)):
-    """Get current agent's balance"""
-    agent_id = current_agent.get("user_id")
-    company_id = current_agent.get("company_id")
-    
-    balance = await get_or_create_agent_balance(agent_id, company_id)
-    
-    return AgentBalanceResponse(
-        agent_id=agent_id,
-        agent_name=current_agent.get("name", ""),
-        company_id=company_id,
-        credit_limit=balance.get("credit_limit", 50000.0),
-        current_balance=balance.get("current_balance", 0.0),
-        available_balance=balance.get("available_balance", 50000.0),
-        total_sales=balance.get("total_sales", 0.0),
-        total_payouts=balance.get("total_payouts", 0.0),
-        total_winnings=balance.get("total_winnings", 0.0),
-        last_updated=balance.get("updated_at", "")
-    )
-
-
-@financial_router.get("/company/agent-balances")
-async def get_company_agent_balances(current_admin: dict = Depends(get_company_admin)):
-    """Get all agent balances for a company"""
-    company_id = current_admin.get("company_id")
-    
-    # Super admin can see all
-    query = {} if current_admin.get("role") == UserRole.SUPER_ADMIN else {"company_id": company_id}
-    
-    balances = await db.agent_balances.find(query, {"_id": 0}).to_list(500)
-    
-    # Enrich with agent names
-    for balance in balances:
-        agent = await db.users.find_one(
-            {"user_id": balance.get("agent_id")},
-            {"_id": 0, "name": 1, "email": 1}
-        )
-        if agent:
-            balance["agent_name"] = agent.get("name", "")
-            balance["agent_email"] = agent.get("email", "")
-    
-    return balances
-
-
-@financial_router.put("/company/agent-balances/{agent_id}/adjust")
-async def adjust_agent_balance(
+@financial_router.get("/agent/{agent_id}/transactions")
+async def get_agent_transactions(
     agent_id: str,
-    adjust_data: AgentBalanceAdjustRequest,
-    request: Request,
-    current_admin: dict = Depends(get_company_admin)
+    limit: int = Query(default=50, le=200),
+    current_user: dict = Depends(require_financial_access)
 ):
-    """Adjust an agent's credit limit or reset balance (Admin only)"""
-    admin_company = current_admin.get("company_id")
+    """Get agent's financial transaction history"""
+    company_id = current_user.get("company_id")
     
-    # Find agent
-    agent = await db.users.find_one({"user_id": agent_id}, {"_id": 0})
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent non trouvé")
-    
-    # Verify company access
-    if current_admin.get("role") != UserRole.SUPER_ADMIN:
-        if agent.get("company_id") != admin_company:
-            raise HTTPException(status_code=403, detail="Accès non autorisé à cet agent")
-    
-    company_id = agent.get("company_id")
-    balance = await get_or_create_agent_balance(agent_id, company_id)
-    
-    now = get_current_timestamp()
-    update_data = {"updated_at": now}
-    
-    if adjust_data.adjustment_type == "CREDIT_ADD":
-        new_limit = balance.get("credit_limit", 0) + adjust_data.amount
-        new_available = balance.get("available_balance", 0) + adjust_data.amount
-        update_data["credit_limit"] = new_limit
-        update_data["available_balance"] = new_available
-        
-    elif adjust_data.adjustment_type == "CREDIT_REMOVE":
-        new_limit = max(0, balance.get("credit_limit", 0) - adjust_data.amount)
-        new_available = max(0, balance.get("available_balance", 0) - adjust_data.amount)
-        update_data["credit_limit"] = new_limit
-        update_data["available_balance"] = new_available
-        
-    elif adjust_data.adjustment_type == "BALANCE_RESET":
-        update_data["current_balance"] = 0.0
-        update_data["available_balance"] = balance.get("credit_limit", 50000.0)
-        
-    else:
-        raise HTTPException(status_code=400, detail="Type d'ajustement invalide")
-    
-    await db.agent_balances.update_one(
-        {"agent_id": agent_id},
-        {"$set": update_data}
-    )
-    
-    # Log activity
-    await db.activity_logs.insert_one({
-        "log_id": generate_id("log_"),
-        "action_type": "AGENT_BALANCE_ADJUSTED",
-        "entity_type": "agent_balance",
-        "entity_id": agent_id,
-        "performed_by": current_admin.get("user_id"),
-        "company_id": company_id,
-        "metadata": {
-            "adjustment_type": adjust_data.adjustment_type,
-            "amount": adjust_data.amount,
-            "reason": adjust_data.reason
-        },
-        "ip_address": request.client.host if request.client else None,
-        "created_at": now
-    })
-    
-    # Get updated balance
-    updated_balance = await db.agent_balances.find_one({"agent_id": agent_id}, {"_id": 0})
-    
-    return {
-        "message": "Solde ajusté avec succès",
-        "balance": updated_balance
-    }
-
-
-# ============ PAYOUT HISTORY ENDPOINTS ============
-
-@financial_router.get("/company/payouts")
-async def get_company_payouts(
-    current_admin: dict = Depends(get_company_admin),
-    agent_id: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    limit: int = 100
-):
-    """Get payout history for company"""
-    company_id = current_admin.get("company_id")
-    
-    query = {}
-    if current_admin.get("role") != UserRole.SUPER_ADMIN:
-        query["company_id"] = company_id
-    
-    if agent_id:
-        query["agent_id"] = agent_id
-    
-    if start_date:
-        query["paid_at"] = {"$gte": start_date}
-    if end_date:
-        if "paid_at" in query:
-            query["paid_at"]["$lte"] = end_date
-        else:
-            query["paid_at"] = {"$lte": end_date}
-    
-    payouts = await db.ticket_payouts.find(
-        query, {"_id": 0}
-    ).sort("paid_at", -1).limit(limit).to_list(limit)
-    
-    return payouts
-
-
-@financial_router.get("/company/winning-tickets")
-async def get_winning_tickets(
-    current_admin: dict = Depends(get_company_admin),
-    status: Optional[str] = None,  # WINNER, PAID
-    agent_id: Optional[str] = None,
-    start_date: Optional[str] = None,
-    limit: int = 100
-):
-    """Get all winning tickets for company"""
-    company_id = current_admin.get("company_id")
-    
-    query = {"status": {"$in": [TicketStatus.WINNER.value, TicketStatus.PAID.value]}}
-    
-    if current_admin.get("role") != UserRole.SUPER_ADMIN:
-        query["company_id"] = company_id
-    
-    if status:
-        query["status"] = status
-    
-    if agent_id:
-        query["agent_id"] = agent_id
-    
-    if start_date:
-        query["created_at"] = {"$gte": start_date}
-    
-    tickets = await db.lottery_transactions.find(
-        query, {"_id": 0}
+    transactions = await db.agent_financial_transactions.find(
+        {"agent_id": agent_id, "company_id": company_id},
+        {"_id": 0}
     ).sort("created_at", -1).limit(limit).to_list(limit)
     
-    return tickets
+    return transactions
 
 
-# ============ AUTOMATIC WINNING DETECTION ============
+@financial_router.get("/agents/balances")
+async def get_all_agents_balances(
+    current_user: dict = Depends(require_admin)
+):
+    """Get all agents' balances for the company"""
+    company_id = current_user.get("company_id")
+    
+    agents = await db.users.find(
+        {
+            "company_id": company_id,
+            "role": {"$in": [UserRole.AGENT_POS, "AGENT_POS", "VENDEUR"]}
+        },
+        {"_id": 0, "user_id": 1, "name": 1, "email": 1, "status": 1}
+    ).to_list(500)
+    
+    agent_ids = [a["user_id"] for a in agents]
+    balances = await db.agent_balances.find(
+        {"agent_id": {"$in": agent_ids}},
+        {"_id": 0}
+    ).to_list(500)
+    
+    balance_map = {b["agent_id"]: b for b in balances}
+    
+    result = []
+    for agent in agents:
+        balance = balance_map.get(agent["user_id"], {})
+        result.append({
+            "agent_id": agent["user_id"],
+            "name": agent.get("name", ""),
+            "email": agent.get("email", ""),
+            "status": agent.get("status", "ACTIVE"),
+            "credit_limit": balance.get("credit_limit", 50000.0),
+            "current_balance": balance.get("current_balance", 0.0),
+            "available_balance": balance.get("available_balance", 50000.0),
+            "outstanding_advances": balance.get("outstanding_advances", 0.0),
+            "total_sales": balance.get("total_sales", 0.0),
+            "total_payouts": balance.get("total_payouts", 0.0)
+        })
+    
+    return result
 
-async def process_all_tickets_for_result(result: dict):
-    """
-    Background task to process all pending tickets for a new result.
-    Called when Super Admin enters a new result.
-    """
-    lottery_id = result.get("lottery_id")
-    draw_date = result.get("draw_date")
-    draw_name = result.get("draw_name")
-    
-    # Find all pending tickets for this draw
-    pending_tickets = await db.lottery_transactions.find({
-        "lottery_id": lottery_id,
-        "draw_date": draw_date,
-        "draw_name": draw_name,
-        "status": TicketStatus.PENDING_RESULT.value
-    }, {"_id": 0}).to_list(10000)
-    
-    if not pending_tickets:
-        return {"processed": 0, "winners": 0}
-    
-    winners_count = 0
+
+@financial_router.put("/agent/{agent_id}/credit-limit")
+async def update_agent_credit_limit(
+    agent_id: str,
+    request: Request,
+    credit_limit: float = Query(..., gt=0),
+    current_user: dict = Depends(require_admin)
+):
+    """Update agent's credit limit"""
+    company_id = current_user.get("company_id")
     now = get_current_timestamp()
     
-    for ticket in pending_tickets:
-        try:
-            win_result = await process_ticket_winning(ticket, result)
-            
-            # Update ticket
-            await db.lottery_transactions.update_one(
-                {"ticket_id": ticket["ticket_id"]},
-                {"$set": {
-                    "status": win_result["status"],
-                    "win_amount": win_result["win_amount"],
-                    "winning_numbers": win_result["winning_numbers"],
-                    "processed_at": now
-                }}
-            )
-            
-            if win_result["is_winner"]:
-                winners_count += 1
-                
-                # Update agent's total winnings
-                await db.agent_balances.update_one(
-                    {"agent_id": ticket.get("agent_id")},
-                    {"$inc": {"total_winnings": win_result["win_amount"]}}
-                )
-        except Exception as e:
-            print(f"Error processing ticket {ticket.get('ticket_id')}: {e}")
-            continue
+    await db.agent_balances.update_one(
+        {"agent_id": agent_id, "company_id": company_id},
+        {
+            "$set": {
+                "credit_limit": credit_limit,
+                "updated_at": now
+            },
+            "$setOnInsert": {
+                "balance_id": generate_id("bal_"),
+                "agent_id": agent_id,
+                "company_id": company_id,
+                "current_balance": 0.0,
+                "available_balance": credit_limit,
+                "total_advances": 0.0,
+                "outstanding_advances": 0.0,
+                "total_sales": 0.0,
+                "total_payouts": 0.0,
+                "created_at": now
+            }
+        },
+        upsert=True
+    )
     
-    return {
-        "processed": len(pending_tickets),
-        "winners": winners_count,
-        "result_id": result.get("result_id"),
-        "lottery_id": lottery_id,
-        "draw_date": draw_date,
-        "draw_name": draw_name
-    }
+    return {"message": f"Limite de crédit mise à jour: {credit_limit:.2f} HTG"}
 
 
-@financial_router.post("/admin/process-results/{result_id}")
-async def trigger_result_processing(
-    result_id: str,
-    background_tasks: BackgroundTasks,
-    current_admin: dict = Depends(get_company_admin)
+# ============================================================================
+# 4. FINANCIAL REPORTS & ANALYTICS
+# ============================================================================
+
+@financial_router.get("/reports/daily-summary")
+async def get_daily_summary(
+    date: Optional[str] = None,
+    current_user: dict = Depends(require_financial_access)
 ):
-    """
-    Manually trigger processing of tickets for a specific result.
-    Usually called automatically when results are entered.
-    """
-    if current_admin.get("role") != UserRole.SUPER_ADMIN:
-        raise HTTPException(status_code=403, detail="Accès réservé au Super Admin")
+    """Get daily financial summary"""
+    company_id = current_user.get("company_id")
+    target_date = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
     
-    result = await db.global_results.find_one({"result_id": result_id}, {"_id": 0})
-    if not result:
-        raise HTTPException(status_code=404, detail="Résultat non trouvé")
-    
-    # Process in background
-    background_tasks.add_task(process_all_tickets_for_result, result)
-    
-    return {
-        "message": "Traitement des tickets lancé en arrière-plan",
-        "result_id": result_id,
-        "lottery_name": result.get("lottery_name"),
-        "draw_date": result.get("draw_date"),
-        "draw_name": result.get("draw_name")
-    }
-
-
-# ============ FINANCIAL REPORTS ============
-
-@financial_router.get("/company/financial-summary")
-async def get_financial_summary(
-    current_admin: dict = Depends(get_company_admin),
-    period: str = "today"  # today, week, month
-):
-    """Get financial summary for company"""
-    company_id = current_admin.get("company_id")
-    
-    # Calculate date range
-    now = datetime.now(timezone.utc)
-    if period == "today":
-        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-    elif period == "week":
-        start_date = (now - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-    elif period == "month":
-        start_date = (now - timedelta(days=30)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-    else:
-        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-    
-    # Build query
-    query = {"created_at": {"$gte": start_date}}
-    if current_admin.get("role") != UserRole.SUPER_ADMIN:
-        query["company_id"] = company_id
-    
-    # Aggregate sales
+    # Get sales
     sales_pipeline = [
-        {"$match": query},
+        {"$match": {
+            "company_id": company_id,
+            "created_at": {"$regex": f"^{target_date}"}
+        }},
         {"$group": {
             "_id": None,
-            "total_tickets": {"$sum": 1},
             "total_sales": {"$sum": "$total_amount"},
-            "total_wins": {"$sum": {"$cond": [{"$eq": ["$status", "WINNER"]}, "$win_amount", 0]}},
-            "winners_count": {"$sum": {"$cond": [{"$in": ["$status", ["WINNER", "PAID"]]}, 1, 0]}},
-            "paid_count": {"$sum": {"$cond": [{"$eq": ["$status", "PAID"]}, 1, 0]}},
-            "voided_count": {"$sum": {"$cond": [{"$eq": ["$status", "VOID"]}, 1, 0]}}
+            "ticket_count": {"$sum": 1},
+            "avg_ticket": {"$avg": "$total_amount"}
         }}
     ]
-    
     sales_result = await db.lottery_transactions.aggregate(sales_pipeline).to_list(1)
     
-    # Aggregate payouts
-    payout_query = {"paid_at": {"$gte": start_date}}
-    if current_admin.get("role") != UserRole.SUPER_ADMIN:
-        payout_query["company_id"] = company_id
-    
-    payout_pipeline = [
-        {"$match": payout_query},
+    # Get payouts
+    payouts_pipeline = [
+        {"$match": {
+            "company_id": company_id,
+            "paid_at": {"$regex": f"^{target_date}"}
+        }},
         {"$group": {
             "_id": None,
-            "total_payouts": {"$sum": "$payout_amount"},
+            "total_payouts": {"$sum": "$amount_paid"},
             "payout_count": {"$sum": 1}
         }}
     ]
+    payouts_result = await db.payouts.aggregate(payouts_pipeline).to_list(1)
     
-    payout_result = await db.ticket_payouts.aggregate(payout_pipeline).to_list(1)
+    # Get winning tickets
+    winners_pipeline = [
+        {"$match": {
+            "company_id": company_id,
+            "status": "WINNER",
+            "updated_at": {"$regex": f"^{target_date}"}
+        }},
+        {"$group": {
+            "_id": None,
+            "total_winnings": {"$sum": "$win_amount"},
+            "winner_count": {"$sum": 1}
+        }}
+    ]
+    winners_result = await db.lottery_transactions.aggregate(winners_pipeline).to_list(1)
     
-    # Build summary
-    sales = sales_result[0] if sales_result else {}
-    payouts = payout_result[0] if payout_result else {}
+    total_sales = sales_result[0]["total_sales"] if sales_result else 0
+    total_payouts = payouts_result[0]["total_payouts"] if payouts_result else 0
+    total_winnings = winners_result[0]["total_winnings"] if winners_result else 0
     
-    total_sales = sales.get("total_sales", 0.0)
-    total_payouts = payouts.get("total_payouts", 0.0)
+    gross_profit = total_sales - total_payouts
     
     return {
-        "period": period,
-        "start_date": start_date,
-        "total_tickets": sales.get("total_tickets", 0),
-        "total_sales": total_sales,
-        "total_wins_amount": sales.get("total_wins", 0.0),
-        "winners_count": sales.get("winners_count", 0),
-        "paid_count": sales.get("paid_count", 0),
-        "voided_count": sales.get("voided_count", 0),
-        "total_payouts": total_payouts,
-        "payout_count": payouts.get("payout_count", 0),
-        "net_revenue": total_sales - total_payouts,
-        "profit_margin": ((total_sales - total_payouts) / total_sales * 100) if total_sales > 0 else 0
+        "date": target_date,
+        "company_id": company_id,
+        "sales": {
+            "total": total_sales,
+            "ticket_count": sales_result[0]["ticket_count"] if sales_result else 0,
+            "average_ticket": sales_result[0]["avg_ticket"] if sales_result else 0
+        },
+        "payouts": {
+            "total": total_payouts,
+            "count": payouts_result[0]["payout_count"] if payouts_result else 0
+        },
+        "winners": {
+            "total_winnings": total_winnings,
+            "count": winners_result[0]["winner_count"] if winners_result else 0,
+            "unpaid": total_winnings - total_payouts
+        },
+        "profit": {
+            "gross": gross_profit,
+            "net": total_sales - total_winnings,
+            "margin": (gross_profit / total_sales * 100) if total_sales > 0 else 0
+        }
+    }
+
+
+@financial_router.get("/reports/agent-performance")
+async def get_agent_performance(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: dict = Depends(require_admin)
+):
+    """Get performance report for all agents"""
+    company_id = current_user.get("company_id")
+    
+    if not end_date:
+        end_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if not start_date:
+        start_date = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d")
+    
+    pipeline = [
+        {"$match": {
+            "company_id": company_id,
+            "created_at": {"$gte": start_date, "$lte": f"{end_date}T23:59:59"}
+        }},
+        {"$group": {
+            "_id": "$agent_id",
+            "agent_name": {"$first": "$agent_name"},
+            "total_sales": {"$sum": "$total_amount"},
+            "ticket_count": {"$sum": 1},
+            "avg_ticket": {"$avg": "$total_amount"},
+            "days_active": {"$addToSet": {"$substr": ["$created_at", 0, 10]}}
+        }},
+        {"$project": {
+            "agent_id": "$_id",
+            "agent_name": 1,
+            "total_sales": 1,
+            "ticket_count": 1,
+            "avg_ticket": 1,
+            "days_active": {"$size": "$days_active"}
+        }},
+        {"$sort": {"total_sales": -1}}
+    ]
+    
+    agents = await db.lottery_transactions.aggregate(pipeline).to_list(100)
+    
+    agent_ids = [a["agent_id"] for a in agents]
+    balances = await db.agent_balances.find(
+        {"agent_id": {"$in": agent_ids}},
+        {"_id": 0, "agent_id": 1, "current_balance": 1, "outstanding_advances": 1}
+    ).to_list(100)
+    balance_map = {b["agent_id"]: b for b in balances}
+    
+    for agent in agents:
+        balance = balance_map.get(agent["agent_id"], {})
+        agent["current_balance"] = balance.get("current_balance", 0)
+        agent["outstanding_advances"] = balance.get("outstanding_advances", 0)
+        agent["sales_per_day"] = agent["total_sales"] / agent["days_active"] if agent["days_active"] > 0 else 0
+    
+    return {
+        "period": {"start": start_date, "end": end_date},
+        "agents": agents,
+        "totals": {
+            "total_sales": sum(a["total_sales"] for a in agents),
+            "total_tickets": sum(a["ticket_count"] for a in agents),
+            "agent_count": len(agents)
+        }
+    }
+
+
+@financial_router.get("/reports/profit-loss")
+async def get_profit_loss_report(
+    start_date: str,
+    end_date: str,
+    current_user: dict = Depends(require_admin)
+):
+    """Get profit & loss report for a period"""
+    company_id = current_user.get("company_id")
+    
+    # Daily sales
+    sales_pipeline = [
+        {"$match": {
+            "company_id": company_id,
+            "created_at": {"$gte": start_date, "$lte": f"{end_date}T23:59:59"}
+        }},
+        {"$group": {
+            "_id": {"$substr": ["$created_at", 0, 10]},
+            "sales": {"$sum": "$total_amount"},
+            "tickets": {"$sum": 1}
+        }},
+        {"$sort": {"_id": 1}}
+    ]
+    daily_sales = await db.lottery_transactions.aggregate(sales_pipeline).to_list(100)
+    
+    # Daily payouts
+    payouts_pipeline = [
+        {"$match": {
+            "company_id": company_id,
+            "paid_at": {"$gte": start_date, "$lte": f"{end_date}T23:59:59"}
+        }},
+        {"$group": {
+            "_id": {"$substr": ["$paid_at", 0, 10]},
+            "payouts": {"$sum": "$amount_paid"}
+        }},
+        {"$sort": {"_id": 1}}
+    ]
+    daily_payouts = await db.payouts.aggregate(payouts_pipeline).to_list(100)
+    
+    sales_map = {s["_id"]: s for s in daily_sales}
+    payouts_map = {p["_id"]: p for p in daily_payouts}
+    
+    all_dates = sorted(set(list(sales_map.keys()) + list(payouts_map.keys())))
+    
+    daily_data = []
+    running_profit = 0
+    
+    for date in all_dates:
+        sales = sales_map.get(date, {}).get("sales", 0)
+        payouts = payouts_map.get(date, {}).get("payouts", 0)
+        profit = sales - payouts
+        running_profit += profit
+        
+        daily_data.append({
+            "date": date,
+            "sales": sales,
+            "payouts": payouts,
+            "profit": profit,
+            "running_profit": running_profit,
+            "margin": (profit / sales * 100) if sales > 0 else 0
+        })
+    
+    total_sales = sum(d["sales"] for d in daily_data)
+    total_payouts = sum(d["payouts"] for d in daily_data)
+    total_profit = total_sales - total_payouts
+    
+    return {
+        "period": {"start": start_date, "end": end_date},
+        "summary": {
+            "total_sales": total_sales,
+            "total_payouts": total_payouts,
+            "gross_profit": total_profit,
+            "margin": (total_profit / total_sales * 100) if total_sales > 0 else 0,
+            "days": len(daily_data)
+        },
+        "daily": daily_data
+    }
+
+
+@financial_router.get("/dashboard/stats")
+async def get_financial_dashboard_stats(
+    current_user: dict = Depends(require_financial_access)
+):
+    """Get real-time financial dashboard statistics"""
+    company_id = current_user.get("company_id")
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+    month_start = now.replace(day=1).strftime("%Y-%m-%d")
+    
+    # Today's stats
+    today_sales = await db.lottery_transactions.aggregate([
+        {"$match": {"company_id": company_id, "created_at": {"$regex": f"^{today}"}}},
+        {"$group": {"_id": None, "sales": {"$sum": "$total_amount"}, "tickets": {"$sum": 1}}}
+    ]).to_list(1)
+    
+    today_payouts = await db.payouts.aggregate([
+        {"$match": {"company_id": company_id, "paid_at": {"$regex": f"^{today}"}}},
+        {"$group": {"_id": None, "payouts": {"$sum": "$amount_paid"}, "count": {"$sum": 1}}}
+    ]).to_list(1)
+    
+    # Monthly stats
+    month_sales = await db.lottery_transactions.aggregate([
+        {"$match": {"company_id": company_id, "created_at": {"$gte": month_start}}},
+        {"$group": {"_id": None, "sales": {"$sum": "$total_amount"}, "tickets": {"$sum": 1}}}
+    ]).to_list(1)
+    
+    month_payouts = await db.payouts.aggregate([
+        {"$match": {"company_id": company_id, "paid_at": {"$gte": month_start}}},
+        {"$group": {"_id": None, "payouts": {"$sum": "$amount_paid"}}}
+    ]).to_list(1)
+    
+    # Open registers
+    open_registers = await db.cash_registers.count_documents({"company_id": company_id, "status": "OPEN"})
+    
+    # Pending payouts
+    pending_payouts = await db.lottery_transactions.aggregate([
+        {"$match": {"company_id": company_id, "status": "WINNER", "is_paid": {"$ne": True}}},
+        {"$group": {"_id": None, "total": {"$sum": "$win_amount"}, "count": {"$sum": 1}}}
+    ]).to_list(1)
+    
+    # Outstanding advances
+    advances = await db.agent_balances.aggregate([
+        {"$match": {"company_id": company_id}},
+        {"$group": {"_id": None, "total": {"$sum": "$outstanding_advances"}}}
+    ]).to_list(1)
+    
+    return {
+        "today": {
+            "sales": today_sales[0]["sales"] if today_sales else 0,
+            "tickets": today_sales[0]["tickets"] if today_sales else 0,
+            "payouts": today_payouts[0]["payouts"] if today_payouts else 0,
+            "payout_count": today_payouts[0]["count"] if today_payouts else 0,
+            "profit": (today_sales[0]["sales"] if today_sales else 0) - (today_payouts[0]["payouts"] if today_payouts else 0)
+        },
+        "month": {
+            "sales": month_sales[0]["sales"] if month_sales else 0,
+            "tickets": month_sales[0]["tickets"] if month_sales else 0,
+            "payouts": month_payouts[0]["payouts"] if month_payouts else 0,
+            "profit": (month_sales[0]["sales"] if month_sales else 0) - (month_payouts[0]["payouts"] if month_payouts else 0)
+        },
+        "operations": {
+            "open_registers": open_registers,
+            "pending_payouts_amount": pending_payouts[0]["total"] if pending_payouts else 0,
+            "pending_payouts_count": pending_payouts[0]["count"] if pending_payouts else 0,
+            "outstanding_advances": advances[0]["total"] if advances else 0
+        },
+        "generated_at": now.isoformat()
     }
