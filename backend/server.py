@@ -58,6 +58,7 @@ from notification_routes import notification_router, set_notification_db
 from draw_times_routes import draw_times_router, set_draw_times_db
 from realtime_sync_routes import realtime_sync_router, set_realtime_sync_db
 from security_routes import security_api_router, set_security_api_db
+from limits_routes import limits_router, set_limits_db
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -811,6 +812,8 @@ async def lottery_sell_redirect(
     current_user: dict = Depends(get_current_user)
 ):
     """Convenience endpoint for selling lottery tickets - redirects to vendeur/sell"""
+    from limits_routes import validate_bet_limits
+    
     vendeur_id = current_user.get("user_id")
     company_id = current_user.get("company_id")
     succursale_id = current_user.get("succursale_id")
@@ -835,6 +838,28 @@ async def lottery_sell_redirect(
     })
     if not company_lottery:
         raise HTTPException(status_code=403, detail="Loterie non activée")
+    
+    # PHASE 3: Validate betting limits before creating ticket
+    plays_data = [{"numbers": p.numbers, "bet_type": p.bet_type, "amount": p.amount} for p in sell_data.plays]
+    limit_check = await validate_bet_limits(
+        lottery_id=sell_data.lottery_id,
+        draw_name=sell_data.draw_name,
+        draw_date=sell_data.draw_date,
+        plays=plays_data
+    )
+    
+    if not limit_check["allowed"]:
+        # Build error message
+        errors = []
+        for blocked in limit_check.get("blocked_plays", []):
+            errors.append(blocked.get("reason", f"Numéro {blocked.get('number')} bloqué"))
+        for exceeded in limit_check.get("exceeded_plays", []):
+            errors.append(exceeded.get("reason", f"Limite dépassée pour {exceeded.get('number')}"))
+        
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Mise refusée: {'; '.join(errors)}"
+        )
     
     # Get company
     company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
@@ -1104,6 +1129,7 @@ set_notification_db(db)
 set_draw_times_db(db)
 set_realtime_sync_db(db)
 set_security_api_db(db)
+set_limits_db(db)
 set_financial_db(db)
 
 # Initialize staff endpoints with dependency
@@ -1174,6 +1200,9 @@ app.include_router(realtime_sync_router)
 
 # Include security router (audit logs, fraud detection)
 app.include_router(security_api_router)
+
+# Phase 3: Include limits router (intelligent betting limits)
+app.include_router(limits_router)
 
 # Include financial router (cash register, reconciliation, agent credits)
 app.include_router(financial_router)

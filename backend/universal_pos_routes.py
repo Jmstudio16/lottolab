@@ -495,6 +495,28 @@ async def sell_lottery_ticket(
     # Get company and agent info
     company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
     
+    # PHASE 3: Validate betting limits before creating ticket
+    from limits_routes import validate_bet_limits
+    limit_check = await validate_bet_limits(
+        lottery_id=sale_data.lottery_id,
+        draw_name=sale_data.draw_name,
+        draw_date=sale_data.draw_date,
+        plays=validated_plays
+    )
+    
+    if not limit_check["allowed"]:
+        # Build error message
+        errors = []
+        for blocked in limit_check.get("blocked_plays", []):
+            errors.append(blocked.get("reason", f"Numéro {blocked.get('number')} bloqué"))
+        for exceeded in limit_check.get("exceeded_plays", []):
+            errors.append(exceeded.get("reason", f"Limite dépassée pour {exceeded.get('number')}"))
+        
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Mise refusée: {'; '.join(errors)}"
+        )
+    
     # Check agent balance (credit limit)
     agent_balance = await db.agent_balances.find_one({"agent_id": agent_id}, {"_id": 0})
     
