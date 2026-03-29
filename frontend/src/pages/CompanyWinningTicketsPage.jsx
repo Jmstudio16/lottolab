@@ -27,6 +27,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { 
+  WinningTicketDetailModal, 
+  WinningTicketsTable 
+} from '@/components/WinningTicketDetail';
 
 export const CompanyWinningTicketsPage = () => {
   const [tickets, setTickets] = useState([]);
@@ -433,92 +437,23 @@ export const CompanyWinningTicketsPage = () => {
           )}
         </div>
 
-        {/* Ticket Detail Modal */}
-        <Dialog open={showTicketModal} onOpenChange={setShowTicketModal}>
-          <DialogContent className="bg-slate-800 border-slate-700 text-white max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Ticket className="w-5 h-5 text-yellow-400" />
-                Détails du Ticket
-              </DialogTitle>
-            </DialogHeader>
-            
-            {selectedTicket && (
-              <div className="space-y-4 mt-4">
-                <div className="bg-slate-900/50 p-4 rounded-lg text-center">
-                  <p className="text-2xl font-mono font-bold text-yellow-400">{selectedTicket.ticket_code}</p>
-                  <p className="text-sm text-slate-400">Code de vérification: {selectedTicket.verification_code}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-slate-400">Loterie</p>
-                    <p className="text-white">{selectedTicket.lottery_name}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400">Tirage</p>
-                    <p className="text-white">{selectedTicket.draw_name} - {selectedTicket.draw_date}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-xs text-slate-400">Numéros joués</p>
-                  <div className="space-y-1">
-                    {selectedTicket.numbers_played?.map((play, idx) => (
-                      <div key={idx} className="flex justify-between bg-slate-900/30 px-3 py-2 rounded">
-                        <span className="font-mono text-white">{play.numbers}</span>
-                        <span className="text-slate-400">{play.bet_type}</span>
-                        <span className="font-mono text-yellow-400">{formatCurrency(play.amount)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {selectedTicket.winning_numbers && (
-                  <div className="bg-green-500/10 border border-green-500/30 p-3 rounded-lg">
-                    <p className="text-xs text-green-400 mb-1">Numéros gagnants</p>
-                    <p className="font-mono text-lg text-green-400">
-                      {typeof selectedTicket.winning_numbers === 'object' 
-                        ? Object.values(selectedTicket.winning_numbers).filter(Boolean).join(' - ')
-                        : selectedTicket.winning_numbers}
-                    </p>
-                  </div>
-                )}
-
-                <div className={`p-4 rounded-lg text-center ${
-                  selectedTicket.is_winner 
-                    ? 'bg-green-500/20 border border-green-500/30' 
-                    : 'bg-slate-700/50'
-                }`}>
-                  <p className="text-sm text-slate-400">Statut</p>
-                  <p className={`text-xl font-bold ${
-                    selectedTicket.is_winner ? 'text-green-400' : 'text-slate-400'
-                  }`}>
-                    {selectedTicket.message}
-                  </p>
-                  {selectedTicket.is_winner && (
-                    <p className="text-2xl font-bold text-green-400 mt-2">
-                      {formatCurrency(selectedTicket.payout_amount)}
-                    </p>
-                  )}
-                </div>
-
-                {selectedTicket.can_be_paid && (
-                  <Button
-                    onClick={() => {
-                      setShowTicketModal(false);
-                      openPayoutModal(selectedTicket);
-                    }}
-                    className="w-full bg-green-600 hover:bg-green-700"
-                  >
-                    <Banknote className="w-4 h-4 mr-2" />
-                    Procéder au Paiement
-                  </Button>
-                )}
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
+        {/* Ticket Detail Modal - Using new WinningTicketDetailModal */}
+        <WinningTicketDetailModal
+          open={showTicketModal}
+          onClose={() => setShowTicketModal(false)}
+          ticket={selectedTicket}
+          companyName="LOTO PAM CENTER"
+          onPrint={() => {
+            // TODO: Implement print
+            toast.info('Impression en cours...');
+          }}
+          onPay={() => {
+            setShowTicketModal(false);
+            if (selectedTicket) {
+              openPayoutModal(selectedTicket);
+            }
+          }}
+        />
 
         {/* Payout Modal */}
         <Dialog open={showPayoutModal} onOpenChange={setShowPayoutModal}>
