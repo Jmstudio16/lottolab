@@ -863,6 +863,7 @@ async def update_lottery_flags(
 ):
     """
     Update lottery flag configurations globally.
+    SYNC: Propagates flag_type changes to all companies.
     Accepts: { "assignments": [{ "lottery_id": "...", "flag_type": "HAITI" | "USA", "is_active": true/false }] }
     """
     if current_user["role"] != UserRole.SUPER_ADMIN:
@@ -896,6 +897,26 @@ async def update_lottery_flags(
         
         if result.modified_count > 0:
             updated_count += 1
+            
+            # SYNC flag_type to all company_lotteries
+            await db.company_lotteries.update_many(
+                {"lottery_id": lottery_id},
+                {"$set": {
+                    "flag_type": flag_type,
+                    "updated_at": now
+                }}
+            )
+            
+            # If deactivated globally, disable for all companies
+            if not is_active:
+                await db.company_lotteries.update_many(
+                    {"lottery_id": lottery_id},
+                    {"$set": {
+                        "is_enabled": False,
+                        "disabled_by_super_admin": True,
+                        "updated_at": now
+                    }}
+                )
     
     # Log activity
     await log_activity(
@@ -917,6 +938,7 @@ async def toggle_lottery_global(
 ):
     """
     Toggle enable/disable for a specific lottery globally.
+    SYNC: Propagates to all companies automatically.
     """
     if current_user["role"] != UserRole.SUPER_ADMIN:
         raise HTTPException(status_code=403, detail="Access denied")
@@ -935,7 +957,7 @@ async def toggle_lottery_global(
     current_active = lottery.get("is_active_global", True)
     new_active = not current_active
     
-    # Update
+    # Update master lottery
     await db.master_lotteries.update_one(
         {"lottery_id": lottery_id},
         {"$set": {
@@ -944,6 +966,27 @@ async def toggle_lottery_global(
             "updated_by": current_user.get("user_id")
         }}
     )
+    
+    # SYNC TO ALL COMPANIES - Critical for system-wide consistency
+    if new_active:
+        # Activating - enable for all companies that had it
+        await db.company_lotteries.update_many(
+            {"lottery_id": lottery_id, "disabled_by_super_admin": True},
+            {"$set": {
+                "disabled_by_super_admin": False,
+                "updated_at": now
+            }}
+        )
+    else:
+        # Deactivating - FORCE disable for ALL companies
+        await db.company_lotteries.update_many(
+            {"lottery_id": lottery_id},
+            {"$set": {
+                "is_enabled": False,
+                "disabled_by_super_admin": True,
+                "updated_at": now
+            }}
+        )
     
     return {"lottery_id": lottery_id, "is_active": new_active, "lottery_name": lottery.get("lottery_name")}
 

@@ -648,7 +648,8 @@ async def update_global_schedule(
     
     update_data["updated_at"] = get_current_timestamp()
     
-    result = await db.master_lotteries.update_one(
+    # FIX: Use global_schedules collection, not master_lotteries
+    result = await db.global_schedules.update_one(
         {"schedule_id": schedule_id},
         {"$set": update_data}
     )

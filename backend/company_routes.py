@@ -617,6 +617,50 @@ async def delete_agent(
     
     return {"message": "Agent deleted successfully"}
 
+
+# ============ LOTTERIES (READ FROM GLOBAL with Company Customization) ============
+@company_router.get("/lotteries")
+async def get_company_lotteries(current_user: dict = Depends(get_current_user)):
+    """
+    Get lotteries for this company.
+    Returns master_lotteries filtered by is_active_global=True,
+    with company-specific customizations from company_lotteries.
+    """
+    require_company_access(current_user)
+    company_id = current_user["company_id"]
+    
+    # Get all globally active lotteries
+    master_lotteries = await db.master_lotteries.find(
+        {"is_active_global": True},
+        {"_id": 0}
+    ).to_list(500)
+    
+    # Get company customizations
+    company_customizations = await db.company_lotteries.find(
+        {"company_id": company_id},
+        {"_id": 0}
+    ).to_list(500)
+    
+    customization_map = {cl["lottery_id"]: cl for cl in company_customizations}
+    
+    result = []
+    for lottery in master_lotteries:
+        lottery_id = lottery.get("lottery_id")
+        custom = customization_map.get(lottery_id, {})
+        
+        result.append({
+            **lottery,
+            "is_enabled": custom.get("is_enabled", False),
+            "flag_type": custom.get("flag_type") or lottery.get("flag_type", "USA"),
+            "max_bet_per_ticket": custom.get("max_bet_per_ticket", 10000),
+            "max_bet_per_number": custom.get("max_bet_per_number", 5000),
+            "disabled_by_super_admin": custom.get("disabled_by_super_admin", False),
+            "can_enable": lottery.get("is_active_global", False) and not custom.get("disabled_by_super_admin", False)
+        })
+    
+    return result
+
+
 # ============ SCHEDULES (READ-ONLY - Global schedules managed by Super Admin) ============
 @company_router.get("/schedules")
 async def get_schedules(current_user: dict = Depends(get_current_user)):
