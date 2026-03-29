@@ -122,7 +122,7 @@ Application de loterie professionnelle pour Haïti avec système POS, gestion de
 - Configuration via modal
 - Blocage/déblocage via interface
 
-### MEGA-PROMPT: Moteur Central de Calcul (✅ EN COURS - 29/03/2026)
+### MEGA-PROMPT: Moteur Central de Calcul (✅ COMPLÉTÉ - 29/03/2026)
 
 #### LOT 1: Moteur Central de Calcul (✅ COMPLÉTÉ)
 - Fichier: `/app/backend/winning_engine.py`
@@ -147,11 +147,22 @@ Application de loterie professionnelle pour Haïti avec système POS, gestion de
 - Composants: WinningNumberBadge, WinningNumbersRow, WinningTicketHighlight
 - Intégré dans: SuperGlobalResultsPage.js
 
-#### LOT 4: Commissions & Impression (🔄 À FAIRE)
-- [ ] Commissions = 0 si non configurées
-- [ ] Impression ticket fonctionnelle
-- [ ] Impression ticket gagnant avec détails
-- [ ] Respect strict hiérarchie des rôles
+#### LOT 4: Commissions & Impression (✅ COMPLÉTÉ - 29/03/2026)
+- ✅ Commissions = 0 HTG par défaut si non configurées (pas de fallback à 10%)
+  - `vendeur_routes.py` lignes 153-159: commission_rate = 0 par défaut
+  - `supervisor_routes.py` ligne 78: agent["commission_percent"] = 0
+- ✅ Endpoint `/api/tickets/check` retourne all_plays_calculated avec:
+  - is_winner, winning_lot, multiplier, gain pour chaque ligne
+  - winning_numbers_parsed avec first, second, third
+- ✅ Impression ticket gagnant avec détails (ticket_template.py):
+  - Fond vert (#e8f5e9) pour lignes gagnantes
+  - Format calcul: mise×multiplicateur=gain (ex: 25×60=1500)
+  - Labels lot: 1er/2e/3e Lot • GAGNANT
+  - Section TOTAL MISE
+  - Section TOTAL GAIN (fond vert #c8e6c9)
+  - STATUT : ★ GAGNANT ★
+- ✅ Modal WinningTicketDetail.jsx avec affichage complet des gains
+- Tests: iteration_43.json (100% - UI), iteration_44.json (100% - Backend)
 
 ### PHASE 4: Communication SMS (🔄 À FAIRE)
 - [ ] Intégration Twilio
