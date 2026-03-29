@@ -38,56 +38,51 @@ import Logo from './Logo';
 import UserAvatar from './UserAvatar';
 
 // Menu items will be generated with translation keys
+// Super Admin Menu - Cleaned up
+// REMOVED: Limites Intelligentes (moved to Company Admin)
+// REMOVED: Gestion Financière (moved to Company Admin)
+// REMOVED: LOTO PAM Online section (single platform: LOTTOLAB only)
 const getSuperAdminMenu = (t) => [
   { path: '/super/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
   { path: '/super/lottery-catalog', label: t('nav.lotteryCatalog'), icon: Globe },
   { path: '/super/lottery-flags', label: t('nav.lotteryFlags', 'Config Drapeaux'), icon: Flag },
   { path: '/super/global-schedules', label: t('nav.globalSchedules'), icon: Clock },
   { path: '/super/draw-times', label: t('nav.drawTimes', 'Heures de Tirage'), icon: CalendarClock },
-  { path: '/super/security', label: t('nav.security', 'Sécurité'), icon: Shield },
-  { path: '/super/limits', label: t('nav.limits', 'Limites Intelligentes'), icon: AlertTriangle },
-  { path: '/admin/financial', label: t('nav.financial', 'Gestion Financière'), icon: Wallet },
+  { path: '/super/security', label: t('nav.security', 'Sécurité & Anti-Fraude'), icon: Shield },
   { path: '/super/publish-results', label: t('nav.publishResults', 'Publier Résultats'), icon: Trophy },
   { path: '/super/scheduled-results', label: t('nav.scheduledResults', 'Résultats Programmés'), icon: Zap },
-  { path: '/super/companies', label: t('nav.companies'), icon: Building2 },
-  { path: '/super/users', label: t('nav.users'), icon: Users },
-  { path: '/super/plans', label: t('nav.plans'), icon: Package },
+  { path: '/super/companies', label: t('nav.companies', 'Entreprises SaaS'), icon: Building2 },
+  { path: '/super/users', label: t('nav.users', 'Users Management'), icon: Users },
+  { path: '/super/plans', label: t('nav.plans', 'Plans & Licences'), icon: Package },
   { path: '/super/activity-logs', label: t('nav.activityLogs'), icon: Activity },
-  { path: '/super/settings', label: t('nav.settings'), icon: Settings },
-  { divider: true, label: 'LOTO PAM Online' },
-  { path: '/super/online/dashboard', label: t('nav.lotopamDashboard', 'LOTO PAM Dashboard'), icon: Store },
-  { path: '/super/online/players', label: t('nav.onlinePlayers', 'Joueurs Online'), icon: Users },
-  { path: '/super/online/deposits', label: t('financial.deposit'), icon: Wallet },
-  { path: '/super/online/withdrawals', label: t('financial.withdraw'), icon: Banknote },
-  { path: '/super/online/tickets', label: t('nav.onlineTickets', 'Tickets Online'), icon: Ticket },
-  { path: '/super/online/kyc', label: t('lotopam.kyc'), icon: Award },
-  { path: '/super/online/settings', label: t('nav.lotopamConfig', 'Config LOTO PAM'), icon: Sliders },
+  { path: '/super/settings', label: t('nav.settings', 'System Settings'), icon: Settings },
 ];
 
+// Company Admin Menu - Complete & Organized
 const getCompanyAdminMenu = (t) => [
   { path: '/company/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
-  { path: '/company/succursales', label: t('nav.branches'), icon: Store },
-  { path: '/company/lotteries', label: t('nav.lotteryCatalog'), icon: Ticket },
+  { path: '/company/succursales', label: t('nav.branches', 'Succursales'), icon: Store },
+  { path: '/company/lotteries', label: t('nav.lotteryCatalog', 'Catalogue Loteries'), icon: Ticket },
   { path: '/company/lottery-flags', label: t('nav.lotteryFlags', 'Config Drapeaux'), icon: Flag },
-  { path: '/company/schedules', label: t('nav.schedules'), icon: CalendarClock },
-  { path: '/company/results', label: t('nav.results'), icon: Trophy },
-  { path: '/company/tickets', label: t('nav.tickets'), icon: FileText },
-  { path: '/company/lots-gagnants', label: t('nav.winningTickets'), icon: Trophy },
-  { path: '/company/deleted-tickets', label: t('nav.deletedTickets', 'Fiche Supprimée'), icon: Trash2 },
+  { path: '/company/schedules', label: t('nav.schedules', 'Horaires'), icon: CalendarClock },
+  { path: '/company/results', label: t('nav.results', 'Résultats'), icon: Trophy },
+  { path: '/company/tickets', label: t('nav.tickets', 'Tickets'), icon: FileText },
+  { path: '/company/lots-gagnants', label: t('nav.winningNumbers', 'Fiches Gagnants'), icon: Trophy },
+  { path: '/company/deleted-tickets', label: t('nav.deletedTickets', 'Fiches Supprimées'), icon: Trash2 },
   { path: '/company/winning-tickets', label: t('nav.winnersPayments', 'Gagnants & Paiements'), icon: Banknote },
   { path: '/company/balance-management', label: t('nav.balanceManagement', 'Gestion Soldes'), icon: Wallet },
-  { path: '/company/exports', label: t('nav.exports', 'Exports & Config'), icon: FileSpreadsheet },
+  { path: '/admin/financial', label: t('nav.financial', 'Gestion Financière'), icon: Wallet },
   { path: '/company/configuration', label: t('nav.configuration', 'Configuration'), icon: Sliders },
   { path: '/company/statistics', label: t('nav.statistics', 'Statistiques'), icon: ChartLine },
   { path: '/company/rapport-ventes', label: t('nav.salesReport', 'Rapport de Ventes'), icon: BarChart3 },
   { path: '/company/daily-reports', label: t('nav.dailyReports', 'Rapports Journaliers'), icon: BarChart3 },
-  { path: '/company/users', label: t('nav.users'), icon: Users },
+  { path: '/company/users', label: t('nav.users', 'Company Users'), icon: Users },
   { path: '/company/activity-logs', label: t('nav.activityLogs'), icon: Activity },
-  { path: '/company/profile-settings', label: t('nav.logoProfile', 'Logo & Profil'), icon: Image },
+  { path: '/company/profile-settings', label: t('nav.companySettings', 'Paramètres Entreprise'), icon: Image },
   { path: '/company/ticket-config', label: 'Config. Ticket', icon: FileText },
   { path: '/company/printer-config', label: 'Config. Imprimante', icon: Monitor },
-  { path: '/company/reports-export', label: 'Rapports Excel', icon: FileSpreadsheet },
-  { path: '/company/settings', label: t('nav.settings'), icon: Settings },
+  { path: '/company/reports-export', label: 'Rapports & Export Excel', icon: FileSpreadsheet },
+  { path: '/company/settings', label: t('nav.settings', 'Settings'), icon: Settings },
 ];
 
 export const Sidebar = ({ role, onNavigate }) => {

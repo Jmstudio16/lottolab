@@ -1,5 +1,5 @@
 import { API_URL } from '@/config/api';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/api/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -38,6 +38,9 @@ const VendeurNouvelleVente = () => {
   // Configurable bet limits from company settings
   const [minBetAmount, setMinBetAmount] = useState(1);
   const [maxBetAmount, setMaxBetAmount] = useState(999999);
+  
+  // Ref for auto-scroll to form on mobile
+  const saleFormRef = useRef(null);
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -246,6 +249,13 @@ const VendeurNouvelleVente = () => {
       return;
     }
     setSelectedLottery(lottery);
+    
+    // Auto-scroll to sale form on mobile for better UX
+    setTimeout(() => {
+      if (saleFormRef.current) {
+        saleFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
   const addToCart = () => {
@@ -614,8 +624,8 @@ const VendeurNouvelleVente = () => {
           </div>
         </div>
 
-        {/* Sale Form */}
-        <div className="space-y-4">
+        {/* Sale Form - Auto-scroll target */}
+        <div ref={saleFormRef} className="space-y-4">
           {selectedLottery ? (
             <>
               <div className="bg-slate-800/50 border border-emerald-500/30 rounded-xl p-4">

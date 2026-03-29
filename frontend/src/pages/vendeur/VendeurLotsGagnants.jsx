@@ -5,10 +5,12 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   Trophy, RefreshCw, Search, Calendar, DollarSign, 
-  CheckCircle, Clock, Eye, Printer, Filter, Download
+  CheckCircle, Clock, Eye, Printer, Filter, Download, Star
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import WinningNumberBadge from '@/components/WinningNumberBadge';
+import WinningTicketDetail from '@/components/WinningTicketDetail';
 
 
 const VendeurLotsGagnants = () => {
@@ -199,15 +201,41 @@ const VendeurLotsGagnants = () => {
                 </div>
               </div>
               
-              {/* Numbers */}
+              {/* Winning Numbers with Animation */}
               <div className="mt-3 pt-3 border-t border-slate-700">
-                <p className="text-xs text-slate-500 mb-1">Numéros gagnants:</p>
+                <p className="text-xs text-slate-500 mb-2 flex items-center gap-1">
+                  <Star className="w-3 h-3 text-amber-400" />
+                  Numéros gagnants:
+                </p>
                 <div className="flex flex-wrap gap-2">
-                  {ticket.plays?.map((play, idx) => (
-                    <span key={idx} className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded font-mono text-sm">
-                      {play.numbers} ({play.bet_type})
-                    </span>
-                  ))}
+                  {ticket.winning_plays?.length > 0 ? (
+                    ticket.winning_plays.map((wp, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-gradient-to-r from-amber-500/20 to-emerald-500/20 border border-amber-500/50 rounded-lg px-3 py-2 animate-pulse">
+                        <WinningNumberBadge 
+                          number={wp.played_number} 
+                          position={wp.winning_lot} 
+                          animate={true}
+                        />
+                        <div className="text-xs">
+                          <p className="text-amber-400 font-medium">{wp.winning_lot === 1 ? '1er' : wp.winning_lot === 2 ? '2e' : '3e'} Lot</p>
+                          <p className="text-emerald-400">×{wp.multiplier} = {wp.gain?.toLocaleString()} HTG</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : ticket.plays?.filter(p => p.is_winner).length > 0 ? (
+                    ticket.plays.filter(p => p.is_winner).map((play, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-gradient-to-r from-amber-500/20 to-emerald-500/20 border border-amber-500/50 rounded-lg px-3 py-2 animate-pulse">
+                        <span className="font-mono font-bold text-lg text-amber-400">{play.numbers}</span>
+                        <span className="text-xs text-emerald-400">GAGNANT</span>
+                      </div>
+                    ))
+                  ) : (
+                    ticket.plays?.map((play, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded font-mono text-sm">
+                        {play.numbers} ({play.bet_type})
+                      </span>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
