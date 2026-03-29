@@ -1,4 +1,4 @@
-# LOTTOLAB PRD - Mise à jour 28 Mars 2026
+# LOTTOLAB PRD - Mise à jour 29 Mars 2026
 
 ## Résumé du Projet
 Application de loterie professionnelle pour Haïti avec système POS, gestion des tirages, calcul automatique des gains (60/20/10), impression thermique 80mm, et exports Excel/PDF.
@@ -10,6 +10,7 @@ Application de loterie professionnelle pour Haïti avec système POS, gestion de
 - **Exports**: Excel (xlsxwriter), PDF (ReportLab)
 - **Auth**: JWT avec rate limiting + blocage temporaire
 - **Sécurité**: Anti-fraude, audit trail, signatures cryptographiques
+- **Moteur de Gains**: winning_engine.py (calcul centralisé 60/20/10)
 
 ## État Actuel des Phases
 
@@ -120,6 +121,37 @@ Application de loterie professionnelle pour Haïti avec système POS, gestion de
 - 4 onglets: Vue d'ensemble, Numéros Bloqués, Alertes, Statut Numéros
 - Configuration via modal
 - Blocage/déblocage via interface
+
+### MEGA-PROMPT: Moteur Central de Calcul (✅ EN COURS - 29/03/2026)
+
+#### LOT 1: Moteur Central de Calcul (✅ COMPLÉTÉ)
+- Fichier: `/app/backend/winning_engine.py`
+- Lecture des primes: compagnie → globale → défaut
+- Formule: gain = mise × multiplicateur_du_lot
+- Types supportés: BORLETTE, MARIAGE, LOTO 3/4/5
+- Détection automatique des lots: 1er/2e/3e
+- Journalisation: collection `winning_calculations_audit`
+- Tests: 8/8 passés
+
+#### LOT 2: Synchronisation & Publication (✅ COMPLÉTÉ)
+- Intégration dans `/app/backend/lottery_results_routes.py`
+- Publication → Calcul automatique des gagnants
+- Mise à jour status: WINNER/LOSER
+- Champs ajoutés: winning_plays, all_plays_calculated, calculation_details
+- Routes: recalculate-ticket, test-winning-engine, reprocess-result
+
+#### LOT 3: Animation des Numéros Gagnants (✅ COMPLÉTÉ)
+- Fichier: `/app/frontend/src/components/WinningNumberBadge.jsx`
+- Animations CSS: pulse, glow, shimmer, float
+- Couleurs: Or (1er), Argent (2e), Bronze (3e)
+- Composants: WinningNumberBadge, WinningNumbersRow, WinningTicketHighlight
+- Intégré dans: SuperGlobalResultsPage.js
+
+#### LOT 4: Commissions & Impression (🔄 À FAIRE)
+- [ ] Commissions = 0 si non configurées
+- [ ] Impression ticket fonctionnelle
+- [ ] Impression ticket gagnant avec détails
+- [ ] Respect strict hiérarchie des rôles
 
 ### PHASE 4: Communication SMS (🔄 À FAIRE)
 - [ ] Intégration Twilio

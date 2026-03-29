@@ -1,7 +1,7 @@
 """
 LOTTERY RESULTS MANAGEMENT
 - Super Admin: Enter and publish lottery results
-- Automatic calculation of winning tickets
+- Automatic calculation of winning tickets using central winning_engine
 - Winner payment system for vendors
 """
 
@@ -17,6 +17,14 @@ from auth import decode_token
 from utils import generate_id, get_current_timestamp
 from activity_logger import log_activity
 
+# Import the central winning engine
+from winning_engine import (
+    parse_winning_numbers,
+    calculate_ticket_winnings,
+    process_result_and_calculate_winners,
+    set_winning_engine_db
+)
+
 logger = logging.getLogger(__name__)
 
 results_router = APIRouter(prefix="/api", tags=["Lottery Results"])
@@ -27,6 +35,8 @@ db = None
 def set_results_db(database):
     global db
     db = database
+    # Also configure the winning engine
+    set_winning_engine_db(database)
 
 
 # ============ MODELS ============
@@ -235,10 +245,23 @@ def calculate_winnings(play: dict, winning_numbers: str) -> tuple:
 async def process_winning_tickets(result_id: str, lottery_id: str, draw_date: str, draw_time: str, winning_numbers: str):
     """
     Background task to process all tickets for a lottery draw and calculate winners.
+    Uses the central winning_engine for accurate calculations based on configured primes.
     """
     logger.info(f"[RESULTS] Processing winning tickets for lottery {lottery_id}, draw {draw_date} {draw_time}")
     
     try:
+        # Parse winning numbers into structured format
+        # The winning_numbers string can be "12-34-56" meaning 1st=12, 2nd=34, 3rd=56
+        winning_parts = winning_numbers.replace(" ", "").split("-") if winning_numbers else []
+        
+        winning_numbers_dict = {
+            "first": winning_parts[0] if len(winning_parts) >= 1 else None,
+            "second": winning_parts[1] if len(winning_parts) >= 2 else None,
+            "third": winning_parts[2] if len(winning_parts) >= 3 else None
+        }
+        
+        logger.info(f"[RESULTS] Parsed winning numbers: {winning_numbers_dict}")
+        
         # Find all tickets for this lottery and draw that haven't been processed
         query = {
             "lottery_id": lottery_id,
@@ -260,45 +283,36 @@ async def process_winning_tickets(result_id: str, lottery_id: str, draw_date: st
         
         winners_count = 0
         losers_count = 0
-        total_winnings = 0
+        total_winnings = 0.0
         now = get_current_timestamp()
         
         for ticket in tickets:
             ticket_id = ticket.get("ticket_id")
-            plays = ticket.get("plays", [])
+            company_id = ticket.get("company_id")
             
-            ticket_is_winner = False
-            ticket_total_winnings = 0
-            winning_plays = []
+            # Use the central winning engine to calculate
+            calculation = await calculate_ticket_winnings(
+                ticket=ticket,
+                winning_numbers=winning_numbers_dict,
+                company_id=company_id
+            )
             
-            # Check each play in the ticket
-            for i, play in enumerate(plays):
-                is_winner, winnings, position = calculate_winnings(play, winning_numbers)
-                
-                if is_winner:
-                    ticket_is_winner = True
-                    ticket_total_winnings += winnings
-                    winning_plays.append({
-                        "play_index": i,
-                        "numbers": play.get("numbers"),
-                        "bet_type": play.get("bet_type"),
-                        "amount": play.get("amount"),
-                        "winnings": winnings,
-                        "position": position
-                    })
-            
-            # Update ticket status
-            if ticket_is_winner:
+            # Update ticket based on calculation
+            if calculation["is_winner"]:
                 await db.lottery_transactions.update_one(
                     {"ticket_id": ticket_id},
                     {
                         "$set": {
                             "status": "WINNER",
                             "is_winner": True,
-                            "winnings": ticket_total_winnings,
-                            "winning_plays": winning_plays,
+                            "winnings": calculation["total_gain"],
+                            "win_amount": calculation["total_gain"],
+                            "winning_plays": calculation["winning_plays"],
+                            "all_plays_calculated": calculation["all_plays_calculated"],
+                            "calculation_details": calculation["calculation_details"],
                             "result_id": result_id,
                             "winning_numbers": winning_numbers,
+                            "winning_numbers_parsed": winning_numbers_dict,
                             "result_processed_at": now,
                             "payment_status": "UNPAID",
                             "updated_at": now
@@ -306,8 +320,8 @@ async def process_winning_tickets(result_id: str, lottery_id: str, draw_date: st
                     }
                 )
                 winners_count += 1
-                total_winnings += ticket_total_winnings
-                logger.info(f"[RESULTS] WINNER: Ticket {ticket_id} wins {ticket_total_winnings}")
+                total_winnings += calculation["total_gain"]
+                logger.info(f"[RESULTS] WINNER: Ticket {ticket_id} wins {calculation['total_gain']} HTG")
             else:
                 await db.lottery_transactions.update_one(
                     {"ticket_id": ticket_id},
@@ -316,8 +330,12 @@ async def process_winning_tickets(result_id: str, lottery_id: str, draw_date: st
                             "status": "LOSER",
                             "is_winner": False,
                             "winnings": 0,
+                            "win_amount": 0,
+                            "all_plays_calculated": calculation["all_plays_calculated"],
+                            "calculation_details": calculation["calculation_details"],
                             "result_id": result_id,
                             "winning_numbers": winning_numbers,
+                            "winning_numbers_parsed": winning_numbers_dict,
                             "result_processed_at": now,
                             "updated_at": now
                         }
@@ -334,12 +352,13 @@ async def process_winning_tickets(result_id: str, lottery_id: str, draw_date: st
                     "winners_count": winners_count,
                     "losers_count": losers_count,
                     "total_winnings": total_winnings,
+                    "winning_numbers_parsed": winning_numbers_dict,
                     "processed_at": now
                 }
             }
         )
         
-        logger.info(f"[RESULTS] Processing complete: {winners_count} winners, {losers_count} losers, {total_winnings} total winnings")
+        logger.info(f"[RESULTS] Processing complete: {winners_count} winners, {losers_count} losers, {total_winnings} HTG total winnings")
         
     except Exception as e:
         logger.error(f"[RESULTS] Error processing winning tickets: {str(e)}")
@@ -441,6 +460,109 @@ async def publish_lottery_result(
         "result_id": result_id,
         "lottery_name": result_data.lottery_name,
         "winning_numbers": result_data.winning_numbers
+    }
+
+
+# ============ WINNING ENGINE TEST & RECALCULATION ============
+
+@results_router.post("/super-admin/recalculate-ticket/{ticket_id}")
+async def recalculate_single_ticket(
+    ticket_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Recalculate winnings for a specific ticket.
+    Useful for corrections or verifications.
+    """
+    require_super_admin(current_user)
+    
+    from winning_engine import recalculate_ticket
+    
+    result = await recalculate_ticket(ticket_id)
+    
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    
+    return {
+        "message": "Ticket recalculé avec succès",
+        "ticket_id": ticket_id,
+        "is_winner": result["is_winner"],
+        "total_gain": result["total_gain"],
+        "winning_plays_count": result["winning_plays_count"],
+        "calculation_details": result["calculation_details"]
+    }
+
+
+@results_router.get("/super-admin/test-winning-engine")
+async def test_winning_engine(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Run tests on the winning calculation engine.
+    Returns detailed test results.
+    """
+    require_super_admin(current_user)
+    
+    from winning_engine import run_calculation_tests
+    
+    results = await run_calculation_tests()
+    
+    return {
+        "message": f"Tests completed: {results['passed']}/{results['total']} passed",
+        "passed": results["passed"],
+        "failed": results["failed"],
+        "total": results["total"],
+        "tests": results["tests"]
+    }
+
+
+@results_router.post("/super-admin/reprocess-result/{result_id}")
+async def reprocess_result(
+    result_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Reprocess all tickets for a published result.
+    Useful if there was an issue with the initial processing.
+    """
+    require_super_admin(current_user)
+    
+    # Get the result
+    result = await db.global_results.find_one({"result_id": result_id}, {"_id": 0})
+    if not result:
+        raise HTTPException(status_code=404, detail="Résultat non trouvé")
+    
+    # Clear previous processing
+    await db.lottery_transactions.update_many(
+        {
+            "result_id": result_id,
+            "status": {"$in": ["WINNER", "LOSER"]}
+        },
+        {
+            "$set": {
+                "status": "PENDING_RESULT",
+                "winnings": 0,
+                "is_winner": False,
+                "winning_plays": [],
+                "all_plays_calculated": []
+            }
+        }
+    )
+    
+    # Reprocess in background
+    background_tasks.add_task(
+        process_winning_tickets,
+        result_id,
+        result.get("lottery_id"),
+        result.get("draw_date"),
+        result.get("draw_time"),
+        result.get("winning_numbers")
+    )
+    
+    return {
+        "message": "Recalcul des gagnants en cours...",
+        "result_id": result_id
     }
 
 

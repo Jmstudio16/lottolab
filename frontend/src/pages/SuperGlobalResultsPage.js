@@ -8,6 +8,7 @@ import {
   Trophy, Plus, Edit2, Trash2, Save, X, Filter, RefreshCw, Calendar,
   Hash, Award
 } from 'lucide-react';
+import { WinningNumbersRow } from '@/components/WinningNumberBadge';
 
 
 // Helper to parse winning numbers from either string or object format
@@ -226,20 +227,15 @@ export const SuperGlobalResultsPage = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {getWinningNumbersArray(result).map((num, idx) => (
-                          <span
-                            key={idx}
-                            className={`w-10 h-10 flex items-center justify-center rounded-full font-bold text-lg ${
-                              idx === 0 ? 'bg-amber-500 text-black' :
-                              idx === 1 ? 'bg-slate-400 text-black' :
-                              'bg-amber-700 text-white'
-                            }`}
-                          >
-                            {num}
-                          </span>
-                        ))}
-                      </div>
+                      <WinningNumbersRow 
+                        winningNumbers={{
+                          first: result.winning_numbers_parsed?.first || getWinningNumbersArray(result)[0],
+                          second: result.winning_numbers_parsed?.second || getWinningNumbersArray(result)[1],
+                          third: result.winning_numbers_parsed?.third || getWinningNumbersArray(result)[2]
+                        }}
+                        animated={true}
+                        size="md"
+                      />
                     </td>
                     <td className="px-6 py-4 text-cyan-400 font-mono">
                       {result.bonus_number || '-'}
