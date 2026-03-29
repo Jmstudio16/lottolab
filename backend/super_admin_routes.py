@@ -7,6 +7,9 @@ from auth import get_password_hash, decode_token
 from utils import generate_id, get_current_timestamp
 from activity_logger import log_activity
 
+# Import WebSocket emitters for real-time updates
+from websocket_manager import emit_lottery_toggled, emit_flag_updated
+
 super_admin_router = APIRouter(prefix="/api/super")
 security = HTTPBearer()
 
@@ -987,6 +990,17 @@ async def toggle_lottery_global(
                 "updated_at": now
             }}
         )
+    
+    # EMIT WEBSOCKET - Broadcast lottery toggle to all users
+    try:
+        await emit_lottery_toggled(
+            lottery_id=lottery_id,
+            lottery_name=lottery.get("lottery_name", ""),
+            is_active=new_active
+        )
+    except Exception as ws_err:
+        import logging
+        logging.warning(f"[WS] Failed to emit LOTTERY_TOGGLED: {ws_err}")
     
     return {"lottery_id": lottery_id, "is_active": new_active, "lottery_name": lottery.get("lottery_name")}
 

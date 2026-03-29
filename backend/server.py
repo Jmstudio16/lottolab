@@ -34,7 +34,7 @@ from settings_routes import settings_router, set_settings_db
 from financial_routes import financial_router, set_financial_db
 from online_routes import online_router, online_admin_router, set_online_db
 from error_handlers import validation_exception_handler, generic_exception_handler
-from websocket_manager import ws_manager, notify_player, notify_admins, NotificationType
+from websocket_manager import ws_manager
 from lottery_engine import set_lottery_engine_db, process_result_for_online_tickets
 from succursale_routes import succursale_router, set_succursale_db
 from saas_core import saas_core_router, set_saas_core_db
@@ -60,6 +60,7 @@ from realtime_sync_routes import realtime_sync_router, set_realtime_sync_db
 from security_routes import security_api_router, set_security_api_db
 from limits_routes import limits_router, set_limits_db
 from winning_routes import winning_router, set_winning_db
+from websocket_routes import ws_router
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -1211,6 +1212,9 @@ app.include_router(financial_router)
 
 # Include winning router (ticket check, payout, balance)
 app.include_router(winning_router)
+
+# Include WebSocket router for real-time updates
+app.include_router(ws_router, prefix="/api")
 
 # Include staff router under /api prefix
 api_router.include_router(staff_router)

@@ -17,6 +17,13 @@ from auth import decode_token
 from utils import generate_id, get_current_timestamp
 from activity_logger import log_activity
 
+# Import WebSocket emitters for real-time updates
+from websocket_manager import (
+    emit_result_published,
+    emit_ticket_winner,
+    emit_sync_required
+)
+
 # Import the central winning engine
 from winning_engine import (
     parse_winning_numbers,
@@ -322,6 +329,20 @@ async def process_winning_tickets(result_id: str, lottery_id: str, draw_date: st
                 winners_count += 1
                 total_winnings += calculation["total_gain"]
                 logger.info(f"[RESULTS] WINNER: Ticket {ticket_id} wins {calculation['total_gain']} HTG")
+                
+                # EMIT WEBSOCKET - Notify company of winning ticket
+                try:
+                    await emit_ticket_winner(
+                        company_id=company_id,
+                        ticket_code=ticket.get("ticket_code", ticket_id),
+                        ticket_id=ticket_id,
+                        agent_id=ticket.get("agent_id", ""),
+                        agent_name=ticket.get("agent_name", "Unknown"),
+                        win_amount=calculation["total_gain"],
+                        lottery_name=ticket.get("lottery_name", "")
+                    )
+                except Exception as ws_err:
+                    logger.warning(f"[WS] Failed to emit TICKET_WINNER: {ws_err}")
             else:
                 await db.lottery_transactions.update_one(
                     {"ticket_id": ticket_id},
@@ -451,6 +472,16 @@ async def publish_lottery_result(
         result_data.draw_date,
         result_data.draw_time,
         result_data.winning_numbers
+    )
+    
+    # EMIT WEBSOCKET EVENT - Broadcast result to all users in real-time
+    background_tasks.add_task(
+        emit_result_published,
+        result_data.lottery_id,
+        result_data.lottery_name,
+        result_data.draw_time,
+        result_data.winning_numbers,
+        result_id
     )
     
     logger.info(f"[RESULTS] Result published: {result_data.lottery_name} - {result_data.winning_numbers}")

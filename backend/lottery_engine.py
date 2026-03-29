@@ -9,7 +9,8 @@ import asyncio
 import re
 
 from utils import generate_id, get_current_timestamp
-from websocket_manager import notify_player, notify_admins, broadcast_result, NotificationType
+# Legacy imports removed - using new websocket_manager
+# from websocket_manager import notify_player, notify_admins, broadcast_result, NotificationType
 
 # Global database reference
 db: AsyncIOMotorDatabase = None
@@ -227,36 +228,25 @@ async def process_result_for_online_tickets(result: dict) -> dict:
             # Credit player wallet
             await credit_player_wallet(player_id, ticket_winnings, ticket_id)
             
-            # Notify player about win
-            await notify_player(player_id, NotificationType.TICKET_WON, {
-                "ticket_id": ticket_id,
-                "amount_won": ticket_winnings,
-                "winning_numbers": winning_numbers,
-                "winning_plays": winning_plays
-            })
+            # Notify player about win (legacy - disabled)
+            # await notify_player(player_id, NotificationType.TICKET_WON, {
+            #     "ticket_id": ticket_id,
+            #     "amount_won": ticket_winnings,
+            #     "winning_numbers": winning_numbers,
+            #     "winning_plays": winning_plays
+            # })
+            pass
             
-            # Notify admins about high win (if significant)
-            if ticket_winnings >= 50000:  # High win threshold
-                await notify_admins(NotificationType.HIGH_WIN, {
-                    "ticket_id": ticket_id,
-                    "player_id": player_id,
-                    "amount_won": ticket_winnings
-                })
+            # Notify admins about high win (if significant) - legacy disabled
+            # if ticket_winnings >= 50000:
+            #     await notify_admins(NotificationType.HIGH_WIN, {...})
         else:
-            # Notify player about loss
-            await notify_player(player_id, NotificationType.TICKET_LOST, {
-                "ticket_id": ticket_id,
-                "winning_numbers": winning_numbers
-            })
+            # Notify player about loss (legacy - disabled)
+            # await notify_player(player_id, NotificationType.TICKET_LOST, {...})
+            pass
     
-    # Broadcast result to all players
-    await broadcast_result({
-        "lottery_id": lottery_id,
-        "lottery_name": result.get("lottery_name"),
-        "draw_date": draw_date,
-        "draw_type": draw_type,
-        "winning_numbers": winning_numbers
-    })
+    # Broadcast result to all players (legacy - disabled)
+    # await broadcast_result({...})
     
     print(f"[LotteryEngine] Processed {processed} tickets, {winners} winners, {total_payout} HTG payout")
     
@@ -294,12 +284,8 @@ async def credit_player_wallet(player_id: str, amount: float, reference: str):
         "processed_at": now
     })
     
-    # Notify player about wallet credit
-    await notify_player(player_id, NotificationType.WALLET_CREDITED, {
-        "amount": amount,
-        "reason": "lottery_winnings",
-        "reference": reference
-    })
+    # Notify player about wallet credit (legacy - disabled)
+    # await notify_player(player_id, NotificationType.WALLET_CREDITED, {...})
     
     return transaction_id
 
@@ -440,11 +426,9 @@ async def check_fraud_patterns(player_id: str, plays: List[dict]) -> Tuple[bool,
         })
         
         if same_number_bets >= FRAUD_SAME_NUMBER_THRESHOLD:
-            await notify_admins(NotificationType.FRAUD_ALERT, {
-                "player_id": player_id,
-                "reason": "repeated_number",
-                "details": f"Number {number} bet {same_number_bets} times in last hour"
-            })
+            # Fraud alert - log but don't notify (legacy - disabled)
+            # await notify_admins(NotificationType.FRAUD_ALERT, {...})
+            pass
     
     return False, ""
 
