@@ -59,6 +59,7 @@ from draw_times_routes import draw_times_router, set_draw_times_db
 from realtime_sync_routes import realtime_sync_router, set_realtime_sync_db
 from security_routes import security_api_router, set_security_api_db
 from limits_routes import limits_router, set_limits_db
+from winning_routes import winning_router, set_winning_db
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -1131,6 +1132,7 @@ set_realtime_sync_db(db)
 set_security_api_db(db)
 set_limits_db(db)
 set_financial_db(db)
+set_winning_db(db)
 
 # Initialize staff endpoints with dependency
 create_staff_endpoints(get_current_user)
@@ -1206,6 +1208,9 @@ app.include_router(limits_router)
 
 # Include financial router (cash register, reconciliation, agent credits)
 app.include_router(financial_router)
+
+# Include winning router (ticket check, payout, balance)
+app.include_router(winning_router)
 
 # Include staff router under /api prefix
 api_router.include_router(staff_router)

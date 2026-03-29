@@ -42,7 +42,10 @@ class TicketCheckResponse(BaseModel):
     status: str  # PENDING_RESULT, WINNER, LOSER, VOID, PAID
     is_winner: bool = False
     payout_amount: float = 0.0
+    winnings: float = 0.0  # Alias for payout_amount
+    win_amount: float = 0.0  # Alias for payout_amount
     ticket_numbers: List[Dict[str, Any]] = []
+    plays: List[Dict[str, Any]] = []  # Original plays
     winning_numbers: Optional[str] = None
     winning_numbers_parsed: Dict[str, str] = {}
     lottery_name: Optional[str] = None
@@ -52,6 +55,13 @@ class TicketCheckResponse(BaseModel):
     company_name: Optional[str] = None
     total_amount: float = 0.0
     message: str = ""
+    # CRITICAL: Detailed calculation data for frontend display
+    all_plays_calculated: List[Dict[str, Any]] = []  # Each play with is_winner, winning_lot, multiplier, gain
+    winning_plays: List[Dict[str, Any]] = []  # Only winning plays with full calculation
+    payment_status: Optional[str] = None  # PAID, UNPAID
+    created_at: Optional[str] = None
+    device_id: Optional[str] = None
+    pos_id: Optional[str] = None
 
 
 class TicketPayoutRequest(BaseModel):
@@ -304,24 +314,46 @@ async def check_ticket(
     company = await db.companies.find_one({"company_id": ticket_company}, {"_id": 0, "name": 1})
     company_name = company.get("name") if company else None
     
-    # If already processed
+    # Parse winning numbers from ticket or result
+    winning_numbers_str = ticket.get("winning_numbers", "")
+    winning_numbers_parsed = {}
+    if winning_numbers_str and "-" in winning_numbers_str:
+        parts = winning_numbers_str.split("-")
+        winning_numbers_parsed = {
+            "first": parts[0] if len(parts) > 0 else "",
+            "second": parts[1] if len(parts) > 1 else "",
+            "third": parts[2] if len(parts) > 2 else ""
+        }
+    
+    # If already processed - return with full calculation data
     if status in ["WINNER", "LOSER", "PAID", "VOID"]:
+        payout_amount = ticket.get("winnings", ticket.get("win_amount", ticket.get("actual_win", ticket.get("payout_amount", 0.0))))
         return TicketCheckResponse(
             found=True,
             ticket_id=ticket_id,
             ticket_code=ticket.get("ticket_code"),
             status=status,
             is_winner=status in ["WINNER", "PAID"],
-            payout_amount=ticket.get("actual_win", ticket.get("payout_amount", 0.0)),
+            payout_amount=payout_amount,
+            winnings=payout_amount,
+            win_amount=payout_amount,
             ticket_numbers=plays,
-            winning_numbers=ticket.get("winning_numbers"),
+            plays=plays,
+            winning_numbers=winning_numbers_str,
+            winning_numbers_parsed=winning_numbers_parsed,
             lottery_name=ticket.get("lottery_name"),
             draw_date=draw_date,
             draw_name=draw_name,
             agent_name=ticket.get("agent_name"),
             company_name=company_name,
             total_amount=ticket.get("total_amount", 0.0),
-            message="Ce ticket a déjà été traité." if status == "PAID" else ""
+            message="Ce ticket a déjà été traité." if status == "PAID" else "",
+            all_plays_calculated=ticket.get("all_plays_calculated", []),
+            winning_plays=ticket.get("winning_plays", []),
+            payment_status="PAID" if status == "PAID" else "UNPAID",
+            created_at=ticket.get("created_at"),
+            device_id=ticket.get("device_id"),
+            pos_id=ticket.get("pos_id")
         )
     
     # Find result for this lottery/draw
