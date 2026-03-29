@@ -203,7 +203,19 @@ et ne gardez pas dans les pièces de monnaie."""
     if ticket.get("created_at"):
         ticket_date, ticket_time = format_datetime_haiti(ticket["created_at"])
     
-    # Build plays rows - with compact mode support
+    # Check if this is a winning ticket
+    is_winner_ticket = ticket.get("status") in ["WINNER", "PAID"] or ticket.get("is_winner") == True
+    winning_plays_data = ticket.get("winning_plays", [])
+    all_plays_calculated = ticket.get("all_plays_calculated", [])
+    total_gain = ticket.get("winnings") or ticket.get("win_amount") or 0
+    
+    # Build a map of winning plays for quick lookup
+    winning_map = {}
+    for wp in all_plays_calculated:
+        if wp.get("is_winner"):
+            winning_map[str(wp.get("played_number", "")).strip()] = wp
+    
+    # Build plays rows - with compact mode support and winning highlights
     plays_html = ""
     line_margin = "2px" if use_compact else "4px"
     
@@ -212,12 +224,29 @@ et ne gardez pas dans les pièces de monnaie."""
         amount = play.get("amount", 0)
         bet_type = play.get("bet_type", "")
         
-        # In compact mode, show bet type abbreviation
-        if use_compact and bet_type:
-            type_abbr = bet_type[:3].upper()
-            plays_html += f'<div class="play-line" style="margin:{line_margin} 0"><span class="play-num">{numbers}</span><span class="play-type">{type_abbr}</span><span class="play-amt">{amount:.0f}</span></div>\n'
+        # Check if this play is a winner
+        win_info = winning_map.get(str(numbers).strip())
+        is_winner_play = win_info is not None
+        
+        if is_winner_play and is_winner_ticket:
+            # Show winning play with calculation details
+            lot_num = win_info.get("winning_lot", 1)
+            multiplier = win_info.get("multiplier", 60)
+            gain = win_info.get("gain", amount * multiplier)
+            lot_label = "1er" if lot_num == 1 else ("2e" if lot_num == 2 else "3e")
+            
+            plays_html += f'''<div class="play-line winning-play" style="margin:{line_margin} 0;background:#e8f5e9;padding:2px;">
+<span class="play-num" style="color:#2e7d32;">★ {numbers}</span>
+<span class="play-amt" style="color:#2e7d32;font-weight:bold;">{amount:.0f}×{multiplier}={gain:.0f}</span>
+</div>
+<div style="font-size:{fs['base']-2}px;color:#2e7d32;text-align:right;margin-bottom:2px;">{lot_label} Lot • GAGNANT</div>\n'''
         else:
-            plays_html += f'<div class="play-line" style="margin:{line_margin} 0"><span class="play-num">{numbers}</span><span class="play-amt">{amount:.1f} {currency}</span></div>\n'
+            # In compact mode, show bet type abbreviation
+            if use_compact and bet_type:
+                type_abbr = bet_type[:3].upper()
+                plays_html += f'<div class="play-line" style="margin:{line_margin} 0"><span class="play-num">{numbers}</span><span class="play-type">{type_abbr}</span><span class="play-amt">{amount:.0f}</span></div>\n'
+            else:
+                plays_html += f'<div class="play-line" style="margin:{line_margin} 0"><span class="play-num">{numbers}</span><span class="play-amt">{amount:.1f} {currency}</span></div>\n'
     
     if not plays_html:
         plays_html = f'<div class="play-line"><span class="play-num">-</span><span class="play-amt">0.0 {currency}</span></div>'
@@ -474,10 +503,12 @@ body{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 <div class="total-text">TOTAL MISE : {total_amount:,.0f} {currency}</div>
 </div>
 
+{'<div class="gain-section" style="text-align:center;margin:4px 0;padding:6px;background:#c8e6c9;border:2px solid #2e7d32;"><div style="font-weight:bold;font-size:' + str(fs['total']) + 'px;color:#1b5e20;">TOTAL GAIN : ' + f'{total_gain:,.0f}' + ' ' + currency + '</div></div>' if is_winner_ticket and total_gain > 0 else ''}
+
 <div class="sep-double">================================</div>
 
 <div class="status-section">
-<span class="status-box">STATUT : VALIDÉ</span>
+<span class="status-box">{'STATUT : ★ GAGNANT ★' if is_winner_ticket and total_gain > 0 else 'STATUT : VALIDÉ'}</span>
 </div>
 
 <div class="sep-single">--------------------------------</div>
