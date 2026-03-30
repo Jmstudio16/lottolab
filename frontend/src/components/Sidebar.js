@@ -50,6 +50,7 @@ const getSuperAdminMenu = (t) => [
   { path: '/super/global-schedules', label: t('nav.globalSchedules'), icon: Clock },
   { path: '/super/draw-times', label: t('nav.drawTimes', 'Heures de Tirage'), icon: CalendarClock },
   { path: '/super/security', label: t('nav.security', 'Sécurité & Anti-Fraude'), icon: Shield },
+  { path: '/super/settlement', label: t('nav.settlement', 'Moteur Règlement'), icon: Trophy },
   { path: '/super/publish-results', label: t('nav.publishResults', 'Publier Résultats'), icon: Trophy },
   { path: '/super/scheduled-results', label: t('nav.scheduledResults', 'Résultats Programmés'), icon: Zap },
   { path: '/super/companies', label: t('nav.companies', 'Entreprises SaaS'), icon: Building2 },

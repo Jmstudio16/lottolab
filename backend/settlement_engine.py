@@ -441,7 +441,7 @@ async def get_prize_config(company_id: str, bet_type: str) -> Dict:
     bet_upper = bet_type.upper().replace(" ", "_")
     
     # 1. Check company-specific configuration
-    if db:
+    if db is not None:
         company_config = await db.prize_configs.find_one({
             "company_id": company_id,
             "bet_type": bet_upper,

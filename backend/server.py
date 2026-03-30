@@ -62,6 +62,8 @@ from limits_routes import limits_router, set_limits_db
 from winning_routes import winning_router, set_winning_db
 from websocket_routes import ws_router
 from analytics_routes import analytics_router, set_analytics_db
+from settlement_routes import settlement_router, prize_config_router as settlement_prize_router, set_settlement_routes_db
+from settlement_engine import set_settlement_engine_db, ensure_indexes as ensure_settlement_indexes
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -1135,6 +1137,8 @@ set_security_api_db(db)
 set_limits_db(db)
 set_financial_db(db)
 set_winning_db(db)
+set_settlement_routes_db(db)
+set_settlement_engine_db(db)
 
 # Initialize staff endpoints with dependency
 create_staff_endpoints(get_current_user)
@@ -1216,6 +1220,10 @@ app.include_router(winning_router)
 
 # Include Analytics Pro router
 app.include_router(analytics_router)
+
+# Include Settlement Engine routers
+app.include_router(settlement_router)
+app.include_router(settlement_prize_router)
 
 # Include WebSocket router for real-time updates
 app.include_router(ws_router, prefix="/api")
@@ -1414,6 +1422,13 @@ async def startup_event():
     
     # Initialize lottery schedules for Plop Plop and Loto Rapid
     await initialize_lottery_schedules()
+    
+    # Initialize Settlement Engine indexes
+    try:
+        await ensure_settlement_indexes()
+        logger.info("[STARTUP] Settlement engine indexes created")
+    except Exception as e:
+        logger.warning(f"[STARTUP] Settlement index creation warning: {str(e)}")
     
     # Initialize Haiti lotteries (idempotent - safe to run multiple times)
     try:
