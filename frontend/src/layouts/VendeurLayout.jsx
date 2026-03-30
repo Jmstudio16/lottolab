@@ -222,23 +222,6 @@ const VendeurLayout = () => {
           <Ticket className="w-6 h-6" />
           <span className="text-xs mt-1">Tickets</span>
         </Link>
-        
-        {/* WebSocket Status */}
-        <div className="flex flex-col items-center p-2">
-          {isConnected ? (
-            <div className="relative">
-              <Wifi className="w-6 h-6 text-emerald-400" />
-              <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-            </div>
-          ) : (
-            <Wifi className="w-6 h-6 text-slate-500" />
-          )}
-          <span className="text-xs mt-1 text-slate-400">Live</span>
-        </div>
-        
         <Link to="/vendeur/resultats" className="flex flex-col items-center p-2 text-slate-400">
           <Trophy className="w-6 h-6" />
           <span className="text-xs mt-1">Résultats</span>

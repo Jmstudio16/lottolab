@@ -2,7 +2,6 @@ import { API_URL } from '@/config/api';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/api/auth';
 import { useWebSocketContext, useWebSocketEvent, WSEventType } from '@/context/WebSocketContext';
-import WebSocketIndicator from '@/components/WebSocketIndicator';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { 
@@ -139,7 +138,6 @@ const VendeurLotsGagnants = () => {
           <p className="text-sm text-slate-400">Vos tickets gagnants</p>
         </div>
         <div className="flex items-center gap-2">
-          <WebSocketIndicator showLabel={false} />
           <Button onClick={exportToExcel} variant="outline" className="border-emerald-700 text-emerald-400 hover:bg-emerald-500/10" data-testid="export-excel-btn">
             <Download className="w-4 h-4 mr-2" />
             Excel

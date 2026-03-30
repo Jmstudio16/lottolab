@@ -3,7 +3,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/api/auth';
 import { useTranslation } from 'react-i18next';
 import { useWebSocketContext, useWebSocketEvent, WSEventType } from '@/context/WebSocketContext';
-import WebSocketIndicator from '@/components/WebSocketIndicator';
 import axios from 'axios';
 import { 
   DollarSign, Ticket, TrendingUp, Bell, Clock, 
@@ -209,7 +208,6 @@ const VendeurDashboard = () => {
           )}
         </div>
         <div className="flex items-center gap-3">
-          <WebSocketIndicator />
           <LanguageSwitcher />
           <button
             onClick={fetchDashboardData}
