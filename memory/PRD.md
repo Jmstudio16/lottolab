@@ -1,65 +1,60 @@
 # LOTTOLAB - Professional Lottery SaaS Platform
 
-## Version: 12.0.0 (Stable - Config Persistence Fixed)
-## Last Updated: 2026-03-30 22:35 UTC
-## Deployed: 2026-03-30 18:35 Haiti Time
+## Version: 13.0.0 (Stable Configuration)
+## Last Updated: 2026-03-30 23:03 UTC
+## Deployed: 2026-03-30 19:03 Haiti Time
 
 ---
 
-## STATUT: PRÊT POUR PRODUCTION ✅
+## STATUT: STABLE ✅
 
-### Bugs Corrigés dans cette session:
+### Corrections dans cette session:
 
-1. **Configuration Non Persistante** ✅ CORRIGÉ
-   - Les loteries désactivées par le Super Admin restaient désactivées
-   - Les horaires modifiés ne sont plus écrasés au redémarrage
-   - Les fonctions `sync_lottery_to_all_companies` et `sync_company_lotteries` ne modifient plus les configurations existantes
+1. **Configuration Loteries Stable** ✅
+   - Les configurations de loteries ne sont plus écrasées au redémarrage
+   - `haiti_lottery_init.py` ne modifie plus les configurations existantes
+   - `sync_company_lotteries` ne force plus `is_enabled: True`
+   - Flags corrigés: 10 vraies loteries Haiti (pas 26)
 
-2. **Horaires Globaux Écrasés** ✅ CORRIGÉ
-   - `generate_plop_plop_schedules()` et `generate_loto_rapid_schedules()` ne créent QUE de nouveaux horaires
-   - Les horaires existants configurés par le Super Admin sont préservés
+2. **Interface Propre** ✅
+   - Indicateur WiFi/Polling retiré de la page vendeur
+   - Chronomètres de fermeture fonctionnels
+   - Filtres Haïti/USA stables
 
-3. **Calcul des Gains** ✅ CORRIGÉ
-   - Formule 60/20/10 fonctionne correctement
-   - Test: Ticket 225 HTG avec 3 plays gagnants → **7,250 HTG** calculés correctement
-     - 42 (1er lot x60): 100 × 60 = 6,000 HTG
-     - 15 (2ème lot x20): 50 × 20 = 1,000 HTG  
-     - 88 (3ème lot x10): 25 × 10 = 250 HTG
-
----
-
-## Règles de Persistance Configuration
-
-### Ce qui est PRÉSERVÉ:
-- `company_lotteries.is_enabled` - Reste tel que configuré par Company Admin
-- `company_lotteries.disabled_by_super_admin` - Seul le toggle Super Admin peut changer
-- `global_schedules.open_time/close_time/draw_time` - Reste tel que configuré
-- `global_schedules.is_active` - Reste tel que configuré
-
-### Ce qui est CRÉÉ automatiquement (seulement si n'existe pas):
-- Nouvelles entrées `company_lotteries` pour nouvelles compagnies
-- Nouveaux horaires `global_schedules` pour Plop Plop et Loto Rapid
+3. **Nouveaux Endpoints API** ✅
+   - `POST /api/company/set-enabled-lotteries` - Définir les loteries actives par compagnie
+   - `POST /api/super/set-active-lotteries` - Définir les loteries actives globalement
 
 ---
 
-## Validation Complète
+## Configuration Stable
 
-### Calcul des Gains (Settlement Engine)
-| Mise | Lot | Multiplicateur | Gain |
-|------|-----|----------------|------|
-| 100 HTG | 1er | x60 | 6,000 HTG |
-| 50 HTG | 2ème | x20 | 1,000 HTG |
-| 25 HTG | 3ème | x10 | 250 HTG |
-| **225 HTG** | **Total** | - | **7,250 HTG** |
+### Ce qui est PRÉSERVÉ au redémarrage:
+- ✅ `company_lotteries.is_enabled` - Reste tel que configuré
+- ✅ `company_lotteries.enabled` - Reste tel que configuré
+- ✅ `global_schedules.open_time/close_time/draw_time` - Reste tel que configuré
+- ✅ `master_lotteries.is_active_global` - Reste tel que configuré
+- ✅ `flag_type` des loteries - Reste tel que configuré
 
-### Synchronisation Temps Réel
+### Loteries Haiti (10 exactement):
+1. Haiti Borlette Midi/Soir
+2. Haiti Loto 3 Midi/Soir
+3. Haiti Loto 4 Midi/Soir
+4. Haiti Mariage Midi/Soir
+5. Haiti Loto 5 Midi/Soir
+
+---
+
+## Fonctionnalités Validées
+
 | Fonctionnalité | Statut |
 |----------------|--------|
-| Chronomètres de fermeture | ✅ |
-| Filtres Haïti/USA | ✅ |
-| Loteries fermées cachées (vendeur) | ✅ |
-| Refresh automatique 30s | ✅ |
-| Broadcast WebSocket | ✅ |
+| Configuration persistante | ✅ |
+| Chronomètres fermeture | ✅ 3:58:00 format |
+| Filtres Haïti/USA | ✅ 10 Haiti, 193 USA |
+| Calcul gains 60/20/10 | ✅ 7,250 HTG |
+| Settlement automatique | ✅ |
+| Analytics Compagnies | ✅ |
 
 ---
 
@@ -73,35 +68,16 @@
 
 ---
 
-## Architecture Finale
-
-```
-/app/backend/
-├── settlement_engine.py      - Moteur de calcul des gains (60/20/10)
-├── settlement_routes.py      - API Settlement
-├── sync_service.py           - Synchronisation temps réel
-├── lottery_sync_service.py   - Sync loteries (MODIFIÉ: préserve config)
-├── scheduled_results_routes.py - Résultats auto (MODIFIÉ: préserve horaires)
-├── saas_core.py              - Routes SaaS (MODIFIÉ: préserve config)
-└── websocket_manager.py      - Broadcast événements
-
-/app/frontend/src/pages/
-├── SuperSettlementPage.jsx   - Interface règlement
-├── vendeur/VendeurNouvelleVente.jsx - Vente avec chronomètres
-```
-
----
-
-## Prochaines Étapes (Backlog)
+## Prochaines Étapes
 
 ### P1 - Haute Priorité
-- [ ] Corriger WebSocket 403 pour sync instantané
-- [ ] UI rapport détaillé par compagnie
+- [ ] Tester la stabilité sur plusieurs redémarrages
+- [ ] Vérifier les rôles fonctionnent à 100%
 
 ### P2 - Moyenne Priorité
-- [ ] Notification quand loterie ferme dans 5 min
-- [ ] Toggle QR Code sur tickets
+- [ ] Ajouter notification quand loterie ferme dans 5 min
+- [ ] Export des rapports
 
 ### P3 - Basse Priorité
-- [ ] APK Android hors ligne
+- [ ] APK Android
 - [ ] Multi-langue

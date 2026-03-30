@@ -84,23 +84,19 @@ async def initialize_haiti_lotteries(db):
             created_count += 1
         else:
             lottery_id = existing_lottery["lottery_id"]
-            # Update flag_type to HAITI
-            await db.master_lotteries.update_one(
-                {"lottery_id": lottery_id},
-                {"$set": {"flag_type": "HAITI", "state_code": "HT", "is_active_global": True}}
-            )
+            # Only update flag_type to HAITI if not already set
+            if existing_lottery.get("flag_type") != "HAITI":
+                await db.master_lotteries.update_one(
+                    {"lottery_id": lottery_id},
+                    {"$set": {"flag_type": "HAITI", "state_code": "HT"}}
+                )
+                updated_count += 1
         
-        # Also update global_lotteries
-        await db.global_lotteries.update_one(
-            {"lottery_name": lottery_name},
-            {"$set": {"flag_type": "HAITI", "state_code": "HT", "is_active": True}},
-            upsert=False
-        )
-        
-        # Update company_lotteries
+        # DO NOT force enable company_lotteries - respect company configuration!
+        # Only update flag_type if missing
         await db.company_lotteries.update_many(
-            {"lottery_name": lottery_name},
-            {"$set": {"flag_type": "HAITI", "enabled": True}}
+            {"lottery_name": lottery_name, "flag_type": {"$exists": False}},
+            {"$set": {"flag_type": "HAITI"}}
         )
         
         # Get lottery_id for schedule
@@ -112,34 +108,28 @@ async def initialize_haiti_lotteries(db):
         if lottery:
             lottery_id = lottery["lottery_id"]
             
-            # Check if schedule exists
+            # Check if schedule exists - DO NOT OVERWRITE existing schedules
             existing_schedule = await db.global_schedules.find_one(
                 {"lottery_id": lottery_id}
             )
             
-            is_rapid = lottery_def.get("is_rapid", False)
-            
-            schedule_data = {
-                "lottery_id": lottery_id,
-                "lottery_name": lottery_name,
-                "draw_name": lottery_def["draw_name"],
-                "open_time": "00:00" if is_rapid else "06:00",
-                "close_time": "23:59" if is_rapid else "23:00",
-                "draw_time": lottery_def["draw_time"],
-                "days_of_week": [0, 1, 2, 3, 4, 5, 6],
-                "is_active": True,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-            
-            if existing_schedule:
-                await db.global_schedules.update_one(
-                    {"lottery_id": lottery_id},
-                    {"$set": schedule_data}
-                )
-                updated_count += 1
-            else:
-                schedule_data["schedule_id"] = f"sched_{lottery_id}"
-                schedule_data["created_at"] = datetime.now(timezone.utc).isoformat()
+            # Only create NEW schedules, never update existing ones
+            if not existing_schedule:
+                is_rapid = lottery_def.get("is_rapid", False)
+                
+                schedule_data = {
+                    "schedule_id": f"sched_{lottery_id}",
+                    "lottery_id": lottery_id,
+                    "lottery_name": lottery_name,
+                    "draw_name": lottery_def["draw_name"],
+                    "open_time": "00:00" if is_rapid else "06:00",
+                    "close_time": "23:59" if is_rapid else "23:00",
+                    "draw_time": lottery_def["draw_time"],
+                    "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+                    "is_active": True,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
                 await db.global_schedules.insert_one(schedule_data)
                 created_count += 1
     

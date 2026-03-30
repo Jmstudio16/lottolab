@@ -6,8 +6,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { 
   ShoppingCart, Search, Clock, CheckCircle, XCircle, AlertTriangle,
-  Plus, Trash2, Printer, RefreshCw, DollarSign, Ticket, Timer, Flag,
-  Wifi, WifiOff
+  Plus, Trash2, Printer, RefreshCw, DollarSign, Ticket, Timer, Flag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -492,17 +491,8 @@ const VendeurNouvelleVente = () => {
             <ShoppingCart className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-400" />
             {t('vendeur.newSale')}
           </h1>
-          <p className="text-sm text-slate-400 flex items-center gap-2">
+          <p className="text-sm text-slate-400">
             {t('vendeur.selectLotteryToStart')}
-            {wsConnected ? (
-              <span className="flex items-center gap-1 text-emerald-400 text-xs">
-                <Wifi className="w-3 h-3" /> Sync
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-amber-400 text-xs">
-                <WifiOff className="w-3 h-3" /> Polling
-              </span>
-            )}
           </p>
           {succursaleName && (
             <p className="text-xs text-emerald-400 mt-1" data-testid="succursale-name-vente">
@@ -531,9 +521,6 @@ const VendeurNouvelleVente = () => {
             {sortedLotteries.length} loterie(s) ouverte(s)
           </span>
         </div>
-        <span className="text-xs text-slate-400">
-          Mise à jour auto toutes les 30s
-        </span>
       </div>
 
       {/* Search & Flag Filter */}

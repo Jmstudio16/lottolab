@@ -1100,3 +1100,86 @@ async def update_lottery_details(
         "lottery_id": lottery_id,
         "updated_fields": list(update_fields.keys())
     }
+
+
+
+@super_admin_router.post("/set-active-lotteries")
+async def set_active_lotteries(
+    data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Set the exact list of globally active lotteries.
+    All lotteries NOT in the list will be DEACTIVATED globally.
+    
+    Accepts: { "lottery_ids": ["lot_xxx", ...], "flag_type": "HAITI" | "USA" | null }
+    If flag_type is provided, only affects lotteries of that flag type.
+    
+    This is a DESTRUCTIVE operation - use with caution.
+    """
+    if current_user["role"] != UserRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    now = get_current_timestamp()
+    
+    active_ids = data.get("lottery_ids", [])
+    flag_type = data.get("flag_type")
+    
+    if not isinstance(active_ids, list):
+        raise HTTPException(status_code=400, detail="lottery_ids doit être une liste")
+    
+    # Build query for lotteries to deactivate
+    deactivate_query = {
+        "lottery_id": {"$nin": active_ids}
+    }
+    
+    # Build query for lotteries to activate
+    activate_query = {
+        "lottery_id": {"$in": active_ids}
+    }
+    
+    # If flag_type specified, only affect that flag
+    if flag_type:
+        flag_type = flag_type.upper()
+        deactivate_query["flag_type"] = flag_type
+        activate_query["flag_type"] = flag_type
+    
+    # Deactivate all lotteries NOT in the list
+    deactivate_result = await db.master_lotteries.update_many(
+        deactivate_query,
+        {"$set": {"is_active_global": False, "updated_at": now, "updated_by": current_user.get("user_id")}}
+    )
+    
+    # Activate all lotteries IN the list
+    activate_result = await db.master_lotteries.update_many(
+        activate_query,
+        {"$set": {"is_active_global": True, "updated_at": now, "updated_by": current_user.get("user_id")}}
+    )
+    
+    # Also sync to company_lotteries - disable where super admin deactivated
+    await db.company_lotteries.update_many(
+        {"lottery_id": {"$nin": active_ids}, **({"flag_type": flag_type} if flag_type else {})},
+        {"$set": {"disabled_by_super_admin": True, "is_enabled": False, "updated_at": now}}
+    )
+    
+    # Log activity
+    await log_activity(
+        db,
+        action_type="SUPER_ADMIN_SET_ACTIVE_LOTTERIES",
+        entity_type="lottery_config",
+        entity_id="global",
+        performed_by=current_user.get("user_id"),
+        metadata={
+            "activated_count": activate_result.modified_count,
+            "deactivated_count": deactivate_result.modified_count,
+            "flag_type": flag_type
+        }
+    )
+    
+    return {
+        "message": "Configuration mise à jour",
+        "activated_count": activate_result.modified_count,
+        "deactivated_count": deactivate_result.modified_count,
+        "flag_type": flag_type,
+        "total_active": len(active_ids)
+    }

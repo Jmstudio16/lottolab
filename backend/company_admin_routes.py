@@ -2059,6 +2059,65 @@ async def remove_lottery_from_flags(
     return {"message": "Lottery disabled", "lottery_id": lottery_id}
 
 
+@company_admin_router.post("/set-enabled-lotteries")
+async def set_enabled_lotteries(
+    data: dict,
+    current_user: dict = Depends(get_company_admin)
+):
+    """
+    Set the exact list of enabled lotteries for the company.
+    All lotteries NOT in the list will be DISABLED.
+    
+    Accepts: { "lottery_ids": ["lot_xxx", "lot_yyy", ...], "flag_type": "HAITI" | "USA" | null }
+    If flag_type is provided, only affects lotteries of that flag type.
+    """
+    company_id = current_user.get("company_id")
+    now = get_current_timestamp()
+    
+    enabled_ids = data.get("lottery_ids", [])
+    flag_type = data.get("flag_type")  # Optional - if provided, only affect this flag
+    
+    if not isinstance(enabled_ids, list):
+        raise HTTPException(status_code=400, detail="lottery_ids doit être une liste")
+    
+    # Build query for lotteries to disable
+    disable_query = {
+        "company_id": company_id,
+        "lottery_id": {"$nin": enabled_ids}
+    }
+    
+    # Build query for lotteries to enable
+    enable_query = {
+        "company_id": company_id,
+        "lottery_id": {"$in": enabled_ids}
+    }
+    
+    # If flag_type specified, only affect that flag
+    if flag_type:
+        flag_type = flag_type.upper()
+        disable_query["flag_type"] = flag_type
+        enable_query["flag_type"] = flag_type
+    
+    # Disable all lotteries NOT in the list
+    disable_result = await db.company_lotteries.update_many(
+        disable_query,
+        {"$set": {"is_enabled": False, "enabled": False, "updated_at": now}}
+    )
+    
+    # Enable all lotteries IN the list
+    enable_result = await db.company_lotteries.update_many(
+        enable_query,
+        {"$set": {"is_enabled": True, "enabled": True, "updated_at": now}}
+    )
+    
+    return {
+        "message": f"Configuration mise à jour",
+        "enabled_count": enable_result.modified_count,
+        "disabled_count": disable_result.modified_count,
+        "flag_type": flag_type
+    }
+
+
 
 # ============================================================================
 # WINNING TICKETS / LOTS GAGNANTS - COMPANY ADMIN
