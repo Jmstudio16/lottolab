@@ -111,99 +111,68 @@ const VendeurNouvelleVente = () => {
     fetchData();
   }, [fetchData]);
 
-  // Get lottery status based on its integrated schedule
-  // SYNCHRONIZED with VendeurTirages.jsx - same logic
+  // Get lottery status - USE BACKEND is_open for correct timezone handling
+  // Only calculate display text, not open/closed status
   const getLotteryStatus = (lottery) => {
-    const now = currentTime;
-    const currentHour = now.getHours();
-    const currentMin = now.getMinutes();
-    const currentSec = now.getSeconds();
-    const currentTimeMinutes = currentHour * 60 + currentMin;
+    // Use backend-calculated is_open (respects company timezone)
+    const isOpen = lottery.is_open === true;
+    const drawTime = lottery.draw_time || '';
+    const closeTime = lottery.close_time || '';
+    const openTime = lottery.open_time || '06:00';
     
-    // Each lottery has open_time, close_time, draw_time
-    const openTime = lottery.open_time;
-    const closeTime = lottery.close_time;
-    const drawTime = lottery.draw_time;
-    
-    // If no close_time defined, lottery is always open (24h mode)
-    if (!closeTime) {
-      return { status: 'open', text: 'Ouvert 24h', color: 'text-emerald-400', canSell: true, drawTime };
-    }
-    
-    // Parse open time (default: 06:00)
-    let openTimeMinutes = 6 * 60;
-    if (openTime) {
-      const [h, m] = openTime.split(':').map(Number);
-      openTimeMinutes = h * 60 + m;
-    }
-    
-    // Parse close time
-    const [closeH, closeM] = closeTime.split(':').map(Number);
-    const closeTimeMinutes = closeH * 60 + closeM;
-    
-    // Before opening
-    if (currentTimeMinutes < openTimeMinutes) {
-      const diffMins = openTimeMinutes - currentTimeMinutes;
-      const hours = Math.floor(diffMins / 60);
-      const mins = diffMins % 60;
-      const timeStr = hours > 0 ? `${hours}h${mins.toString().padStart(2, '0')}` : `${mins}min`;
-      return { 
-        status: 'not_open', 
-        text: `Ouvre dans ${timeStr}`, 
-        color: 'text-blue-400', 
-        canSell: false,
-        drawTime
-      };
-    }
-    
-    // After closing
-    if (currentTimeMinutes >= closeTimeMinutes) {
+    if (!isOpen) {
+      // Check if it will open later today
+      const now = currentTime;
+      const currentHour = now.getHours();
+      const currentMin = now.getMinutes();
+      const currentTimeMinutes = currentHour * 60 + currentMin;
+      
+      if (openTime) {
+        const [h, m] = openTime.split(':').map(Number);
+        const openTimeMinutes = h * 60 + m;
+        
+        if (currentTimeMinutes < openTimeMinutes) {
+          const diffMins = openTimeMinutes - currentTimeMinutes;
+          const hours = Math.floor(diffMins / 60);
+          const mins = diffMins % 60;
+          const timeStr = hours > 0 ? `${hours}h${mins.toString().padStart(2, '0')}` : `${mins}min`;
+          return { 
+            status: 'not_open', 
+            text: `Ouvre dans ${timeStr}`, 
+            color: 'text-blue-400', 
+            canSell: false,
+            drawTime
+          };
+        }
+      }
+      
       return { 
         status: 'closed', 
-        text: 'Fermé', 
+        text: `Fermé (${closeTime})`, 
         color: 'text-red-400', 
         canSell: false,
         drawTime
       };
     }
     
-    // Currently open - calculate time remaining
-    const diffMins = closeTimeMinutes - currentTimeMinutes;
-    const hours = Math.floor(diffMins / 60);
-    const mins = diffMins % 60;
-    
-    if (diffMins <= 5) {
-      // Less than 5 minutes - show countdown with seconds
-      const totalSecs = (diffMins - 1) * 60 + (59 - currentSec);
-      const displayMins = Math.floor(totalSecs / 60);
-      const displaySecs = totalSecs % 60;
+    // Lottery is OPEN - show remaining time if close_time exists
+    if (closeTime) {
       return { 
-        status: 'closing_soon', 
-        text: `Ferme dans ${displayMins}:${displaySecs.toString().padStart(2, '0')}`, 
-        color: 'text-red-400 animate-pulse', 
-        canSell: true,
-        urgent: true,
-        drawTime
-      };
-    } else if (diffMins <= 30) {
-      const timeStr = hours > 0 ? `${hours}h${mins.toString().padStart(2, '0')}` : `${mins}min`;
-      return { 
-        status: 'closing', 
-        text: `Ferme dans ${timeStr}`, 
-        color: 'text-amber-400', 
+        status: 'open', 
+        text: `Ouvert (${closeTime})`, 
+        color: 'text-emerald-400', 
         canSell: true,
         drawTime
       };
     }
     
-    // More than 30 mins remaining
-    const timeStr = hours > 0 ? `${hours}h${mins.toString().padStart(2, '0')}` : `${mins}min`;
+    // No close time - always open
     return { 
       status: 'open', 
-      text: `Ouvert (${timeStr})`, 
+      text: 'Ouvert 24h', 
       color: 'text-emerald-400', 
-      canSell: true,
-      drawTime
+      canSell: true, 
+      drawTime 
     };
   };
 

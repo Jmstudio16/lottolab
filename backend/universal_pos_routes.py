@@ -463,35 +463,44 @@ async def sell_lottery_ticket(
             # Fallback to Haiti time (UTC-5)
             now = datetime.now(timezone.utc) - timedelta(hours=5)
         
-        # Create datetime objects for today using local time
-        close_datetime = now.replace(hour=close_hour, minute=close_minute, second=0, microsecond=0)
-        open_datetime = now.replace(hour=open_hour, minute=open_minute, second=0, microsecond=0)
+        current_time_minutes = now.hour * 60 + now.minute
+        close_time_minutes = close_hour * 60 + close_minute
+        open_time_minutes = open_hour * 60 + open_minute
         
-        # Check if lottery is not yet open
-        if now < open_datetime:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Cette loterie n'est pas encore ouverte. Ouverture à {opening_time_str}"
-            )
+        # Handle overnight schedules (e.g., open 22:00, close 02:00)
+        if open_time_minutes > close_time_minutes:
+            # Overnight schedule - open if after open time OR before close time
+            is_open = current_time_minutes >= open_time_minutes or current_time_minutes < close_time_minutes
+        else:
+            # Normal schedule - open if between open and close
+            is_open = open_time_minutes <= current_time_minutes < close_time_minutes
         
-        # Check if lottery is closed
-        if now >= close_datetime:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"LOTERIE FERMÉE. Fermeture à {closing_time_str}"
-            )
+        if not is_open:
+            if current_time_minutes < open_time_minutes:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Cette loterie n'est pas encore ouverte. Ouverture à {opening_time_str}"
+                )
+            else:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"LOTERIE FERMÉE. Fermeture à {closing_time_str}"
+                )
         
-        # Also check draw time cutoff
+        # Check draw time cutoff - only if draw time is today
         draw_time_str = schedule.get("draw_time", "00:00")
         draw_hour, draw_minute = map(int, draw_time_str.split(":"))
-        draw_datetime = now.replace(hour=draw_hour, minute=draw_minute, second=0, microsecond=0)
-        cutoff_time = draw_datetime - timedelta(minutes=stop_minutes)
+        draw_time_minutes = draw_hour * 60 + draw_minute
         
-        if now >= cutoff_time:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Les ventes sont fermées. Tirage à {draw_time_str}"
-            )
+        # Only apply draw cutoff if draw time is after current time today
+        # This prevents blocking sales after midnight for next day's draw
+        if draw_time_minutes > current_time_minutes:
+            cutoff_minutes = draw_time_minutes - stop_minutes
+            if current_time_minutes >= cutoff_minutes:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Les ventes sont fermées. Tirage à {draw_time_str}"
+                )
     
     # Get company and agent info
     company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
