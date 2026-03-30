@@ -344,6 +344,7 @@ async def agent_login(
 @universal_pos_router.post("/lottery/sell", response_model=LotterySaleResponse)
 async def sell_lottery_ticket(
     sale_data: LotterySaleRequest,
+    request: Request,
     current_agent: dict = Depends(get_current_agent)
 ):
     """Universal lottery sales endpoint - works from any device"""

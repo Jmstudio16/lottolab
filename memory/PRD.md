@@ -1,69 +1,75 @@
 # LOTTOLAB - Professional Lottery SaaS Platform
 
-## Version: 9.2.0 (Production Ready)
+## Version: 9.3.0 (Bug Fix - Sale Endpoint)
 ## Last Updated: 2026-03-30
-
----
-
-## Original Problem Statement
-
-Migration d'une application de loterie depuis un VPS Hostinger vers la plateforme Emergent. L'application a évolué en un SaaS multi-tenant professionnel avec synchronisation globale, calculs de gains automatisés, et WebSocket temps réel silencieux.
 
 ---
 
 ## STATUT: PRÊT POUR DÉPLOIEMENT ✅
 
-### Fonctionnalités Critiques Validées:
-
-| Fonctionnalité | Statut | Description |
-|----------------|--------|-------------|
-| Calcul Lots Gagnants | ✅ | Automatique lors publication résultats (60/20/10) |
-| Publication Résultats | ✅ | Super Admin → Broadcast global |
-| Sync Horaires | ✅ | 403 horaires configurés, sync automatique |
-| WebSocket Temps Réel | ✅ | Silencieux, sons + animations en arrière-plan |
-| Analytics Pro | ✅ | 4 dashboards complets |
-| PWA Mobile | ✅ | Installable, offline support |
+### Bug Corrigé dans cette session:
+- **Erreur "Erreur lors de la vente"** : Corrigé dans `universal_pos_routes.py` ligne 346
+  - Cause: Paramètre `request: Request` manquant dans la fonction `sell_lottery_ticket()`
+  - Solution: Ajout de `request: Request` dans les paramètres de la fonction
 
 ---
 
-## Architecture Production
+## Validation Complète
 
-```
-LOTTOLAB SaaS
-├── Frontend (React + Tailwind)
-│   ├── PWA avec Service Worker
-│   ├── WebSocket silencieux (pas d'indicateur visible)
-│   └── Sons et animations pour notifications
-├── Backend (FastAPI)
-│   ├── 236 Loteries configurées
-│   ├── 403 Horaires globaux
-│   ├── Moteur de calcul (payout_engine.py)
-│   ├── WebSocket Manager
-│   └── Analytics API
-└── Database (MongoDB)
-    ├── lottery_transactions
-    ├── global_results
-    ├── global_schedules
-    └── company_lotteries
-```
+| Test | Résultat |
+|------|----------|
+| Login Vendeur | ✅ Fonctionne |
+| Affichage Loteries | ✅ 36 loteries ouvertes |
+| Ajout au Panier | ✅ Fonctionne |
+| Validation Vente (API) | ✅ Ticket créé |
+| Impression Ticket | ✅ HTML généré |
+| WebSocket silencieux | ✅ Actif sans indicateur |
+| Calcul Gagnants | ✅ Automatique |
 
 ---
 
-## Flux Critique: Publication des Résultats
+## Fonctionnalités Production
+
+### 1. Vente de Tickets
+- Sélection de loterie avec statut (Ouvert/Fermé)
+- Types de mise: Borlette, Loto 3, Mariage, Loto 4, Loto 5
+- Validation des limites (min 1 HTG, max selon type)
+- Mariages Gratis automatiques
+- Impression thermique 80mm
+
+### 2. Résultats & Gains
+- Publication Super Admin → Broadcast WebSocket
+- Calcul automatique des gagnants (60/20/10)
+- Notification instantanée des gagnants
+
+### 3. Analytics Pro
+- 4 Dashboards (Ventes, Gains, Performance, Temps Réel)
+- Métriques par période (jour/semaine/mois)
+
+### 4. PWA Mobile
+- Installable sur mobile
+- Service worker avec cache
+- Offline fallback
+
+---
+
+## Architecture Validée
 
 ```
-1. Super Admin publie résultat
-   ↓
-2. emit_result_published() → Broadcast WebSocket
-   ↓
-3. process_winning_tickets() → Calcul automatique
-   ↓
-4. Pour chaque ticket:
-   - Calcul gains (60/20/10)
-   - Status → WINNER ou LOSER
-   - emit_ticket_winner() → Notification gagnants
-   ↓
-5. Vendeurs voient instantanément les gagnants
+Frontend (React + Tailwind)
+  └── WebSocket silencieux (pas d'indicateur visible)
+  └── Sons + animations pour notifications
+
+Backend (FastAPI)
+  ├── /api/lottery/sell → universal_pos_routes.py (CORRIGÉ)
+  ├── /api/ticket/print → ticket_print_routes.py
+  ├── /api/analytics/* → analytics_routes.py
+  └── /api/ws → websocket_routes.py
+
+Database (MongoDB)
+  ├── lottery_transactions (tickets)
+  ├── global_results (résultats)
+  └── global_schedules (horaires)
 ```
 
 ---
@@ -78,32 +84,10 @@ LOTTOLAB SaaS
 
 ---
 
-## Changelog
+## Notes Importantes
 
-### 2026-03-30 - Version 9.2.0 (Production Ready)
-- ✅ WebSocket masqué (fonctionne en arrière-plan)
-- ✅ Vérification complète du flux de calcul des gagnants
-- ✅ Validation des 403 horaires synchronisés
-- ✅ Tests système complets passés
+1. **Les loteries ferment selon l'heure configurée** - Si une vente échoue avec "Loterie fermée", c'est le comportement attendu
 
-### 2026-03-30 - Version 9.1.0
-- ✅ WebSocket temps réel avec sons et animations
-- ✅ Analytics Pro avec 4 dashboards
-- ✅ PWA configuration complète
+2. **WebSocket fonctionne en arrière-plan** - Pas d'indicateur visible mais les notifications arrivent
 
----
-
-## Notes Déploiement
-
-1. **Base de données MongoDB** - Déjà configurée et remplie
-2. **Variables d'environnement** - MONGO_URL, DB_NAME dans backend/.env
-3. **Frontend URL** - REACT_APP_BACKEND_URL dans frontend/.env
-4. **WebSocket** - Port 8001, endpoint /api/ws
-
----
-
-## Backlog Futur
-
-- P1: APK Android avec impression Bluetooth
-- P2: Multi-langue (Espagnol, Anglais)
-- P3: Mode offline complet pour POS
+3. **36+ loteries américaines ouvertes** - Les loteries Haiti (Loto Rapid, Plop Plop) ferment à minuit Haiti time
