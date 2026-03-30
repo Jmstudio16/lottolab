@@ -709,9 +709,22 @@ async def get_settlement_audit_logs(
         {"_id": 0}
     ).sort("created_at", -1).limit(limit).to_list(limit)
     
+    # Clean ObjectIds from nested fields
+    from bson import ObjectId
+    def clean_objectids(obj):
+        if isinstance(obj, dict):
+            return {k: clean_objectids(v) for k, v in obj.items() if k != "_id"}
+        elif isinstance(obj, list):
+            return [clean_objectids(item) for item in obj]
+        elif isinstance(obj, ObjectId):
+            return str(obj)
+        return obj
+    
+    cleaned_logs = [clean_objectids(log) for log in logs]
+    
     return {
-        "audit_logs": logs,
-        "count": len(logs)
+        "audit_logs": cleaned_logs,
+        "count": len(cleaned_logs)
     }
 
 
