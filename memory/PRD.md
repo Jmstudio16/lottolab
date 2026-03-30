@@ -1,151 +1,69 @@
 # LOTTOLAB - Professional Lottery SaaS Platform
 
-## Version: 11.0.0 (Real-time Sync)
-## Last Updated: 2026-03-30
+## Version: 12.0.0 (Stable - Config Persistence Fixed)
+## Last Updated: 2026-03-30 22:35 UTC
+## Deployed: 2026-03-30 18:35 Haiti Time
 
 ---
 
 ## STATUT: PRÊT POUR PRODUCTION ✅
 
-### Nouvelles fonctionnalités dans cette session:
+### Bugs Corrigés dans cette session:
 
-1. **Settlement Engine (Moteur de Règlement Automatique)**
-   - Calcul automatique des tickets gagnants après publication des résultats
-   - Formule 60/20/10 (1er lot x60, 2ème lot x20, 3ème lot x10)
-   - Idempotence totale (pas de double paiement)
-   - Audit logs complet
-   - Interface Super Admin dédiée
+1. **Configuration Non Persistante** ✅ CORRIGÉ
+   - Les loteries désactivées par le Super Admin restaient désactivées
+   - Les horaires modifiés ne sont plus écrasés au redémarrage
+   - Les fonctions `sync_lottery_to_all_companies` et `sync_company_lotteries` ne modifient plus les configurations existantes
 
-2. **Système de Synchronisation Temps Réel**
-   - Chronomètres de fermeture sur chaque loterie
-   - Seules les loteries OUVERTES apparaissent pour les vendeurs
-   - Mise à jour automatique toutes les 30 secondes
-   - Broadcast WebSocket pour changements d'horaires et de statut
-   - Filtres par drapeau (Haïti 🇭🇹 / USA 🇺🇸)
+2. **Horaires Globaux Écrasés** ✅ CORRIGÉ
+   - `generate_plop_plop_schedules()` et `generate_loto_rapid_schedules()` ne créent QUE de nouveaux horaires
+   - Les horaires existants configurés par le Super Admin sont préservés
+
+3. **Calcul des Gains** ✅ CORRIGÉ
+   - Formule 60/20/10 fonctionne correctement
+   - Test: Ticket 225 HTG avec 3 plays gagnants → **7,250 HTG** calculés correctement
+     - 42 (1er lot x60): 100 × 60 = 6,000 HTG
+     - 15 (2ème lot x20): 50 × 20 = 1,000 HTG  
+     - 88 (3ème lot x10): 25 × 10 = 250 HTG
+
+---
+
+## Règles de Persistance Configuration
+
+### Ce qui est PRÉSERVÉ:
+- `company_lotteries.is_enabled` - Reste tel que configuré par Company Admin
+- `company_lotteries.disabled_by_super_admin` - Seul le toggle Super Admin peut changer
+- `global_schedules.open_time/close_time/draw_time` - Reste tel que configuré
+- `global_schedules.is_active` - Reste tel que configuré
+
+### Ce qui est CRÉÉ automatiquement (seulement si n'existe pas):
+- Nouvelles entrées `company_lotteries` pour nouvelles compagnies
+- Nouveaux horaires `global_schedules` pour Plop Plop et Loto Rapid
 
 ---
 
 ## Validation Complète
 
-### Iteration 49: Real-time Sync Service
-| Test | Résultat |
-|------|----------|
-| /api/sync/lotteries/status | ✅ 236 loteries avec statut temps réel |
-| /api/sync/vendeur/open-lotteries | ✅ 193 loteries ouvertes seulement |
-| Toggle Lottery Global | ✅ Broadcast WebSocket fonctionnel |
-| Update Schedule | ✅ Broadcast WebSocket fonctionnel |
-| Chronomètres de fermeture | ✅ Countdown HH:MM:SS |
-| Filtres Haïti/USA | ✅ 26 Haïti, 167 USA |
-| Polling fallback | ✅ Refresh auto 30s |
+### Calcul des Gains (Settlement Engine)
+| Mise | Lot | Multiplicateur | Gain |
+|------|-----|----------------|------|
+| 100 HTG | 1er | x60 | 6,000 HTG |
+| 50 HTG | 2ème | x20 | 1,000 HTG |
+| 25 HTG | 3ème | x10 | 250 HTG |
+| **225 HTG** | **Total** | - | **7,250 HTG** |
 
-### Iteration 48: Settlement Engine
-| Test | Résultat |
-|------|----------|
-| Settlement Publish | ✅ Calcul automatique gains |
-| Idempotency | ✅ Doublons rejetés |
-| Formule 60/20/10 | ✅ 7000 HTG calculés correctement |
-| Wallet Transactions | ✅ Crédits enregistrés |
-| Audit Logs | ✅ Traçabilité complète |
+### Synchronisation Temps Réel
+| Fonctionnalité | Statut |
+|----------------|--------|
+| Chronomètres de fermeture | ✅ |
+| Filtres Haïti/USA | ✅ |
+| Loteries fermées cachées (vendeur) | ✅ |
+| Refresh automatique 30s | ✅ |
+| Broadcast WebSocket | ✅ |
 
 ---
 
-## Architecture Complète
-
-```
-Frontend (React + Tailwind)
-├── Pages Vendeur
-│   └── VendeurNouvelleVente.jsx - Vente avec chronomètres
-│       ├── CountdownTimer component
-│       ├── Filtres Haïti/USA
-│       ├── Polling 30s automatique
-│       └── WebSocket fallback
-├── Pages Super Admin
-│   ├── SuperSettlementPage.jsx - Règlement automatique
-│   ├── SuperGlobalSchedulesPage.js - Horaires
-│   └── SuperLotteryCatalogPage.jsx - Catalogue
-
-Backend (FastAPI)
-├── Sync Service (/api/sync/*)
-│   ├── GET /lotteries/status - Statut temps réel
-│   ├── GET /vendeur/open-lotteries - Ouvertes seulement
-│   ├── GET /lottery/{id}/status - Statut individuel
-│   ├── POST /lottery/{id}/toggle - Activer/désactiver
-│   └── PUT /schedule/{id} - Modifier horaires
-├── Settlement Engine (/api/settlement/*)
-│   ├── POST /publish - Publier + régler automatiquement
-│   ├── GET /list - Historique settlements
-│   ├── GET /report/{id} - Rapport détaillé
-│   └── GET /winning-tickets - Liste gagnants
-├── WebSocket Manager
-│   ├── LOTTERY_STATUS_CHANGE - Loterie ouverte/fermée
-│   ├── SCHEDULE_CHANGE - Horaires modifiés
-│   ├── RESULT_PUBLISHED - Nouveau résultat
-│   ├── SYNC_REQUIRED - Rafraîchir données
-│   └── LOTTERY_TOGGLED - Statut changé
-
-Database (MongoDB)
-├── lottery_transactions - Tickets avec gains
-├── settlements - Historique règlements
-├── settlement_items - Détails gains par play
-├── wallet_transactions - Crédits vendeurs
-├── audit_logs - Traçabilité
-├── global_schedules - Horaires configurés
-├── master_lotteries - Catalogue global
-└── company_lotteries - Loteries par compagnie
-```
-
----
-
-## Flux de Synchronisation
-
-```
-1. Super Admin modifie horaires/statut loterie
-   ↓
-2. Backend met à jour MongoDB
-   ↓
-3. Broadcast WebSocket (SCHEDULE_CHANGE / LOTTERY_TOGGLED)
-   ↓
-4. Tous les clients connectés reçoivent l'événement
-   ↓
-5. Frontend rafraîchit automatiquement la liste des loteries
-   ↓
-6. Vendeurs voient uniquement les loteries OUVERTES
-   ↓
-7. Chronomètres mis à jour en temps réel
-```
-
----
-
-## Calcul Statut Ouvert/Fermé
-
-```python
-# Logique dans sync_service.py
-def calculate_lottery_status(schedule, timezone):
-    current_time = now().in_timezone(timezone)
-    
-    open_mins = parse_time(schedule.open_time)
-    close_mins = parse_time(schedule.close_time)
-    current_mins = current_time.hour * 60 + current_time.minute
-    
-    # Cas normal: 06:00 - 23:00
-    if open_mins <= current_mins < close_mins:
-        is_open = True
-        time_until_close = (close_mins - current_mins) * 60
-    
-    # Cas nuit: 22:00 - 02:00
-    elif close_mins < open_mins:
-        is_open = (current_mins >= open_mins or current_mins < close_mins)
-    
-    return {
-        "is_open": is_open,
-        "time_until_close": time_until_close,
-        "status_text": f"Ferme dans {time_until_close // 60}min"
-    }
-```
-
----
-
-## Credentials
+## Credentials Production
 
 | Rôle | Email | Password |
 |------|-------|----------|
@@ -155,17 +73,35 @@ def calculate_lottery_status(schedule, timezone):
 
 ---
 
+## Architecture Finale
+
+```
+/app/backend/
+├── settlement_engine.py      - Moteur de calcul des gains (60/20/10)
+├── settlement_routes.py      - API Settlement
+├── sync_service.py           - Synchronisation temps réel
+├── lottery_sync_service.py   - Sync loteries (MODIFIÉ: préserve config)
+├── scheduled_results_routes.py - Résultats auto (MODIFIÉ: préserve horaires)
+├── saas_core.py              - Routes SaaS (MODIFIÉ: préserve config)
+└── websocket_manager.py      - Broadcast événements
+
+/app/frontend/src/pages/
+├── SuperSettlementPage.jsx   - Interface règlement
+├── vendeur/VendeurNouvelleVente.jsx - Vente avec chronomètres
+```
+
+---
+
 ## Prochaines Étapes (Backlog)
 
 ### P1 - Haute Priorité
-- [ ] Corriger WebSocket 403 pour sync temps réel (actuellement polling 30s)
-- [ ] UI Company Admin: Rapport de règlement détaillé
+- [ ] Corriger WebSocket 403 pour sync instantané
+- [ ] UI rapport détaillé par compagnie
 
 ### P2 - Moyenne Priorité
-- [ ] Toggle Adresse/Téléphone/QR Code sur tickets imprimés
-- [ ] Notification push quand loterie ferme dans 5 minutes
+- [ ] Notification quand loterie ferme dans 5 min
+- [ ] Toggle QR Code sur tickets
 
 ### P3 - Basse Priorité
-- [ ] APK Android dédié avec mode hors ligne
-- [ ] Multi-langue (Espagnol, Anglais)
-- [ ] Export PDF des rapports
+- [ ] APK Android hors ligne
+- [ ] Multi-langue

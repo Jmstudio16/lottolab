@@ -251,6 +251,9 @@ async def generate_plop_plop_schedules():
     Generate hourly schedules for Plop Plop lottery.
     Results every hour from 8:00 to 21:00.
     Sales close 55 minutes before each draw (at XX:05).
+    
+    IMPORTANT: Only creates NEW schedules, NEVER modifies existing ones.
+    This respects Super Admin configurations.
     """
     if db is None:
         return
@@ -264,15 +267,27 @@ async def generate_plop_plop_schedules():
     
     lottery_id = lottery["lottery_id"]
     lottery_name = lottery["lottery_name"]
+    created_count = 0
     
     # Generate schedules for each hour 8:00 to 21:00
-    schedules = []
     for hour in range(8, 22):  # 8:00 to 21:00
         draw_name = f"Tirage {hour:02d}h00"
+        
+        # Check if schedule already exists
+        existing = await db.global_schedules.find_one({
+            "lottery_id": lottery_id,
+            "draw_name": draw_name
+        })
+        
+        if existing:
+            # NEVER modify existing schedules - respect Super Admin config
+            continue
+        
+        # Create new schedule only
         close_time = f"{hour-1:02d}:05" if hour > 0 else "23:05"
         open_time = f"{(hour-1):02d}:00" if hour > 8 else "07:00"
         
-        schedules.append({
+        await db.global_schedules.insert_one({
             "schedule_id": generate_id("sch_"),
             "lottery_id": lottery_id,
             "lottery_name": lottery_name,
@@ -284,16 +299,10 @@ async def generate_plop_plop_schedules():
             "interval_type": "HOURLY",
             "created_at": get_current_timestamp()
         })
+        created_count += 1
     
-    # Upsert schedules
-    for sch in schedules:
-        await db.global_schedules.update_one(
-            {"lottery_id": lottery_id, "draw_name": sch["draw_name"]},
-            {"$set": sch},
-            upsert=True
-        )
-    
-    print(f"[SCHEDULER] Generated {len(schedules)} schedules for Plop Plop")
+    if created_count > 0:
+        print(f"[SCHEDULER] Created {created_count} NEW schedules for Plop Plop")
 
 
 async def generate_loto_rapid_schedules():
@@ -301,6 +310,9 @@ async def generate_loto_rapid_schedules():
     Generate 2-hour interval schedules for Loto Rapid.
     Results every 2 hours: 8:00, 10:00, 12:00, 14:00, 16:00, 18:00, 20:00.
     Sales close 5 minutes before each draw.
+    
+    IMPORTANT: Only creates NEW schedules, NEVER modifies existing ones.
+    This respects Super Admin configurations.
     """
     if db is None:
         return
@@ -314,15 +326,26 @@ async def generate_loto_rapid_schedules():
     
     lottery_id = lottery["lottery_id"]
     lottery_name = lottery["lottery_name"]
+    created_count = 0
     
     # Generate schedules every 2 hours from 8:00 to 20:00
-    schedules = []
     for hour in range(8, 22, 2):  # 8, 10, 12, 14, 16, 18, 20
         draw_name = f"Tirage {hour:02d}h00"
+        
+        # Check if schedule already exists
+        existing = await db.global_schedules.find_one({
+            "lottery_id": lottery_id,
+            "draw_name": draw_name
+        })
+        
+        if existing:
+            # NEVER modify existing schedules - respect Super Admin config
+            continue
+        
         close_time = f"{hour-1:02d}:55"  # Close 5 minutes before
         open_time = f"{(hour-2):02d}:00" if hour > 8 else "06:00"
         
-        schedules.append({
+        await db.global_schedules.insert_one({
             "schedule_id": generate_id("sch_"),
             "lottery_id": lottery_id,
             "lottery_name": lottery_name,
@@ -334,16 +357,10 @@ async def generate_loto_rapid_schedules():
             "interval_type": "EVERY_2_HOURS",
             "created_at": get_current_timestamp()
         })
+        created_count += 1
     
-    # Upsert schedules
-    for sch in schedules:
-        await db.global_schedules.update_one(
-            {"lottery_id": lottery_id, "draw_name": sch["draw_name"]},
-            {"$set": sch},
-            upsert=True
-        )
-    
-    print(f"[SCHEDULER] Generated {len(schedules)} schedules for Loto Rapid")
+    if created_count > 0:
+        print(f"[SCHEDULER] Created {created_count} NEW schedules for Loto Rapid")
 
 
 async def auto_generate_next_results():

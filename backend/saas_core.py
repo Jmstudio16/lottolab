@@ -351,33 +351,56 @@ async def toggle_lottery_global(
 
 
 async def sync_lottery_to_all_companies(lottery_id: str, lottery_name: str, state_code: str):
-    """Create company_lottery entry for all active companies"""
+    """
+    Create company_lottery entry for all active companies.
+    
+    IMPORTANT: Only creates NEW entries, NEVER modifies existing ones.
+    This respects company-specific configurations.
+    """
     companies = await db.companies.find(
         {"status": {"$in": ["ACTIVE", "TRIAL"]}},
         {"_id": 0, "company_id": 1}
     ).to_list(1000)
     
     now = get_current_timestamp()
+    created_count = 0
     
     for company in companies:
-        # Upsert - create if not exists
-        await db.company_lotteries.update_one(
-            {"company_id": company["company_id"], "lottery_id": lottery_id},
-            {"$set": {
-                "lottery_name": lottery_name,
-                "state_code": state_code,
-                "disabled_by_super_admin": False,
-                "updated_at": now
-            },
-            "$setOnInsert": {
+        # Check if entry already exists
+        existing = await db.company_lotteries.find_one({
+            "company_id": company["company_id"],
+            "lottery_id": lottery_id
+        })
+        
+        if existing:
+            # NEVER modify existing entries - respect company configuration
+            # Only update if disabled_by_super_admin was true (re-enabling globally)
+            if existing.get("disabled_by_super_admin"):
+                await db.company_lotteries.update_one(
+                    {"company_id": company["company_id"], "lottery_id": lottery_id},
+                    {"$set": {
+                        "disabled_by_super_admin": False,
+                        "updated_at": now
+                    }}
+                )
+        else:
+            # Create new entry only if doesn't exist
+            await db.company_lotteries.insert_one({
                 "id": generate_id("cl_"),
                 "company_id": company["company_id"],
                 "lottery_id": lottery_id,
-                "is_enabled": True,  # Default enabled when synced
-                "created_at": now
-            }},
-            upsert=True
-        )
+                "lottery_name": lottery_name,
+                "state_code": state_code,
+                "is_enabled": True,  # Default enabled for NEW entries only
+                "enabled": True,
+                "is_enabled_for_company": True,
+                "disabled_by_super_admin": False,
+                "created_at": now,
+                "updated_at": now
+            })
+            created_count += 1
+    
+    return created_count
 
 
 # ============================================================================

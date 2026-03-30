@@ -52,18 +52,18 @@ async def sync_company_lotteries(company_id: str) -> dict:
     
     This function:
     1. Gets all active master lotteries
-    2. Ensures company_lotteries entries exist for each
-    3. Returns count of synced lotteries
+    2. Creates ONLY NEW company_lotteries entries
+    3. NEVER modifies existing entries (respects company config)
     
     This fixes the "enabled_lotteries: 0" bug by ensuring
-    all companies have lottery entries.
+    all companies have lottery entries, WITHOUT overwriting
+    existing configurations.
     """
     if db is None:
         return {"error": "Database not initialized", "synced": 0}
     
     now = get_current_timestamp()
     synced_count = 0
-    updated_count = 0
     
     # Get all active master lotteries
     master_lotteries = await db.master_lotteries.find(
@@ -88,7 +88,7 @@ async def sync_company_lotteries(company_id: str) -> dict:
         })
         
         if not existing:
-            # Create new entry - DEFAULT ENABLED
+            # Create new entry - DEFAULT ENABLED (only for NEW entries)
             await db.company_lotteries.insert_one({
                 "company_id": company_id,
                 "lottery_id": lottery_id,
@@ -101,33 +101,13 @@ async def sync_company_lotteries(company_id: str) -> dict:
                 "updated_at": now
             })
             synced_count += 1
-        else:
-            # Ensure all boolean fields are consistent
-            needs_update = False
-            update_data = {"updated_at": now}
-            
-            # If enabled is true but is_enabled is false, fix it
-            if existing.get("enabled") and not existing.get("is_enabled"):
-                update_data["is_enabled"] = True
-                update_data["is_enabled_for_company"] = True
-                needs_update = True
-            
-            if existing.get("is_enabled") and not existing.get("enabled"):
-                update_data["enabled"] = True
-                needs_update = True
-            
-            if needs_update:
-                await db.company_lotteries.update_one(
-                    {"company_id": company_id, "lottery_id": lottery_id},
-                    {"$set": update_data}
-                )
-                updated_count += 1
+        # DO NOT modify existing entries - respect company configuration
     
     return {
         "company_id": company_id,
         "master_lotteries_count": len(master_lotteries),
         "synced_new": synced_count,
-        "updated_existing": updated_count,
+        "updated_existing": 0,  # We no longer update existing
         "timestamp": now
     }
 
