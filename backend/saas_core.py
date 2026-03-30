@@ -2140,3 +2140,157 @@ async def get_cron_logs(
     ).sort("run_at", -1).limit(limit).to_list(limit)
     
     return logs
+
+
+
+# ============================================================================
+# COMPANY ANALYTICS (For Super Admin Dashboard)
+# ============================================================================
+
+@saas_core_router.get("/company-analytics")
+async def get_company_analytics(
+    current_user: dict = Depends(require_super_admin)
+):
+    """
+    Get comprehensive analytics for all companies.
+    
+    Returns:
+    - List of companies with their metrics (succursales, agents, vendeurs, sales)
+    - Global totals
+    - Sorted by total_sales descending
+    """
+    now = get_current_timestamp()
+    
+    # Get all companies
+    companies = await db.companies.find(
+        {"status": {"$ne": "DELETED"}},
+        {"_id": 0}
+    ).to_list(500)
+    
+    company_analytics = []
+    
+    total_succursales = 0
+    total_agents = 0
+    total_vendeurs = 0
+    total_sales = 0
+    total_tickets = 0
+    total_winning_tickets = 0
+    total_payouts = 0
+    
+    for company in companies:
+        company_id = company.get("company_id")
+        
+        # Count succursales
+        succursales_count = await db.succursales.count_documents({
+            "company_id": company_id,
+            "status": {"$ne": "DELETED"}
+        })
+        
+        # Count agents (SUPERVISOR, AGENT_FINANCE, etc.)
+        agents_count = await db.users.count_documents({
+            "company_id": company_id,
+            "role": {"$in": ["SUPERVISOR", "AGENT_FINANCE", "AGENT_MARKETING", "STAFF"]},
+            "status": "ACTIVE"
+        })
+        
+        # Count vendeurs (AGENT_POS)
+        vendeurs_count = await db.users.count_documents({
+            "company_id": company_id,
+            "role": "AGENT_POS",
+            "status": "ACTIVE"
+        })
+        
+        # Calculate sales for this month
+        first_of_month = now[:8] + "01"
+        sales_pipeline = [
+            {"$match": {
+                "company_id": company_id,
+                "created_at": {"$gte": first_of_month}
+            }},
+            {"$group": {
+                "_id": None,
+                "total_sales": {"$sum": "$total_amount"},
+                "tickets_count": {"$sum": 1}
+            }}
+        ]
+        
+        sales_result = await db.lottery_transactions.aggregate(sales_pipeline).to_list(1)
+        company_sales = sales_result[0].get("total_sales", 0) if sales_result else 0
+        tickets_count = sales_result[0].get("tickets_count", 0) if sales_result else 0
+        
+        # Count winning tickets
+        winning_count = await db.lottery_transactions.count_documents({
+            "company_id": company_id,
+            "is_winner": True
+        })
+        
+        # Calculate payouts
+        payouts_pipeline = [
+            {"$match": {
+                "company_id": company_id,
+                "is_winner": True
+            }},
+            {"$group": {
+                "_id": None,
+                "total_payouts": {"$sum": "$win_amount"}
+            }}
+        ]
+        payouts_result = await db.lottery_transactions.aggregate(payouts_pipeline).to_list(1)
+        company_payouts = payouts_result[0].get("total_payouts", 0) if payouts_result else 0
+        
+        # Get top 3 vendors
+        top_agents_pipeline = [
+            {"$match": {"company_id": company_id}},
+            {"$group": {
+                "_id": "$agent_id",
+                "agent_name": {"$first": "$agent_name"},
+                "sales": {"$sum": 1}
+            }},
+            {"$sort": {"sales": -1}},
+            {"$limit": 3}
+        ]
+        top_agents_result = await db.lottery_transactions.aggregate(top_agents_pipeline).to_list(3)
+        top_agents = [{"name": a.get("agent_name", "Unknown"), "sales": a.get("sales", 0)} for a in top_agents_result]
+        
+        # Update totals
+        total_succursales += succursales_count
+        total_agents += agents_count
+        total_vendeurs += vendeurs_count
+        total_sales += company_sales
+        total_tickets += tickets_count
+        total_winning_tickets += winning_count
+        total_payouts += company_payouts
+        
+        company_analytics.append({
+            "company_id": company_id,
+            "name": company.get("name", "Unknown"),
+            "status": company.get("status", "UNKNOWN"),
+            "plan": company.get("plan", "Basic"),
+            "succursales_count": succursales_count,
+            "agents_count": agents_count,
+            "vendeurs_count": vendeurs_count,
+            "total_sales": company_sales,
+            "tickets_count": tickets_count,
+            "winning_tickets": winning_count,
+            "total_payouts": company_payouts,
+            "top_agents": top_agents,
+            "created_at": company.get("created_at")
+        })
+    
+    # Sort by total_sales descending
+    company_analytics.sort(key=lambda x: x.get("total_sales", 0), reverse=True)
+    
+    return {
+        "companies": company_analytics,
+        "totals": {
+            "total_companies": len(companies),
+            "total_succursales": total_succursales,
+            "total_agents": total_agents,
+            "total_vendeurs": total_vendeurs,
+            "total_sales": total_sales,
+            "total_tickets": total_tickets,
+            "total_winning_tickets": total_winning_tickets,
+            "total_payouts": total_payouts
+        },
+        "generated_at": now
+    }

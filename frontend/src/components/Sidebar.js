@@ -44,7 +44,7 @@ import UserAvatar from './UserAvatar';
 // REMOVED: LOTO PAM Online section (single platform: LOTTOLAB only)
 const getSuperAdminMenu = (t) => [
   { path: '/super/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
-  { path: '/admin/analytics', label: 'Analytics Pro', icon: ChartLine },
+  { path: '/super/company-analytics', label: 'Analytics Compagnies', icon: ChartLine },
   { path: '/super/lottery-catalog', label: t('nav.lotteryCatalog'), icon: Globe },
   { path: '/super/lottery-flags', label: t('nav.lotteryFlags', 'Config Drapeaux'), icon: Flag },
   { path: '/super/global-schedules', label: t('nav.globalSchedules'), icon: Clock },
@@ -88,11 +88,13 @@ const getCompanyAdminMenu = (t) => [
   { path: '/company/settings', label: t('nav.settings', 'Settings'), icon: Settings },
 ];
 
-export const Sidebar = ({ role, onNavigate }) => {
+export const Sidebar = ({ onNavigate }) => {
   const location = useLocation();
   const { logout, user } = useAuth();
   const { t } = useTranslation();
   
+  // Get role from user context, with fallback
+  const role = user?.role || 'COMPANY_ADMIN';
   const menu = role === 'SUPER_ADMIN' ? getSuperAdminMenu(t) : getCompanyAdminMenu(t);
   
   const handleClick = () => {
