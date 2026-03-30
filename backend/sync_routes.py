@@ -256,18 +256,28 @@ async def get_full_device_config(current_agent: dict = Depends(get_current_agent
             lottery["draw_time"] = sched.get("draw_time")
             lottery["draw_name"] = sched.get("draw_name")
             
-            # Calculate is_open
+            # Calculate is_open using minutes comparison
             open_time = sched.get("open_time", "00:00")
             close_time = sched.get("close_time", "23:59")
             
             if open_time and close_time:
-                # Handle overnight schedules (e.g., 22:00 - 02:00)
-                if open_time <= close_time:
-                    # Normal schedule (same day)
-                    lottery["is_open"] = open_time <= current_time_str <= close_time
-                else:
-                    # Overnight schedule
-                    lottery["is_open"] = current_time_str >= open_time or current_time_str <= close_time
+                # Convert to minutes for accurate comparison
+                try:
+                    oh, om = map(int, open_time.split(":"))
+                    ch, cm = map(int, close_time.split(":"))
+                    open_mins = oh * 60 + om
+                    close_mins = ch * 60 + cm
+                    current_mins = now_local.hour * 60 + now_local.minute
+                    
+                    # Handle overnight schedules (e.g., 22:00 - 02:00)
+                    if open_mins <= close_mins:
+                        # Normal schedule (same day)
+                        lottery["is_open"] = open_mins <= current_mins < close_mins
+                    else:
+                        # Overnight schedule
+                        lottery["is_open"] = current_mins >= open_mins or current_mins < close_mins
+                except Exception:
+                    lottery["is_open"] = False
     
     # ---- 7. BLOCKED NUMBERS ----
     blocked_numbers = await db.blocked_numbers.find(

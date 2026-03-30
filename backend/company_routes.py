@@ -91,8 +91,16 @@ class CompanyProfileUpdate(BaseModel):
 
 @company_router.get("/profile")
 async def get_company_profile(current_user: dict = Depends(get_current_user)):
-    """Get company profile and settings for ticket customization"""
-    company_id = require_company_access(current_user)
+    """Get company profile and settings for ticket customization.
+    
+    Accessible to:
+    - Company Admin, Manager, Auditor: Full access
+    - Agents (AGENT_POS), Supervisors: Read-only basic info
+    """
+    company_id = current_user.get("company_id")
+    
+    if not company_id:
+        raise HTTPException(status_code=403, detail="No company access")
     
     company = await db.companies.find_one(
         {"company_id": company_id},
