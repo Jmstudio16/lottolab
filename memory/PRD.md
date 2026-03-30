@@ -1,172 +1,171 @@
 # LOTTOLAB - Professional Lottery SaaS Platform
 
-## Version: 10.0.0 (Settlement Engine)
+## Version: 11.0.0 (Real-time Sync)
 ## Last Updated: 2026-03-30
 
 ---
 
-## STATUT: PRÊT POUR DÉPLOIEMENT ✅
+## STATUT: PRÊT POUR PRODUCTION ✅
 
-### Nouvelle fonctionnalité dans cette session:
-- **Settlement Engine (Moteur de Règlement Automatique)**
-  - Calcul automatique des tickets gagnants après publication des résultats
-  - Formule 60/20/10 (1er lot x60, 2ème lot x20, 3ème lot x10)
-  - Idempotence totale (pas de double paiement)
-  - Audit logs complet
-  - Interface Super Admin dédiée
+### Nouvelles fonctionnalités dans cette session:
+
+1. **Settlement Engine (Moteur de Règlement Automatique)**
+   - Calcul automatique des tickets gagnants après publication des résultats
+   - Formule 60/20/10 (1er lot x60, 2ème lot x20, 3ème lot x10)
+   - Idempotence totale (pas de double paiement)
+   - Audit logs complet
+   - Interface Super Admin dédiée
+
+2. **Système de Synchronisation Temps Réel**
+   - Chronomètres de fermeture sur chaque loterie
+   - Seules les loteries OUVERTES apparaissent pour les vendeurs
+   - Mise à jour automatique toutes les 30 secondes
+   - Broadcast WebSocket pour changements d'horaires et de statut
+   - Filtres par drapeau (Haïti 🇭🇹 / USA 🇺🇸)
 
 ---
 
-## Validation Complète (Iteration 48)
+## Validation Complète
 
+### Iteration 49: Real-time Sync Service
 | Test | Résultat |
 |------|----------|
-| Settlement Publish | ✅ Fonctionne |
-| Settlement Idempotency | ✅ Doublons rejetés |
-| Settlement List | ✅ Filtres fonctionnels |
-| Settlement Report | ✅ Statistiques complètes |
-| Winning Tickets | ✅ Liste correcte |
-| Prize Config Defaults | ✅ 60/20/10 configuré |
+| /api/sync/lotteries/status | ✅ 236 loteries avec statut temps réel |
+| /api/sync/vendeur/open-lotteries | ✅ 193 loteries ouvertes seulement |
+| Toggle Lottery Global | ✅ Broadcast WebSocket fonctionnel |
+| Update Schedule | ✅ Broadcast WebSocket fonctionnel |
+| Chronomètres de fermeture | ✅ Countdown HH:MM:SS |
+| Filtres Haïti/USA | ✅ 26 Haïti, 167 USA |
+| Polling fallback | ✅ Refresh auto 30s |
+
+### Iteration 48: Settlement Engine
+| Test | Résultat |
+|------|----------|
+| Settlement Publish | ✅ Calcul automatique gains |
+| Idempotency | ✅ Doublons rejetés |
+| Formule 60/20/10 | ✅ 7000 HTG calculés correctement |
 | Wallet Transactions | ✅ Crédits enregistrés |
 | Audit Logs | ✅ Traçabilité complète |
-| UI Settlement Page | ✅ Interface fonctionnelle |
-
-**Test End-to-End**: Ticket avec mise 100 HTG sur "42" + 50 HTG sur "15"
-- Résultat publié: 142-15-88
-- Gains calculés: 6000 HTG (1er lot) + 1000 HTG (2ème lot) = **7000 HTG** ✅
 
 ---
 
-## Fonctionnalités Production
-
-### 1. Settlement Engine (NOUVEAU ✨)
-- **Publication de résultats** avec settlement automatique
-- **Calcul des gagnants** par type de jeu (Borlette, Loto3/4/5, Mariage)
-- **Formule 60/20/10** pour Borlette:
-  - 1er lot: mise × 60
-  - 2ème lot: mise × 20
-  - 3ème lot: mise × 10
-- **Multiplicateurs fixes** pour autres jeux:
-  - Loto 3: ×500
-  - Loto 4: ×5000
-  - Loto 5: ×50000
-  - Mariage: ×750
-- **Protection anti-doublon** via hash unique
-- **Crédit wallet automatique** pour les gagnants
-- **Audit trail** complet
-
-### 2. Vente de Tickets
-- Sélection de loterie avec statut (Ouvert/Fermé)
-- Types de mise: Borlette, Loto 3, Mariage, Loto 4, Loto 5
-- Validation des limites (min 1 HTG, max selon type)
-- Mariages Gratis automatiques
-- Impression thermique 80mm
-
-### 3. Résultats & Gains
-- Publication Super Admin → Settlement automatique
-- Broadcast WebSocket en temps réel
-- Notification instantanée des gagnants
-
-### 4. Analytics Pro
-- 4 Dashboards (Ventes, Gains, Performance, Temps Réel)
-- Métriques par période (jour/semaine/mois)
-
-### 5. PWA Mobile
-- Installable sur mobile
-- Service worker avec cache
-- Offline fallback
-
----
-
-## Architecture Validée
+## Architecture Complète
 
 ```
 Frontend (React + Tailwind)
-  └── SuperSettlementPage.jsx - Interface règlement
-  └── WebSocket silencieux (pas d'indicateur visible)
-  └── Sons + animations pour notifications
+├── Pages Vendeur
+│   └── VendeurNouvelleVente.jsx - Vente avec chronomètres
+│       ├── CountdownTimer component
+│       ├── Filtres Haïti/USA
+│       ├── Polling 30s automatique
+│       └── WebSocket fallback
+├── Pages Super Admin
+│   ├── SuperSettlementPage.jsx - Règlement automatique
+│   ├── SuperGlobalSchedulesPage.js - Horaires
+│   └── SuperLotteryCatalogPage.jsx - Catalogue
 
 Backend (FastAPI)
-  ├── /api/settlement/* → settlement_routes.py (NOUVEAU)
-  │   ├── POST /api/settlement/publish - Publication + settlement
-  │   ├── GET /api/settlement/list - Historique
-  │   ├── GET /api/settlement/report/{id} - Rapport détaillé
-  │   ├── GET /api/settlement/winning-tickets - Gagnants
-  │   └── GET /api/settlement/audit-logs - Audit
-  ├── /api/prize-config/* → settlement_routes.py
-  │   ├── GET /api/prize-config/company - Config compagnie
-  │   ├── PUT /api/prize-config/company - Modifier config
-  │   └── GET /api/prize-config/defaults - Defaults système
-  ├── settlement_engine.py - Moteur de calcul (NOUVEAU)
-  ├── /api/lottery/sell → universal_pos_routes.py
-  ├── /api/ticket/print → ticket_print_routes.py
-  ├── /api/analytics/* → analytics_routes.py
-  └── /api/ws → websocket_routes.py
+├── Sync Service (/api/sync/*)
+│   ├── GET /lotteries/status - Statut temps réel
+│   ├── GET /vendeur/open-lotteries - Ouvertes seulement
+│   ├── GET /lottery/{id}/status - Statut individuel
+│   ├── POST /lottery/{id}/toggle - Activer/désactiver
+│   └── PUT /schedule/{id} - Modifier horaires
+├── Settlement Engine (/api/settlement/*)
+│   ├── POST /publish - Publier + régler automatiquement
+│   ├── GET /list - Historique settlements
+│   ├── GET /report/{id} - Rapport détaillé
+│   └── GET /winning-tickets - Liste gagnants
+├── WebSocket Manager
+│   ├── LOTTERY_STATUS_CHANGE - Loterie ouverte/fermée
+│   ├── SCHEDULE_CHANGE - Horaires modifiés
+│   ├── RESULT_PUBLISHED - Nouveau résultat
+│   ├── SYNC_REQUIRED - Rafraîchir données
+│   └── LOTTERY_TOGGLED - Statut changé
 
 Database (MongoDB)
-  ├── lottery_transactions (tickets) - win_amount, is_winner, winning_plays
-  ├── settlements (historique règlements)
-  ├── settlement_items (détails par play gagnant)
-  ├── wallet_transactions (crédits gains)
-  ├── audit_logs (traçabilité)
-  ├── prize_configs (configurations primes par compagnie)
-  ├── global_results (résultats officiels)
-  └── global_schedules (horaires)
+├── lottery_transactions - Tickets avec gains
+├── settlements - Historique règlements
+├── settlement_items - Détails gains par play
+├── wallet_transactions - Crédits vendeurs
+├── audit_logs - Traçabilité
+├── global_schedules - Horaires configurés
+├── master_lotteries - Catalogue global
+└── company_lotteries - Loteries par compagnie
 ```
 
 ---
 
-## Settlement Engine - Flow
+## Flux de Synchronisation
 
 ```
-1. Super Admin publie résultat via /api/settlement/publish
+1. Super Admin modifie horaires/statut loterie
    ↓
-2. Vérification duplicata (result_hash unique)
+2. Backend met à jour MongoDB
    ↓
-3. Création résultat dans published_results + global_results
+3. Broadcast WebSocket (SCHEDULE_CHANGE / LOTTERY_TOGGLED)
    ↓
-4. Si auto_settle=true, déclenche settle_draw()
+4. Tous les clients connectés reçoivent l'événement
    ↓
-5. Scan des tickets (lottery_id, draw_date, draw_name)
+5. Frontend rafraîchit automatiquement la liste des loteries
    ↓
-6. Pour chaque ticket:
-   - Matcher les plays selon bet_type (Borlette, Loto3, etc.)
-   - Calculer gains avec formule 60/20/10 ou multiplicateur fixe
+6. Vendeurs voient uniquement les loteries OUVERTES
    ↓
-7. Mise à jour tickets (status=WINNER, win_amount)
-   ↓
-8. Création settlement_items pour chaque play gagnant
-   ↓
-9. Crédit wallet_transactions pour les agents
-   ↓
-10. Settlement marqué COMPLETED
-    ↓
-11. Broadcast WebSocket RESULT_PUBLISHED + TICKET_WINNER
+7. Chronomètres mis à jour en temps réel
 ```
 
 ---
 
-## Credentials Production
+## Calcul Statut Ouvert/Fermé
+
+```python
+# Logique dans sync_service.py
+def calculate_lottery_status(schedule, timezone):
+    current_time = now().in_timezone(timezone)
+    
+    open_mins = parse_time(schedule.open_time)
+    close_mins = parse_time(schedule.close_time)
+    current_mins = current_time.hour * 60 + current_time.minute
+    
+    # Cas normal: 06:00 - 23:00
+    if open_mins <= current_mins < close_mins:
+        is_open = True
+        time_until_close = (close_mins - current_mins) * 60
+    
+    # Cas nuit: 22:00 - 02:00
+    elif close_mins < open_mins:
+        is_open = (current_mins >= open_mins or current_mins < close_mins)
+    
+    return {
+        "is_open": is_open,
+        "time_until_close": time_until_close,
+        "status_text": f"Ferme dans {time_until_close // 60}min"
+    }
+```
+
+---
+
+## Credentials
 
 | Rôle | Email | Password |
 |------|-------|----------|
 | Super Admin | jefferson@jmstudio.com | JMStudio@2026! |
-| Company Admin | Dépend de la compagnie | - |
-| Vendeur | Dépend de l'agent | - |
+| Company Admin | admin@lotopam.com | LotoPAM2026! |
+| Vendeur | vendeur@lotopam.com | Vendeur2026! |
 
 ---
 
 ## Prochaines Étapes (Backlog)
 
 ### P1 - Haute Priorité
+- [ ] Corriger WebSocket 403 pour sync temps réel (actuellement polling 30s)
 - [ ] UI Company Admin: Rapport de règlement détaillé
-- [ ] UI Super Admin: Monitoring des settlements en cours
 
 ### P2 - Moyenne Priorité
 - [ ] Toggle Adresse/Téléphone/QR Code sur tickets imprimés
-- [ ] Configuration Pool Distribution vs Fixed Multiplier par compagnie
+- [ ] Notification push quand loterie ferme dans 5 minutes
 
 ### P3 - Basse Priorité
 - [ ] APK Android dédié avec mode hors ligne
 - [ ] Multi-langue (Espagnol, Anglais)
-- [ ] Export PDF des rapports de settlement
+- [ ] Export PDF des rapports
