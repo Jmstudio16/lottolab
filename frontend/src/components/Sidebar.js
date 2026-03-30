@@ -44,6 +44,7 @@ import UserAvatar from './UserAvatar';
 // REMOVED: LOTO PAM Online section (single platform: LOTTOLAB only)
 const getSuperAdminMenu = (t) => [
   { path: '/super/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+  { path: '/admin/analytics', label: 'Analytics Pro', icon: ChartLine },
   { path: '/super/lottery-catalog', label: t('nav.lotteryCatalog'), icon: Globe },
   { path: '/super/lottery-flags', label: t('nav.lotteryFlags', 'Config Drapeaux'), icon: Flag },
   { path: '/super/global-schedules', label: t('nav.globalSchedules'), icon: Clock },
@@ -61,6 +62,7 @@ const getSuperAdminMenu = (t) => [
 // Company Admin Menu - Complete & Organized
 const getCompanyAdminMenu = (t) => [
   { path: '/company/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+  { path: '/admin/analytics', label: 'Analytics Pro', icon: ChartLine },
   { path: '/company/succursales', label: t('nav.branches', 'Succursales'), icon: Store },
   { path: '/company/lotteries', label: t('nav.lotteryCatalog', 'Catalogue Loteries'), icon: Ticket },
   { path: '/company/lottery-flags', label: t('nav.lotteryFlags', 'Config Drapeaux'), icon: Flag },

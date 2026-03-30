@@ -3,11 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/api/auth';
 import { useTranslation } from 'react-i18next';
+import { useWebSocketContext, useWebSocketEvent, WSEventType } from '@/context/WebSocketContext';
+import { WebSocketIndicatorCompact } from '@/components/WebSocketIndicator';
 import axios from 'axios';
 import { 
   LayoutDashboard, ShoppingCart, Ticket, Search, Calendar,
   Trophy, BarChart3, User, LogOut, Menu, X, Store, Building2, Trash2,
-  Banknote, Receipt
+  Banknote, Receipt, Wifi
 } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import UserAvatar from '@/components/UserAvatar';
@@ -18,6 +20,7 @@ const VendeurLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { isConnected } = useWebSocketContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [companyInfo, setCompanyInfo] = useState(null);
   const [vendeurPhoto, setVendeurPhoto] = useState(null);
@@ -210,7 +213,7 @@ const VendeurLayout = () => {
       </div>
 
       {/* Quick Actions Bar (Mobile) */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 p-2 flex justify-around">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 p-2 flex justify-around items-center">
         <Link to="/vendeur/nouvelle-vente" className="flex flex-col items-center p-2 text-emerald-400">
           <ShoppingCart className="w-6 h-6" />
           <span className="text-xs mt-1">Vente</span>
@@ -219,6 +222,23 @@ const VendeurLayout = () => {
           <Ticket className="w-6 h-6" />
           <span className="text-xs mt-1">Tickets</span>
         </Link>
+        
+        {/* WebSocket Status */}
+        <div className="flex flex-col items-center p-2">
+          {isConnected ? (
+            <div className="relative">
+              <Wifi className="w-6 h-6 text-emerald-400" />
+              <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+            </div>
+          ) : (
+            <Wifi className="w-6 h-6 text-slate-500" />
+          )}
+          <span className="text-xs mt-1 text-slate-400">Live</span>
+        </div>
+        
         <Link to="/vendeur/resultats" className="flex flex-col items-center p-2 text-slate-400">
           <Trophy className="w-6 h-6" />
           <span className="text-xs mt-1">Résultats</span>

@@ -2,10 +2,12 @@ import { API_URL } from '@/config/api';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/api/auth';
 import { useTranslation } from 'react-i18next';
+import { useWebSocketContext, useWebSocketEvent, WSEventType } from '@/context/WebSocketContext';
+import WebSocketIndicator from '@/components/WebSocketIndicator';
 import axios from 'axios';
 import { 
   DollarSign, Ticket, TrendingUp, Bell, Clock, 
-  Trophy, AlertCircle, CheckCircle, XCircle, Percent
+  Trophy, AlertCircle, CheckCircle, XCircle, Percent, RefreshCw
 } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
@@ -13,6 +15,7 @@ import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 const VendeurDashboard = () => {
   const { token, user } = useAuth();
   const { t } = useTranslation();
+  const { isConnected, lastMessage } = useWebSocketContext();
   const [loading, setLoading] = useState(true);
   const [commissionRate, setCommissionRate] = useState(0);
   const [succursaleName, setSuccursaleName] = useState('');
@@ -26,6 +29,8 @@ const VendeurDashboard = () => {
   const [recentTickets, setRecentTickets] = useState([]);
   const [latestResults, setLatestResults] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [highlightedTicket, setHighlightedTicket] = useState(null);
+  const [highlightedResult, setHighlightedResult] = useState(null);
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -87,6 +92,56 @@ const VendeurDashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  // WebSocket event handlers
+  useWebSocketEvent(WSEventType.RESULT_PUBLISHED, useCallback((data) => {
+    console.log('[WS] Result published:', data);
+    // Add new result to the top of the list with highlight
+    setLatestResults(prev => [{
+      result_id: data.data?.result_id,
+      lottery_name: data.data?.lottery_name,
+      draw_name: data.data?.draw_name,
+      winning_numbers: data.data?.winning_numbers,
+      draw_date: new Date().toISOString().split('T')[0]
+    }, ...prev.slice(0, 4)]);
+    
+    // Highlight the new result
+    setHighlightedResult(data.data?.result_id);
+    setTimeout(() => setHighlightedResult(null), 5000);
+    
+    // Refresh tickets to check for winners
+    fetchDashboardData();
+  }, [fetchDashboardData]));
+
+  useWebSocketEvent(WSEventType.TICKET_WINNER, useCallback((data) => {
+    console.log('[WS] Ticket winner:', data);
+    // Update ticket status in the list
+    setRecentTickets(prev => prev.map(t => 
+      t.ticket_code === data.data?.ticket_code 
+        ? { ...t, status: 'WINNER', win_amount: data.data?.win_amount }
+        : t
+    ));
+    
+    // Add notification
+    setNotifications(prev => [{
+      id: Date.now(),
+      type: 'success',
+      message: `GAGNANT! ${data.data?.ticket_code} - ${data.data?.win_amount?.toLocaleString()} HTG`,
+      time: 'Maintenant'
+    }, ...prev.slice(0, 4)]);
+    
+    // Highlight
+    setHighlightedTicket(data.data?.ticket_code);
+    setTimeout(() => setHighlightedTicket(null), 5000);
+  }, []));
+
+  useWebSocketEvent(WSEventType.TICKET_SOLD, useCallback((data) => {
+    console.log('[WS] Ticket sold:', data);
+    // Only refresh if it's our ticket (same agent)
+    if (data.data?.agent_id === user?.user_id) {
+      fetchDashboardData();
+    }
+  }, [user?.user_id, fetchDashboardData]));
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('fr-FR').format(amount || 0);
@@ -154,7 +209,16 @@ const VendeurDashboard = () => {
           )}
         </div>
         <div className="flex items-center gap-3">
+          <WebSocketIndicator />
           <LanguageSwitcher />
+          <button
+            onClick={fetchDashboardData}
+            disabled={loading}
+            className="p-2 rounded-lg bg-slate-700/50 hover:bg-slate-700 transition-colors"
+            title="Actualiser"
+          >
+            <RefreshCw className={`w-4 h-4 text-slate-400 ${loading ? 'animate-spin' : ''}`} />
+          </button>
           <div className="text-left sm:text-right">
             <p className="text-xs sm:text-sm text-slate-400">
               {new Date().toLocaleDateString('fr-FR', { 
@@ -232,7 +296,9 @@ const VendeurDashboard = () => {
             {notifications.map((notif) => (
               <div 
                 key={notif.id}
-                className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-slate-700/30 rounded-lg"
+                className={`flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-slate-700/30 rounded-lg transition-all duration-300 ${
+                  notif.type === 'success' && notif.time === 'Maintenant' ? 'ring-2 ring-emerald-500 animate-pulse' : ''
+                }`}
               >
                 {notif.type === 'success' ? (
                   <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
@@ -253,6 +319,15 @@ const VendeurDashboard = () => {
           <h2 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center gap-2">
             <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
             {t('vendeur.latestResults')}
+            {isConnected && (
+              <span className="ml-auto text-xs text-emerald-400 flex items-center gap-1">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                Live
+              </span>
+            )}
           </h2>
           <div className="space-y-2 sm:space-y-3">
             {latestResults.length === 0 ? (
@@ -261,14 +336,20 @@ const VendeurDashboard = () => {
               latestResults.map((result, idx) => (
                 <div 
                   key={result.result_id || idx}
-                  className="flex items-center justify-between p-2 sm:p-3 bg-slate-700/30 rounded-lg"
+                  className={`flex items-center justify-between p-2 sm:p-3 bg-slate-700/30 rounded-lg transition-all duration-500 ${
+                    highlightedResult === result.result_id 
+                      ? 'ring-2 ring-amber-500 bg-amber-500/10 animate-pulse' 
+                      : ''
+                  }`}
                 >
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-white text-sm sm:text-base truncate">{result.lottery_name}</p>
                     <p className="text-xs text-slate-400 truncate">{result.draw_name} - {result.draw_date}</p>
                   </div>
                   <div className="text-right ml-2">
-                    <p className="font-mono text-sm sm:text-lg text-amber-400 font-bold">
+                    <p className={`font-mono text-sm sm:text-lg font-bold ${
+                      highlightedResult === result.result_id ? 'text-amber-400 animate-bounce' : 'text-amber-400'
+                    }`}>
                       {formatWinningNumbers(result.winning_numbers)}
                     </p>
                   </div>
@@ -292,7 +373,11 @@ const VendeurDashboard = () => {
             recentTickets.map((ticket, idx) => (
               <div 
                 key={ticket.ticket_id || idx}
-                className="flex items-center justify-between p-2 sm:p-3 bg-slate-700/30 rounded-lg"
+                className={`flex items-center justify-between p-2 sm:p-3 bg-slate-700/30 rounded-lg transition-all duration-500 ${
+                  highlightedTicket === ticket.ticket_code 
+                    ? 'ring-2 ring-emerald-500 bg-emerald-500/10 animate-pulse' 
+                    : ''
+                }`}
               >
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                   {getStatusIcon(ticket.status)}
@@ -304,11 +389,14 @@ const VendeurDashboard = () => {
                 <div className="text-right ml-2">
                   <p className="font-semibold text-white text-sm sm:text-base">{formatCurrency(ticket.total_amount)} <span className="text-xs">HTG</span></p>
                   <p className={`text-xs ${
-                    ticket.status === 'WINNER' ? 'text-amber-400' :
+                    ticket.status === 'WINNER' ? 'text-amber-400 font-bold' :
                     ticket.status === 'LOST' ? 'text-red-400' :
                     'text-blue-400'
                   }`}>
                     {getStatusText(ticket.status)}
+                    {ticket.status === 'WINNER' && ticket.win_amount && (
+                      <span className="ml-1 text-emerald-400">+{formatCurrency(ticket.win_amount)}</span>
+                    )}
                   </p>
                 </div>
               </div>

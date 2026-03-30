@@ -4,10 +4,14 @@ import { AuthProvider, useAuth } from '@/api/auth';
 import { ProtectedRoute } from '@/api/ProtectedRoute';
 import { LogoProvider } from '@/contexts/LogoContext';
 import { LotoPamAuthProvider } from '@/context/LotoPamAuthContext';
+import { WebSocketProvider } from '@/context/WebSocketContext';
 import { Toaster } from 'sonner';
 import '@/App.css';
 import '@/i18n';
 import WhatsAppButton from '@/components/WhatsAppButton';
+
+// Analytics Pages
+import AnalyticsDashboardPage from '@/pages/admin/AnalyticsDashboardPage';
 
 // Super Admin Pages
 import { LoginPage } from '@/pages/LoginPage';
@@ -200,29 +204,30 @@ const SaaSApp = () => {
     <AuthProvider>
       <LogoProvider>
         <LotoPamAuthProvider>
-          <BrowserRouter>
-            <div className="App">
-              <Toaster 
-                position="top-right" 
-                theme="dark"
-                toastOptions={{
-                  style: {
-                    background: '#1e293b',
-                    border: '1px solid #334155',
-                    color: '#f1f5f9',
-                  },
-                  className: 'font-sans',
-                  duration: 3000,
-                }}
-              />
-              
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/home" element={<LandingPage />} />
+          <WebSocketProvider>
+            <BrowserRouter>
+              <div className="App">
+                <Toaster 
+                  position="top-right" 
+                  theme="dark"
+                  toastOptions={{
+                    style: {
+                      background: '#1e293b',
+                      border: '1px solid #334155',
+                      color: '#f1f5f9',
+                    },
+                    className: 'font-sans',
+                    duration: 3000,
+                  }}
+                />
                 
-                {/* Root redirect */}
-                <Route path="/" element={<RoleBasedRedirect />} />
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/home" element={<LandingPage />} />
+                  
+                  {/* Root redirect */}
+                  <Route path="/" element={<RoleBasedRedirect />} />
 
                 {/* ================== PUBLIC ROUTES (NO AUTH) ================== */}
                 <Route path="/verify/:ticketCode" element={<PublicVerifyPage />} />
@@ -711,11 +716,22 @@ const SaaSApp = () => {
                   <Route index element={<Navigate to="/vendeur/dashboard" replace />} />
                 </Route>
 
+                {/* ================== ANALYTICS PRO ROUTES ================== */}
+                <Route
+                  path="/admin/analytics"
+                  element={
+                    <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'COMPANY_ADMIN', 'COMPANY_MANAGER', 'BRANCH_SUPERVISOR']}>
+                      <AnalyticsDashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
+
                 {/* Catch all - redirect to role-based home */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </div>
           </BrowserRouter>
+          </WebSocketProvider>
         </LotoPamAuthProvider>
       </LogoProvider>
     </AuthProvider>

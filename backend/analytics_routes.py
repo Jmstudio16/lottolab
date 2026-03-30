@@ -10,12 +10,13 @@ Dashboards:
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, List
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 import logging
 
-from auth import get_current_user
+from auth import decode_token
 from models import UserRole
 from utils import get_current_timestamp
 
@@ -29,6 +30,23 @@ db = None
 def set_analytics_db(database):
     global db
     db = database
+
+security = HTTPBearer()
+
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    """Verify JWT token and return current user."""
+    token = credentials.credentials
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    user_id = payload.get("user_id")
+    user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    return user
 
 
 def require_company_access(current_user: dict):

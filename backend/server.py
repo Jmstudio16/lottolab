@@ -61,6 +61,7 @@ from security_routes import security_api_router, set_security_api_db
 from limits_routes import limits_router, set_limits_db
 from winning_routes import winning_router, set_winning_db
 from websocket_routes import ws_router
+from analytics_routes import analytics_router, set_analytics_db
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -1213,6 +1214,9 @@ app.include_router(financial_router)
 # Include winning router (ticket check, payout, balance)
 app.include_router(winning_router)
 
+# Include Analytics Pro router
+app.include_router(analytics_router)
+
 # Include WebSocket router for real-time updates
 app.include_router(ws_router, prefix="/api")
 
@@ -1404,6 +1408,9 @@ async def startup_event():
     
     # Set database for scheduler
     set_scheduler_db(db)
+    
+    # Set database for Analytics
+    set_analytics_db(db)
     
     # Initialize lottery schedules for Plop Plop and Loto Rapid
     await initialize_lottery_schedules()

@@ -1,11 +1,13 @@
 import { API_URL } from '@/config/api';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/api/auth';
+import { useWebSocketContext, useWebSocketEvent, WSEventType } from '@/context/WebSocketContext';
+import WebSocketIndicator from '@/components/WebSocketIndicator';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   Trophy, RefreshCw, Search, Calendar, DollarSign, 
-  CheckCircle, Clock, Eye, Printer, Filter, Download, Star
+  CheckCircle, Clock, Eye, Printer, Filter, Download, Star, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,16 +17,19 @@ import WinningTicketDetail from '@/components/WinningTicketDetail';
 
 const VendeurLotsGagnants = () => {
   const { token } = useAuth();
+  const { isConnected } = useWebSocketContext();
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState([]);
   const [summary, setSummary] = useState({ total_count: 0, total_win_amount: 0, paid_count: 0, pending_count: 0 });
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [highlightedTicketId, setHighlightedTicketId] = useState(null);
+  const [newWinnerAnimation, setNewWinnerAnimation] = useState(false);
 
   const headers = { Authorization: `Bearer ${token}` };
 
-  const fetchWinningTickets = async () => {
+  const fetchWinningTickets = useCallback(async () => {
     try {
       setLoading(true);
       const res = await axios.get(`${API_URL}/api/vendeur/winning-tickets`, { headers });
@@ -35,11 +40,67 @@ const VendeurLotsGagnants = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     fetchWinningTickets();
   }, [token]);
+
+  // WebSocket: Listen for new winners
+  useWebSocketEvent(WSEventType.TICKET_WINNER, useCallback((data) => {
+    console.log('[WS] New winner detected:', data);
+    
+    // Trigger animation
+    setNewWinnerAnimation(true);
+    setTimeout(() => setNewWinnerAnimation(false), 3000);
+    
+    // Add the new winning ticket to the list
+    const newTicket = {
+      ticket_id: data.data?.ticket_id,
+      ticket_code: data.data?.ticket_code,
+      lottery_name: data.data?.lottery_name,
+      win_amount: data.data?.win_amount,
+      status: 'WINNER',
+      created_at: new Date().toISOString(),
+      draw_date: new Date().toISOString().split('T')[0]
+    };
+    
+    setTickets(prev => [newTicket, ...prev]);
+    setSummary(prev => ({
+      ...prev,
+      total_count: prev.total_count + 1,
+      total_win_amount: prev.total_win_amount + (data.data?.win_amount || 0),
+      pending_count: prev.pending_count + 1
+    }));
+    
+    // Highlight the new ticket
+    setHighlightedTicketId(data.data?.ticket_id);
+    setTimeout(() => setHighlightedTicketId(null), 5000);
+  }, []));
+
+  // WebSocket: Listen for ticket paid
+  useWebSocketEvent(WSEventType.TICKET_PAID, useCallback((data) => {
+    console.log('[WS] Ticket paid:', data);
+    
+    setTickets(prev => prev.map(t => 
+      t.ticket_code === data.data?.ticket_code 
+        ? { ...t, status: 'PAID' }
+        : t
+    ));
+    
+    setSummary(prev => ({
+      ...prev,
+      paid_count: prev.paid_count + 1,
+      pending_count: Math.max(0, prev.pending_count - 1)
+    }));
+  }, []));
+
+  // WebSocket: Listen for new results (might create new winners)
+  useWebSocketEvent(WSEventType.RESULT_PUBLISHED, useCallback((data) => {
+    console.log('[WS] Result published, refreshing winners:', data);
+    // Refresh the list to check for new winners
+    setTimeout(() => fetchWinningTickets(), 2000);
+  }, [fetchWinningTickets]));
 
   const filteredTickets = tickets.filter(t => {
     const matchesSearch = 
@@ -66,12 +127,19 @@ const VendeurLotsGagnants = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-3">
-            <Trophy className="w-6 h-6 sm:w-7 sm:h-7 text-amber-400" />
+            <Trophy className={`w-6 h-6 sm:w-7 sm:h-7 text-amber-400 ${newWinnerAnimation ? 'animate-bounce' : ''}`} />
             Lots Gagnants
+            {newWinnerAnimation && (
+              <span className="text-sm bg-emerald-500 text-white px-2 py-1 rounded-full animate-pulse flex items-center gap-1">
+                <Sparkles className="w-4 h-4" />
+                Nouveau!
+              </span>
+            )}
           </h1>
           <p className="text-sm text-slate-400">Vos tickets gagnants</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <WebSocketIndicator showLabel={false} />
           <Button onClick={exportToExcel} variant="outline" className="border-emerald-700 text-emerald-400 hover:bg-emerald-500/10" data-testid="export-excel-btn">
             <Download className="w-4 h-4 mr-2" />
             Excel
@@ -85,11 +153,11 @@ const VendeurLotsGagnants = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+        <div className={`bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 transition-all duration-500 ${newWinnerAnimation ? 'ring-2 ring-amber-500 animate-pulse' : ''}`}>
           <p className="text-sm text-amber-400">Total Gagnants</p>
           <p className="text-2xl font-bold text-amber-400">{summary.total_count}</p>
         </div>
-        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4">
+        <div className={`bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 transition-all duration-500 ${newWinnerAnimation ? 'ring-2 ring-emerald-500 animate-pulse' : ''}`}>
           <p className="text-sm text-emerald-400">Montant Total</p>
           <p className="text-2xl font-bold text-emerald-400">{summary.total_win_amount?.toLocaleString()} HTG</p>
         </div>
@@ -102,6 +170,17 @@ const VendeurLotsGagnants = () => {
           <p className="text-2xl font-bold text-purple-400">{summary.pending_count}</p>
         </div>
       </div>
+
+      {/* Live indicator */}
+      {isConnected && (
+        <div className="flex items-center gap-2 text-emerald-400 text-sm bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-2">
+          <span className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+          </span>
+          Mise à jour en temps réel - Les nouveaux gagnants apparaîtront automatiquement
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -154,7 +233,11 @@ const VendeurLotsGagnants = () => {
           {filteredTickets.map(ticket => (
             <div 
               key={ticket.ticket_id}
-              className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 hover:border-amber-500/50 transition-all"
+              className={`bg-slate-800/50 border rounded-xl p-4 transition-all duration-500 ${
+                highlightedTicketId === ticket.ticket_id 
+                  ? 'border-emerald-500 ring-2 ring-emerald-500/50 bg-emerald-500/10 animate-pulse' 
+                  : 'border-slate-700 hover:border-amber-500/50'
+              }`}
               data-testid={`winning-ticket-${ticket.ticket_id}`}
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -168,6 +251,12 @@ const VendeurLotsGagnants = () => {
                     }`}>
                       {ticket.status === 'PAID' ? 'Payé' : 'En Attente'}
                     </span>
+                    {highlightedTicketId === ticket.ticket_id && (
+                      <span className="px-2 py-0.5 rounded text-xs bg-emerald-500 text-white animate-bounce flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" />
+                        Nouveau!
+                      </span>
+                    )}
                   </div>
                   <p className="text-white font-medium">{ticket.lottery_name}</p>
                   <p className="text-sm text-slate-400">
@@ -178,7 +267,9 @@ const VendeurLotsGagnants = () => {
                 <div className="flex items-center gap-4">
                   <div className="text-right">
                     <p className="text-sm text-slate-400">Gains</p>
-                    <p className="text-xl font-bold text-emerald-400">{ticket.win_amount?.toLocaleString()} HTG</p>
+                    <p className={`text-xl font-bold text-emerald-400 ${highlightedTicketId === ticket.ticket_id ? 'animate-bounce' : ''}`}>
+                      {ticket.win_amount?.toLocaleString()} HTG
+                    </p>
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -210,11 +301,11 @@ const VendeurLotsGagnants = () => {
                 <div className="flex flex-wrap gap-2">
                   {ticket.winning_plays?.length > 0 ? (
                     ticket.winning_plays.map((wp, idx) => (
-                      <div key={idx} className="flex items-center gap-2 bg-gradient-to-r from-amber-500/20 to-emerald-500/20 border border-amber-500/50 rounded-lg px-3 py-2 animate-pulse">
+                      <div key={idx} className={`flex items-center gap-2 bg-gradient-to-r from-amber-500/20 to-emerald-500/20 border border-amber-500/50 rounded-lg px-3 py-2 ${highlightedTicketId === ticket.ticket_id ? 'animate-pulse' : ''}`}>
                         <WinningNumberBadge 
                           number={wp.played_number} 
                           position={wp.winning_lot} 
-                          animate={true}
+                          animate={highlightedTicketId === ticket.ticket_id}
                         />
                         <div className="text-xs">
                           <p className="text-amber-400 font-medium">{wp.winning_lot === 1 ? '1er' : wp.winning_lot === 2 ? '2e' : '3e'} Lot</p>
@@ -224,7 +315,7 @@ const VendeurLotsGagnants = () => {
                     ))
                   ) : ticket.plays?.filter(p => p.is_winner).length > 0 ? (
                     ticket.plays.filter(p => p.is_winner).map((play, idx) => (
-                      <div key={idx} className="flex items-center gap-2 bg-gradient-to-r from-amber-500/20 to-emerald-500/20 border border-amber-500/50 rounded-lg px-3 py-2 animate-pulse">
+                      <div key={idx} className={`flex items-center gap-2 bg-gradient-to-r from-amber-500/20 to-emerald-500/20 border border-amber-500/50 rounded-lg px-3 py-2 ${highlightedTicketId === ticket.ticket_id ? 'animate-pulse' : ''}`}>
                         <span className="font-mono font-bold text-lg text-amber-400">{play.numbers}</span>
                         <span className="text-xs text-emerald-400">GAGNANT</span>
                       </div>

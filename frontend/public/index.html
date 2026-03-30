@@ -93,10 +93,159 @@
         </script>
         
         <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
+        
+        <!-- PWA Install Prompt Styles -->
+        <style>
+          #pwa-install-prompt {
+            display: none;
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 16px 20px;
+            z-index: 9999;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            max-width: 320px;
+            width: calc(100% - 32px);
+            animation: slideUp 0.3s ease-out;
+          }
+          @keyframes slideUp {
+            from { transform: translateX(-50%) translateY(100px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+          }
+          #pwa-install-prompt .pwa-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+          #pwa-install-prompt img {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+          }
+          #pwa-install-prompt .pwa-text h3 {
+            color: #f59e0b;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0 0 4px 0;
+          }
+          #pwa-install-prompt .pwa-text p {
+            color: #94a3b8;
+            font-size: 12px;
+            margin: 0;
+          }
+          #pwa-install-prompt .pwa-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+          }
+          #pwa-install-prompt button {
+            flex: 1;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          #pwa-install-prompt .pwa-install-btn {
+            background: #f59e0b;
+            color: #000;
+            border: none;
+          }
+          #pwa-install-prompt .pwa-install-btn:hover {
+            background: #fbbf24;
+          }
+          #pwa-install-prompt .pwa-dismiss-btn {
+            background: transparent;
+            color: #94a3b8;
+            border: 1px solid #334155;
+          }
+          #pwa-install-prompt .pwa-dismiss-btn:hover {
+            background: #1e293b;
+          }
+        </style>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>
         <div id="root"></div>
+        
+        <!-- PWA Install Prompt -->
+        <div id="pwa-install-prompt">
+          <div class="pwa-content">
+            <img src="/logo-lottolab.png" alt="LOTTOLAB" />
+            <div class="pwa-text">
+              <h3>Installer LOTTOLAB</h3>
+              <p>Accédez rapidement depuis votre écran d'accueil</p>
+            </div>
+          </div>
+          <div class="pwa-buttons">
+            <button class="pwa-dismiss-btn" onclick="dismissPwaPrompt()">Plus tard</button>
+            <button class="pwa-install-btn" onclick="installPwa()">Installer</button>
+          </div>
+        </div>
+        
+        <!-- PWA Service Worker Registration -->
+        <script>
+          let deferredPrompt;
+          const pwaPrompt = document.getElementById('pwa-install-prompt');
+          
+          // Check if already installed or dismissed recently
+          function shouldShowPrompt() {
+            if (window.matchMedia('(display-mode: standalone)').matches) return false;
+            const dismissed = localStorage.getItem('pwa-dismissed');
+            if (dismissed) {
+              const dismissedTime = parseInt(dismissed, 10);
+              if (Date.now() - dismissedTime < 7 * 24 * 60 * 60 * 1000) return false; // 7 days
+            }
+            return true;
+          }
+          
+          // Show install prompt
+          window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            if (shouldShowPrompt()) {
+              setTimeout(() => {
+                pwaPrompt.style.display = 'block';
+              }, 3000); // Show after 3 seconds
+            }
+          });
+          
+          // Install PWA
+          function installPwa() {
+            pwaPrompt.style.display = 'none';
+            if (deferredPrompt) {
+              deferredPrompt.prompt();
+              deferredPrompt.userChoice.then((result) => {
+                console.log('[PWA] Install result:', result.outcome);
+                deferredPrompt = null;
+              });
+            }
+          }
+          
+          // Dismiss prompt
+          function dismissPwaPrompt() {
+            pwaPrompt.style.display = 'none';
+            localStorage.setItem('pwa-dismissed', Date.now().toString());
+          }
+          
+          // Register service worker
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+              navigator.serviceWorker.register('/service-worker.js')
+                .then((registration) => {
+                  console.log('[SW] Registered:', registration.scope);
+                })
+                .catch((error) => {
+                  console.log('[SW] Registration failed:', error);
+                });
+            });
+          }
+        </script>
         <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.

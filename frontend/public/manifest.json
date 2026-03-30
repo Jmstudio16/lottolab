@@ -7,6 +7,7 @@
   "background_color": "#0f172a",
   "theme_color": "#f59e0b",
   "orientation": "any",
+  "id": "lottolab-pwa",
   "icons": [
     {
       "src": "/assets/logos/icon-192.png",
@@ -19,10 +20,63 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-lottolab.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
-  "categories": ["business", "finance"],
+  "screenshots": [
+    {
+      "src": "/assets/screenshots/dashboard.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard LOTTOLAB"
+    },
+    {
+      "src": "/assets/screenshots/mobile.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "LOTTOLAB Mobile"
+    }
+  ],
+  "categories": ["business", "finance", "productivity"],
   "lang": "fr",
   "scope": "/",
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Nouvelle Vente",
+      "short_name": "Vente",
+      "description": "Créer un nouveau ticket",
+      "url": "/vendeur/nouvelle-vente",
+      "icons": [{ "src": "/assets/logos/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Résultats",
+      "short_name": "Résultats",
+      "description": "Voir les derniers résultats",
+      "url": "/vendeur/resultats",
+      "icons": [{ "src": "/assets/logos/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Mes Tickets",
+      "short_name": "Tickets",
+      "description": "Voir mes tickets",
+      "url": "/vendeur/mes-tickets",
+      "icons": [{ "src": "/assets/logos/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "related_applications": [],
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
 }
