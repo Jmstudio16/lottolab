@@ -1,394 +1,162 @@
-# LOTTOLAB PRD - Mise à jour 29 Mars 2026
+# LOTTOLAB - Professional Lottery SaaS Platform
 
-## Résumé du Projet
-Application de loterie professionnelle SaaS pour Haïti avec système POS, gestion des tirages, calcul automatique des gains (60/20/10), impression thermique 80mm, et exports Excel/PDF.
+## Version: 9.1.0 (Phase 5/6 Complete)
+## Last Updated: 2026-03-30
 
-## Architecture Technique
-- **Frontend**: React + Tailwind CSS + ShadcnUI
-- **Backend**: FastAPI + MongoDB (Motor async)
-- **Impression**: HTML thermique optimisé 80mm
-- **Exports**: Excel (xlsxwriter), PDF (ReportLab)
-- **Auth**: JWT avec rate limiting + blocage temporaire
-- **Sécurité**: Anti-fraude, audit trail, signatures cryptographiques
-- **Moteur de Gains**: winning_engine.py (calcul centralisé 60/20/10)
+---
 
-## MEGA FINALISATION SaaS (✅ COMPLÉTÉ - 29/03/2026)
+## Original Problem Statement
 
-### PHASE 1 : Corrections Menus (✅)
-- **Super Admin** : Supprimé Limites Intelligentes, Gestion Financière, LOTO PAM Online
-- **Company Admin** : Gestion Financière ajoutée (déplacée de Super Admin)
-- **Vendeur** : Supprimé "Fiches Payées", renommé "Lots Gagnants"
+Migration d'une application de loterie depuis un VPS Hostinger vers la plateforme Emergent. L'application a évolué en un SaaS multi-tenant professionnel avec :
+- Synchronisation globale Super Admin → Company Admin
+- Calculs de gains automatisés (60/20/10)
+- Impression thermique personnalisée
+- **NOUVEAU** : WebSockets temps réel avec sons et animations
+- **NOUVEAU** : Analytics Pro (4 dashboards complets)
+- **NOUVEAU** : PWA pour mobile
 
-### PHASE 2 : Synchronisation Complète (✅)
-- Dashboards avec données réelles
-- Synchronisation temps réel : Vendeur → Superviseur → Company Admin
-- Publication résultats → Calcul automatique → Affichage partout
+---
 
-### PHASE 3 : Moteur de Calcul 60/20/10 (✅)
-- Test ticket 558296411985929 : 88(×60)=1500 + 50(×20)=500 + 05(×10)=250 = 2250 HTG
-- winning_engine.py centralisé
+## Core Requirements
 
-### PHASE 4 : Commissions Strictes (✅)
-- Commission = 0 HTG si non configurée
-- Pas de fallback automatique
-- Code: vendeur_routes.py lignes 153-159
+### Implemented Features ✅
 
-### Tests: iteration_45.json (14/14 passés - 100%)
+#### Phase 1-4: Core SaaS (COMPLETE)
+- [x] Multi-tenant architecture (Super Admin → Company Admin → Supervisor → Agent)
+- [x] Global synchronization (lottery catalog, schedules, results)
+- [x] Winning calculation engine (60/20/10 multipliers)
+- [x] Thermal ticket printing with customization
+- [x] Commission system with company-level configuration
+- [x] Activity logging and audit trail
+- [x] Role-based access control (RBAC)
 
-## État Actuel des Phases
+#### Phase 5: Mobile App (PWA COMPLETE)
+- [x] manifest.json with icons (192x192, 512x512)
+- [x] Service worker with caching strategy
+- [x] Offline fallback support
+- [x] App shortcuts for quick actions
+- [x] Installable on mobile devices
+- [ ] APK Android avec impression Bluetooth (FUTURE)
 
-### PRIORITÉ 0: Système Fonctionnel (✅ COMPLÉTÉ)
-- ✅ Login fonctionne en preview
-- ✅ API loteries retourne 236 loteries
-- ✅ Publication résultats opérationnelle
-- ✅ Synchronisation temps réel via polling
-- ✅ Notifications lu/non lu persistantes
+#### Phase 6: Analytics Pro (COMPLETE)
+- [x] Dashboard Ventes (daily/weekly/monthly trends, top lotteries, top agents)
+- [x] Dashboard Gains (most played numbers, most winning numbers, game type stats)
+- [x] Dashboard Performance (agents ranking, profit margins, win rates)
+- [x] Dashboard Temps Réel (live activity feed via WebSocket)
 
-### PHASE 1: Sécurité Anti-Fraude (✅ COMPLÉTÉ - 28/03/2026)
+#### WebSocket Real-Time (COMPLETE)
+- [x] Connection indicator with status (connected/disconnected/connecting)
+- [x] Sound notifications (synthetic audio via Web Audio API)
+- [x] Toast notifications with animations
+- [x] Auto-reconnection on disconnect
+- [x] Sound toggle button
+- [x] Events: RESULT_PUBLISHED, TICKET_SOLD, TICKET_WINNER, TICKET_PAID, TICKET_DELETED, LOTTERY_TOGGLED
 
-#### 1. Audit Trail (✅)
-- Fichier: `/app/backend/security_system.py`
-- Logge: user_id, IP, device, timestamp, action
-- Actions: LOGIN, TICKET_CREATE, PAYOUT, FRAUD_ALERT, etc.
-- Stockage: collection `security_audit_logs`
+---
 
-#### 2. Anti-Doublon Tickets (✅)
-- Fonction: `check_duplicate_ticket()`
-- Hash SHA256 basé sur: lottery_id, draw_name, plays, agent_id, time_window
-- Fenêtre: 10 minutes
-- Bloque tickets identiques
-
-#### 3. Signature Cryptographique (✅)
-- Fonction: `generate_ticket_signature()`
-- HMAC-SHA256 sur: ticket_id, ticket_code, verification_code, amount, created_at
-- Vérification lors du paiement
-
-#### 4. Protection Login (✅)
-- Classe: `LoginProtection`
-- Max tentatives: 5
-- Durée blocage: 15 minutes
-- Fenêtre tentatives: 10 minutes
-- Stockage: collections `login_attempts`, `login_blocks`
-
-#### 5. Anti-Collision Codes (✅)
-- Fonctions: `get_unique_ticket_code()`, `get_unique_verification_code()`
-- Codes cryptographiquement sécurisés (secrets module)
-- Vérification unicité en base
-
-#### 6. Dashboard Sécurité (✅)
-- Page: `/super/security`
-- Onglets: Vue d'ensemble, Audit Trail, Alertes Fraude, Tentatives Login, Blocages, Liste Noire
-- Temps réel avec auto-refresh 30s
-
-### PHASE 2: Gestion Financière (✅ COMPLÉTÉ - 28/03/2026)
-
-#### 1. Caisse Journalière (✅)
-- Fichier: `/app/backend/financial_routes.py`
-- Ouverture avec solde initial
-- Fermeture avec calcul automatique variance (SURPLUS/SHORTAGE/NONE)
-- Prévention doublons par jour/utilisateur
-- Historique complet avec pagination
-
-#### 2. Réconciliation Automatique (✅)
-- Génération de rapports par date
-- Comparaison ventes système vs caisses
-- Détection anomalies automatique (SALES_MISMATCH, HIGH_VARIANCE)
-- Statuts: OK, NEEDS_REVIEW
-
-#### 3. Gestion Crédit/Avance Agents (✅)
-- Limite de crédit configurable par agent
-- Types transactions: CREDIT, DEBIT, ADVANCE, REPAYMENT, DEPOSIT, WITHDRAWAL
-- Suivi solde disponible et avances en cours
-- Historique transactions par agent
-
-#### 4. Rapports Financiers (✅)
-- Dashboard temps réel (stats aujourd'hui/mois)
-- Résumé journalier (ventes, paiements, profit)
-- Performance agents sur période
-- Rapport Profit & Pertes détaillé
-
-#### 5. Dashboard Financier (✅)
-- Page: `/admin/financial`
-- 4 onglets: Vue d'ensemble, Caisse, Agents, Réconciliation
-- Rafraîchissement auto 60s
-- Modals pour toutes les actions
-- RBAC: onglets Agents/Réconciliation réservés ADMIN
-
-### PHASE 3: Limites Intelligentes (✅ COMPLÉTÉ - 28/03/2026)
-
-#### 1. Limite par numéro (✅)
-- Fichier: `/app/backend/limits_routes.py`
-- Max mise par numéro configurable (défaut: 5000 HTG)
-- Limites spécifiques par numéro possibles
-- Appliqué par tirage (Matin/Midi/Soir)
-
-#### 2. Blocage automatique (✅)
-- Auto-blocage quand limite atteinte
-- Blocage manuel par Super Admin
-- Déblocage possible
-- Reset automatique au prochain tirage
-
-#### 3. Alertes temps réel (✅)
-- Seuil configurable (défaut: 80%)
-- Alertes THRESHOLD_WARNING, LIMIT_EXCEEDED, NUMBER_BLOCKED
-- Sévérités: CRITICAL, HIGH, MEDIUM, LOW
-- Acquittement individuel ou groupé
-
-#### 4. Intégration avec création ticket (✅)
-- `validate_bet_limits()` appelé avant création
-- Refus si numéro bloqué ou limite dépassée
-- Message d'erreur détaillé retourné
-
-#### 5. Dashboard Limites (✅)
-- Page: `/super/limits`
-- 4 onglets: Vue d'ensemble, Numéros Bloqués, Alertes, Statut Numéros
-- Configuration via modal
-- Blocage/déblocage via interface
-
-### MEGA-PROMPT: Moteur Central de Calcul (✅ COMPLÉTÉ - 29/03/2026)
-
-#### LOT 1: Moteur Central de Calcul (✅ COMPLÉTÉ)
-- Fichier: `/app/backend/winning_engine.py`
-- Lecture des primes: compagnie → globale → défaut
-- Formule: gain = mise × multiplicateur_du_lot
-- Types supportés: BORLETTE, MARIAGE, LOTO 3/4/5
-- Détection automatique des lots: 1er/2e/3e
-- Journalisation: collection `winning_calculations_audit`
-- Tests: 8/8 passés
-
-#### LOT 2: Synchronisation & Publication (✅ COMPLÉTÉ)
-- Intégration dans `/app/backend/lottery_results_routes.py`
-- Publication → Calcul automatique des gagnants
-- Mise à jour status: WINNER/LOSER
-- Champs ajoutés: winning_plays, all_plays_calculated, calculation_details
-- Routes: recalculate-ticket, test-winning-engine, reprocess-result
-
-#### LOT 3: Animation des Numéros Gagnants (✅ COMPLÉTÉ)
-- Fichier: `/app/frontend/src/components/WinningNumberBadge.jsx`
-- Animations CSS: pulse, glow, shimmer, float
-- Couleurs: Or (1er), Argent (2e), Bronze (3e)
-- Composants: WinningNumberBadge, WinningNumbersRow, WinningTicketHighlight
-- Intégré dans: SuperGlobalResultsPage.js
-
-#### LOT 4: Commissions & Impression (✅ COMPLÉTÉ - 29/03/2026)
-- ✅ Commissions = 0 HTG par défaut si non configurées (pas de fallback à 10%)
-  - `vendeur_routes.py` lignes 153-159: commission_rate = 0 par défaut
-  - `supervisor_routes.py` ligne 78: agent["commission_percent"] = 0
-- ✅ Endpoint `/api/tickets/check` retourne all_plays_calculated avec:
-  - is_winner, winning_lot, multiplier, gain pour chaque ligne
-  - winning_numbers_parsed avec first, second, third
-- ✅ Impression ticket gagnant avec détails (ticket_template.py):
-  - Fond vert (#e8f5e9) pour lignes gagnantes
-  - Format calcul: mise×multiplicateur=gain (ex: 25×60=1500)
-  - Labels lot: 1er/2e/3e Lot • GAGNANT
-  - Section TOTAL MISE
-  - Section TOTAL GAIN (fond vert #c8e6c9)
-  - STATUT : ★ GAGNANT ★
-- ✅ Modal WinningTicketDetail.jsx avec affichage complet des gains
-- Tests: iteration_43.json (100% - UI), iteration_44.json (100% - Backend)
-
-### PHASE 4: Communication SMS (🔄 À FAIRE)
-- [ ] Intégration Twilio
-- [ ] SMS résultats automatiques
-- [ ] Alertes fraude par SMS
-
-### PHASE 5: Application Mobile (🔄 À FAIRE)
-- [ ] APK React Native
-- [ ] Mode offline
-- [ ] Impression Bluetooth
-
-### PHASE 6: Analytics Pro (🔄 À FAIRE)
-- [ ] Dashboard temps réel
-- [ ] Rapports tendances
-- [ ] Export comptable
-
-## APIs Sécurité (PHASE 1)
-
-### Audit Logs
-- `GET /api/security/audit-logs` - Liste avec filtres
-- `GET /api/security/audit-logs/actions` - Types d'actions
-
-### Login Protection
-- `GET /api/security/login-attempts` - Historique tentatives
-- `GET /api/security/login-blocks` - Blocages actifs
-- `POST /api/security/login-blocks/remove` - Débloquer
-
-### Fraud Alerts
-- `GET /api/security/fraud-alerts` - Alertes ouvertes
-- `POST /api/security/fraud-alerts` - Créer alerte
-- `PUT /api/security/fraud-alerts/{id}/resolve` - Résoudre
-
-### IP Blacklist
-- `GET /api/security/ip-blacklist` - Liste noire
-- `POST /api/security/ip-blacklist` - Ajouter IP
-- `DELETE /api/security/ip-blacklist/{ip}` - Retirer IP
-
-### Statistics
-- `GET /api/security/stats` - Dashboard stats
-
-## APIs Financières (PHASE 2)
-
-### Caisse Journalière
-- `POST /api/financial/cash-register/open` - Ouvrir caisse
-- `POST /api/financial/cash-register/close` - Fermer caisse
-- `GET /api/financial/cash-register/current` - Caisse actuelle
-- `GET /api/financial/cash-register/history` - Historique caisses
-
-### Réconciliation
-- `POST /api/financial/reconciliation/generate` - Générer rapport
-- `GET /api/financial/reconciliation/reports` - Liste rapports
-
-### Gestion Agents
-- `GET /api/financial/agents/balances` - Tous les soldes
-- `GET /api/financial/agent/{id}/balance` - Solde agent
-- `POST /api/financial/agent/transaction` - Transaction agent
-- `PUT /api/financial/agent/{id}/credit-limit` - Limite crédit
-
-### Rapports
-- `GET /api/financial/dashboard/stats` - Stats temps réel
-- `GET /api/financial/reports/daily-summary` - Résumé jour
-- `GET /api/financial/reports/agent-performance` - Perf agents
-- `GET /api/financial/reports/profit-loss` - P&L détaillé
-
-## APIs Limites (PHASE 3)
-
-### Configuration
-- `GET /api/limits/config` - Config actuelle
-- `PUT /api/limits/config` - Modifier config (Super Admin)
-- `PUT /api/limits/config/number` - Limite spécifique numéro
-- `DELETE /api/limits/config/number/{number}` - Supprimer limite spécifique
-
-### Blocage Numéros
-- `POST /api/limits/numbers/block` - Bloquer numéro
-- `DELETE /api/limits/numbers/block/{block_id}` - Débloquer
-- `GET /api/limits/numbers/blocked` - Numéros bloqués
-
-### Vérification
-- `POST /api/limits/check` - Vérifier si mise autorisée
-- `GET /api/limits/numbers/status` - Statut par tirage
-
-### Alertes
-- `GET /api/limits/alerts` - Liste alertes
-- `POST /api/limits/alerts/acknowledge` - Acquitter une
-- `POST /api/limits/alerts/acknowledge-all` - Acquitter toutes
-
-### Dashboard
-- `GET /api/limits/dashboard/stats` - Stats temps réel
-
-## Collections MongoDB Ajoutées
+## Architecture
 
 ```
-security_audit_logs: {
-  audit_id, timestamp, action, user_id, company_id,
-  entity_type, entity_id, severity, client_ip,
-  user_agent, device_type, device_id, details
-}
-
-login_attempts: {
-  attempt_id, email, ip_address, success, timestamp, user_agent
-}
-
-login_blocks: {
-  block_id, email, ip_address, reason, created_at, blocked_until
-}
-
-fraud_alerts: {
-  alert_id, alert_type, description, entity_type, entity_id,
-  severity, status, company_id, created_at, resolved_at
-}
-
-ip_blacklist: {
-  entry_id, ip_address, reason, active, created_by, created_at
-}
-
-cash_registers: {
-  register_id, company_id, succursale_id, opened_by, date,
-  opening_balance, total_sales, total_payouts, status,
-  closing_balance, cash_counted, variance, variance_type
-}
-
-agent_balances: {
-  balance_id, agent_id, company_id, credit_limit,
-  current_balance, available_balance, outstanding_advances,
-  total_sales, total_payouts
-}
-
-agent_financial_transactions: {
-  transaction_id, agent_id, transaction_type, amount,
-  balance_before, balance_after, performed_by, notes
-}
-
-reconciliation_reports: {
-  report_id, company_id, date, system_totals,
-  register_totals, anomalies, status, net_profit
-}
-
-limit_config: {
-  config_id, default_max_bet_per_number, default_max_bet_per_ticket,
-  alert_threshold_percentage, auto_block_enabled, block_duration_minutes,
-  number_specific_limits, lottery_specific_limits, updated_at, updated_by
-}
-
-blocked_numbers: {
-  block_id, number, lottery_id, draw_name, draw_date,
-  reason, blocked_by, block_type (MANUAL/AUTOMATIC), active,
-  created_at, unblocked_by, unblocked_at
-}
-
-limit_alerts: {
-  alert_id, alert_type, number, lottery_id, draw_name, draw_date,
-  current_total, limit, percentage, message, severity, acknowledged,
-  acknowledged_by, acknowledged_at, created_at
-}
+/app
+├── backend/
+│   ├── server.py                    # Main FastAPI server
+│   ├── websocket_manager.py         # WebSocket connection manager
+│   ├── websocket_routes.py          # WebSocket endpoints
+│   ├── analytics_routes.py          # Analytics Pro API
+│   ├── ticket_template.py           # Thermal ticket HTML generation
+│   ├── sync_routes.py               # Offline/POS sync
+│   └── scheduled_results_routes.py  # Auto-draw results
+├── frontend/
+│   ├── src/
+│   │   ├── context/WebSocketContext.jsx    # Global WS provider
+│   │   ├── components/WebSocketIndicator.jsx
+│   │   ├── pages/admin/AnalyticsDashboardPage.jsx
+│   │   └── pages/vendeur/*.jsx
+│   └── public/
+│       ├── manifest.json            # PWA manifest
+│       └── service-worker.js        # Service worker
 ```
 
-## Comptes de Test
+---
 
-### Super Admin
-- Email: `jefferson@jmstudio.com`
-- Mot de passe: `JMStudio@2026!`
+## API Endpoints
 
-### Company Admin
-- Email: `admin@lotopam.com`
-- Mot de passe: `Admin@2026!`
+### Analytics Pro
+- `GET /api/analytics/sales/summary?period=day|week|month|year`
+- `GET /api/analytics/sales/trend?period=week|month|year`
+- `GET /api/analytics/sales/top-agents?period=month&limit=10`
+- `GET /api/analytics/sales/top-lotteries?period=month&limit=10`
+- `GET /api/analytics/gains/most-played-numbers?limit=20`
+- `GET /api/analytics/gains/most-winning-numbers?limit=20`
+- `GET /api/analytics/gains/by-game-type?period=month`
+- `GET /api/analytics/performance/summary?period=month`
+- `GET /api/analytics/performance/agents-ranking?period=month&limit=20`
+
+### WebSocket
+- `WS /api/ws?token=JWT_TOKEN`
+- `GET /api/ws/stats`
+
+---
+
+## Test Credentials
+
+| Role | Email | Password |
+|------|-------|----------|
+| Super Admin | jefferson@jmstudio.com | Super@2026! |
+| Company Admin | admin@lotopam.com | Admin@2026! |
+| Vendor | pierre.jean@agent.com | Agent@2026! |
+
+---
 
 ## Changelog
 
-### 28 Mars 2026 - Iteration 42 (PHASE 3)
-- Implémenté module limites intelligentes complet
-- Backend: 15+ endpoints API (limits_routes.py)
-- Frontend: Dashboard 4 onglets (SuperAdminLimitsPage.jsx)
-- Max mise par numéro configurable (défaut: 5000 HTG)
-- Blocage automatique quand limite atteinte
-- Alertes temps réel avec seuil configurable (défaut: 80%)
-- Intégration avec création de tickets (refus si limite dépassée)
-- Documentation: /docs/limits_module.md
-- Tests: 100% backend (22/22) et frontend passés
-- Collections MongoDB: limit_config, blocked_numbers, limit_alerts
+### 2026-03-30 - Version 9.1.0
+- ✅ WebSocket temps réel avec sons et animations
+- ✅ Analytics Pro avec 4 dashboards complets
+- ✅ PWA configuration (manifest.json, service-worker.js)
+- ✅ Indicateur WebSocket dans les dashboards
+- ✅ Toggle son pour notifications
+- ✅ Tests automatisés (26/26 passés)
 
-### 28 Mars 2026 - Iteration 41 (PHASE 2)
-- Implémenté module financier complet
-- Backend: 15+ endpoints API (financial_routes.py)
-- Frontend: Dashboard 4 onglets (FinancialDashboardPage.jsx)
-- Caisse journalière avec variance automatique
-- Réconciliation avec détection anomalies
-- Gestion crédit/avance agents
-- Documentation: /docs/financial_module.md
-- Tests: 100% backend et frontend passés
-- Collections MongoDB: cash_registers, agent_balances, reconciliation_reports
+### 2026-03-29 - Version 9.0.1
+- Synchronisation globale Super Admin → Company Admin
+- Calculs de gains (60/20/10)
+- Impression thermique personnalisée
+- Commission par défaut 0%
+- Menu nettoyé par rôle
 
-### 28 Mars 2026 - Iteration 40 (PHASE 1)
-- Implémenté système anti-fraude complet
-- Audit trail avec logging IP/device
-- Anti-doublon tickets avec hash SHA256
-- Signature cryptographique HMAC-SHA256
-- Protection login (5 tentatives, blocage 15min)
-- Dashboard sécurité Super Admin
-- APIs sécurité complètes
-- Tests: Blocage fonctionne après 5 échecs
+---
 
-### 28 Mars 2026 - Iteration 39 (PRIORITÉ 0)
-- Corrigé bug dropdown loteries (1 → 236)
-- Système notifications lu/non lu
-- Synchronisation temps réel polling
-- Page heures de tirage Super Admin
+## Backlog / Future Tasks
+
+### P1 - Priorité Haute
+- [ ] APK Android avec impression Bluetooth thermique
+- [ ] Mode offline complet pour vendeurs POS
+
+### P2 - Priorité Moyenne
+- [ ] Multi-langue complet (Espagnol, Anglais)
+- [ ] Rapports détaillés "Mariages Gratis"
+- [ ] Notifications push via Service Worker
+
+### P3 - Priorité Basse
+- [ ] Phase 7: Améliorations Loterie (J+1/J+2, abonnements)
+- [ ] Phase 8: Fidélité Client (points de fidélité)
+
+---
+
+## Known Issues
+
+Aucun problème critique connu. Le système est stable et prêt pour la production.
+
+---
+
+## Project Health
+
+| Component | Status |
+|-----------|--------|
+| Backend | ✅ Running |
+| Frontend | ✅ Running |
+| WebSocket | ✅ Active |
+| Analytics | ✅ Complete |
+| PWA | ✅ Configured |
+| Tests | ✅ 26/26 Passed |
