@@ -520,3 +520,88 @@ async def emit_sync_required(company_id: str = None, reason: str = ""):
     
     logger.info(f"[WS] SYNC_REQUIRED -> {count} recipients")
     return count
+
+
+async def emit_lottery_status_change(
+    lottery_id: str,
+    lottery_name: str,
+    is_open: bool,
+    open_time: str = None,
+    close_time: str = None,
+    reason: str = ""
+):
+    """Emit event when lottery open/close status changes (manual or automatic)."""
+    event = {
+        "type": "LOTTERY_STATUS_CHANGE",
+        "data": {
+            "lottery_id": lottery_id,
+            "lottery_name": lottery_name,
+            "is_open": is_open,
+            "open_time": open_time,
+            "close_time": close_time,
+            "reason": reason
+        },
+        "message": f"Loterie {'ouverte' if is_open else 'fermée'}: {lottery_name}",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "priority": "high"
+    }
+    
+    count = await ws_manager.broadcast_global(event)
+    logger.info(f"[WS] LOTTERY_STATUS_CHANGE: {lottery_name} -> {'OPEN' if is_open else 'CLOSED'} -> {count} recipients")
+    return count
+
+
+async def emit_schedule_change(
+    lottery_id: str,
+    lottery_name: str,
+    draw_name: str,
+    open_time: str,
+    close_time: str,
+    draw_time: str
+):
+    """Emit event when schedule times are changed by Super Admin."""
+    event = {
+        "type": "SCHEDULE_CHANGE",
+        "data": {
+            "lottery_id": lottery_id,
+            "lottery_name": lottery_name,
+            "draw_name": draw_name,
+            "open_time": open_time,
+            "close_time": close_time,
+            "draw_time": draw_time
+        },
+        "message": f"Horaire modifié: {lottery_name} - Ouverture: {open_time}, Fermeture: {close_time}",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "priority": "high"
+    }
+    
+    count = await ws_manager.broadcast_global(event)
+    logger.info(f"[WS] SCHEDULE_CHANGE: {lottery_name} {draw_name} -> {count} recipients")
+    return count
+
+
+async def emit_result_change(
+    lottery_id: str,
+    lottery_name: str,
+    draw_name: str,
+    winning_numbers: str,
+    action: str = "PUBLISHED"  # PUBLISHED, UPDATED, DELETED
+):
+    """Emit event when result is published/updated/deleted."""
+    event = {
+        "type": "RESULT_CHANGE",
+        "data": {
+            "lottery_id": lottery_id,
+            "lottery_name": lottery_name,
+            "draw_name": draw_name,
+            "winning_numbers": winning_numbers,
+            "action": action
+        },
+        "message": f"Résultat {action.lower()}: {lottery_name} {draw_name} - {winning_numbers}",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "priority": "high"
+    }
+    
+    count = await ws_manager.broadcast_global(event)
+    logger.info(f"[WS] RESULT_CHANGE ({action}): {lottery_name} -> {count} recipients")
+    return count

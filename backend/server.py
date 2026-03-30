@@ -64,6 +64,7 @@ from websocket_routes import ws_router
 from analytics_routes import analytics_router, set_analytics_db
 from settlement_routes import settlement_router, prize_config_router as settlement_prize_router, set_settlement_routes_db
 from settlement_engine import set_settlement_engine_db, ensure_indexes as ensure_settlement_indexes
+from sync_service import sync_service_router, set_sync_service_db
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -1139,6 +1140,7 @@ set_financial_db(db)
 set_winning_db(db)
 set_settlement_routes_db(db)
 set_settlement_engine_db(db)
+set_sync_service_db(db)
 
 # Initialize staff endpoints with dependency
 create_staff_endpoints(get_current_user)
@@ -1205,6 +1207,9 @@ app.include_router(draw_times_router)
 
 # Include real-time sync router (global polling sync)
 app.include_router(realtime_sync_router)
+
+# Include sync service router (lottery status synchronization)
+app.include_router(sync_service_router)
 
 # Include security router (audit logs, fraud detection)
 app.include_router(security_api_router)

@@ -3,7 +3,7 @@ LOTTOLAB SaaS Enterprise Core System
 Multi-tenant isolation, centralized lottery catalog, global schedules
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Request, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, Request, UploadFile, File, BackgroundTasks
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
@@ -290,6 +290,7 @@ async def toggle_lottery_global(
     lottery_id: str,
     is_active: bool,
     request: Request,
+    background_tasks: BackgroundTasks,
     current_user: dict = Depends(require_super_admin)
 ):
     """
@@ -297,11 +298,14 @@ async def toggle_lottery_global(
     If deactivated: AUTO-DISABLE for ALL companies.
     If activated: Make available for companies to enable.
     """
+    from websocket_manager import emit_lottery_status_change, emit_lottery_toggled, emit_sync_required
+    
     lottery = await db.master_lotteries.find_one({"lottery_id": lottery_id}, {"_id": 0})
     if not lottery:
         raise HTTPException(status_code=404, detail="Loterie non trouvée")
     
     now = get_current_timestamp()
+    lottery_name = lottery.get("lottery_name", "Unknown")
     
     # Update master lottery
     await db.master_lotteries.update_one(
@@ -311,7 +315,7 @@ async def toggle_lottery_global(
     
     if is_active:
         # Make available to all companies
-        await sync_lottery_to_all_companies(lottery_id, lottery.get("lottery_name"), lottery.get("state_code"))
+        await sync_lottery_to_all_companies(lottery_id, lottery_name, lottery.get("state_code"))
         message = "Loterie activée globalement"
     else:
         # Force disable for ALL companies
@@ -325,13 +329,21 @@ async def toggle_lottery_global(
         )
         message = f"Loterie désactivée globalement ({result.modified_count} companies affectées)"
     
+    # Broadcast via WebSocket to ALL connected clients
+    background_tasks.add_task(emit_lottery_toggled, lottery_id, lottery_name, is_active)
+    background_tasks.add_task(
+        emit_lottery_status_change,
+        lottery_id, lottery_name, is_active, None, None, "super_admin_toggle"
+    )
+    background_tasks.add_task(emit_sync_required, None, "lottery_toggled")
+    
     await log_activity(
         db=db,
         action_type="LOTTERY_GLOBAL_TOGGLED",
         entity_type="master_lottery",
         entity_id=lottery_id,
         performed_by=current_user["user_id"],
-        metadata={"is_active": is_active, "lottery_name": lottery.get("lottery_name")},
+        metadata={"is_active": is_active, "lottery_name": lottery_name},
         ip_address=request.client.host if request.client else None
     )
     
@@ -639,12 +651,20 @@ async def update_global_schedule(
     schedule_id: str,
     updates: GlobalScheduleUpdate,
     request: Request,
+    background_tasks: BackgroundTasks,
     current_user: dict = Depends(require_super_admin)
 ):
     """Update global schedule (Super Admin ONLY)"""
+    from websocket_manager import emit_schedule_change, emit_sync_required
+    
     update_data = {k: v for k, v in updates.model_dump().items() if v is not None}
     if not update_data:
         raise HTTPException(status_code=400, detail="Aucun champ à modifier")
+    
+    # Get original schedule for broadcast
+    original = await db.global_schedules.find_one({"schedule_id": schedule_id}, {"_id": 0})
+    if not original:
+        raise HTTPException(status_code=404, detail="Schedule non trouvé")
     
     update_data["updated_at"] = get_current_timestamp()
     
@@ -656,6 +676,27 @@ async def update_global_schedule(
     
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Schedule non trouvé")
+    
+    # Get lottery name for broadcast
+    lottery = await db.master_lotteries.find_one(
+        {"lottery_id": original.get("lottery_id")},
+        {"_id": 0, "lottery_name": 1}
+    )
+    lottery_name = lottery.get("lottery_name", "Unknown") if lottery else "Unknown"
+    
+    # Broadcast change via WebSocket
+    background_tasks.add_task(
+        emit_schedule_change,
+        original.get("lottery_id"),
+        lottery_name,
+        original.get("draw_name"),
+        update_data.get("open_time", original.get("open_time")),
+        update_data.get("close_time", original.get("close_time")),
+        update_data.get("draw_time", original.get("draw_time"))
+    )
+    
+    # Request full sync
+    background_tasks.add_task(emit_sync_required, None, "schedule_updated")
     
     await log_activity(
         db=db,
