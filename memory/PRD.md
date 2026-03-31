@@ -1,65 +1,56 @@
 # LOTTOLAB - Professional Lottery SaaS Platform
 
-## Version: 15.0.0 (Deployment Fix)
-## Last Updated: 2026-03-31 03:32 UTC
-## Deployed: 2026-03-30 23:32 Haiti Time
+## Version: 16.0.0 (Notifications & Profile Photo)
+## Last Updated: 2026-03-31 05:20 UTC
+## Deployed: 2026-03-31 01:20 Haiti Time
 
 ---
 
 ## STATUT: STABLE ✅
 
-### Corrections dans cette session (v14.0.0):
+### Nouvelles Fonctionnalités (v16.0.0):
 
-1. **Bug "Erreur de chargement de loterie" CORRIGÉ** ✅
-   - Problème: Vendeurs ne pouvaient pas voir les loteries
-   - Cause: Mots de passe incorrects + manque de logs
-   - Solution: Réinitialisation des mots de passe vendeurs à `vendor123`
-   - Ajout de logs détaillés dans `/api/sync/vendeur/open-lotteries`
+#### 1. 🔔 Notifications Temps Réel ✅
+- **Backend**: WebSocket + stockage MongoDB + broadcast par rôle/company
+- **Frontend**: Hook `useNotifications.js` avec fallback polling 10s
+- **Header**: Badge animé, dropdown moderne, indicateur connexion
+- **Son**: Activé par défaut avec toggle dans les notifications
+- **Endpoints**:
+  - `GET /api/notifications` - Récupérer notifications
+  - `POST /api/notifications` - Créer notification
+  - `PUT /api/notifications/{id}/read` - Marquer comme lu
+  - `PUT /api/notifications/mark-all-read` - Tout marquer comme lu
 
-2. **Logs Backend Améliorés** ✅
-   - Nouveaux logs `[VENDEUR-LOTTERIES]` avec:
-     - user email, company_id
-     - enabled_lotteries count
-     - master_lotteries found
-     - active_schedules found
-     - open_count final
+#### 2. 📷 Photo de Profil (Tous Utilisateurs) ✅
+- **Upload**: JPG, PNG, WebP - Max 2MB
+- **Stockage**: `/app/backend/uploads/profile-photos/`
+- **Endpoints**:
+  - `POST /api/user/upload-profile-image` - Upload photo
+  - `GET /api/user/profile-image/{filename}` - Servir photo
+  - `DELETE /api/user/profile-image` - Supprimer photo
+  - `GET /api/user/profile` - Profil complet
 
-3. **Messages Erreur Frontend Améliorés** ✅
-   - Affiche maintenant le vrai message d'erreur au lieu de "erreur de chargement"
-   - Console.log avec infos de debug
-
-### Corrections session précédente (v13.0.0):
-
-1. **Configuration Loteries Stable** ✅
-   - Les configurations de loteries ne sont plus écrasées au redémarrage
-   - `haiti_lottery_init.py` ne modifie plus les configurations existantes
-
-2. **Interface Propre** ✅
-   - Indicateur WiFi/Polling retiré de la page vendeur
-   - Chronomètres de fermeture fonctionnels (format 2:33:00)
-   - Filtres Haïti/USA stables
+#### 3. 💰 Commissions Corrigées ✅
+- **Règle**: Commission masquée si = 0 ou non configurée
+- **Vendeurs**: Pas d'affichage de commission (réservé Admin)
+- **Calcul**: Seulement si commission > 0
+- **Fichiers modifiés**: `VendeurMesVentes.jsx`, `VendeurDashboard.jsx`
 
 ---
 
 ## État Actuel du Système
 
-### Vendeurs/Agents
-- 14 comptes vendeurs/agents avec mot de passe: `vendor123`
-- Chaque compagnie a 236 loteries activées
-- 62 loteries ouvertes actuellement
-
 ### Fonctionnalités Validées
 
 | Fonctionnalité | Statut |
 |----------------|--------|
+| Notifications temps réel | ✅ Polling 10s (WS en production) |
+| Badge cloche animé | ✅ Rouge avec compteur |
+| Toggle son notifications | ✅ ON par défaut |
+| Photo profil upload | ✅ Tous utilisateurs |
+| Commission masquée vendeur | ✅ |
 | Page vendeur nouvelle vente | ✅ 62 loteries ouvertes |
-| Configuration persistante | ✅ |
-| Chronomètres fermeture | ✅ 2:33:00 format |
-| Filtres Haïti/USA | ✅ |
-| Panier + Mariage Gratis | ✅ Auto ajout 100+ HTG |
-| Calcul gains 60/20/10 | ✅ |
-| Settlement automatique | ✅ |
-| Logs vendeur détaillés | ✅ |
+| Settlement automatique | ✅ 60/20/10 |
 
 ---
 
@@ -70,21 +61,42 @@
 | Super Admin | jefferson@jmstudio.com | JMStudio@2026! |
 | Company Admin | admin@lotopam.com | LotoPAM2026! |
 | Vendeur Test | vendeur@lotopam.com | vendor123 |
-| Vendeur Test 2 | agent@gmail.com | vendor123 |
 | Tous Vendeurs/Agents | * | vendor123 |
+
+---
+
+## Architecture Fichiers
+
+```
+/app/backend/
+├── profile_routes.py         # NEW: Upload photo profil
+├── notification_routes.py    # UPDATED: Notifications + WebSocket
+├── websocket_routes.py       # UPDATED: /ws/notifications endpoint
+├── websocket_manager.py      # Broadcast par rôle/company
+├── sync_service.py           # Loteries vendeur
+└── server.py                 # Main entry
+
+/app/frontend/
+├── src/hooks/useNotifications.js     # NEW: Hook temps réel
+├── src/components/Header.js          # UPDATED: Cloche + dropdown
+├── src/components/ProfilePhotoUpload.jsx  # NEW: Upload photo
+├── src/components/UserAvatar.jsx     # Avatar avec photo
+└── public/notification.mp3           # Son notification
+```
 
 ---
 
 ## Prochaines Étapes
 
 ### P1 - Haute Priorité
-- [x] ~~Corriger erreur chargement loteries vendeur~~
+- [x] ~~Notifications temps réel~~
+- [x] ~~Photo de profil tous utilisateurs~~
+- [x] ~~Commission masquée vendeurs~~
 - [ ] Ajouter Adresse, Téléphone, QR Code dans Company Settings
-- [ ] Synchroniser ces infos sur les tickets imprimés
 
 ### P2 - Moyenne Priorité
-- [ ] Ajouter notification quand loterie ferme dans 5 min
-- [ ] Export des rapports PDF
+- [ ] Notification 5 min avant fermeture loterie
+- [ ] Export rapports PDF
 
 ### P3 - Basse Priorité
 - [ ] APK Android avec mode offline
@@ -92,14 +104,28 @@
 
 ---
 
-## Architecture Fichiers Clés
+## Notes Techniques
 
+### WebSocket
+- En environnement preview: WebSocket retourne 403 (normal)
+- Fallback automatique vers polling 10s
+- En production: WebSocket temps réel fonctionnel
+
+### Notifications Events
+```javascript
+// Types d'événements WebSocket
+RESULT_PUBLISHED  // Résultat loterie publié
+TICKET_WINNER     // Ticket gagnant détecté
+TICKET_PAID       // Ticket payé
+TICKET_SOLD       // Nouveau ticket vendu
+NOTIFICATION      // Message admin
 ```
-/app/backend/
-├── sync_service.py          # GET /api/sync/vendeur/open-lotteries (avec logs)
-├── server.py                 # Main entry, scheduler
-└── settlement_engine.py      # 60/20/10 logic
 
-/app/frontend/src/pages/vendeur/
-└── VendeurNouvelleVente.jsx  # Page vente (améliorée avec erreurs détaillées)
+### Commission Logic
+```python
+# Backend: vendeur_routes.py
+if commission_rate > 0:
+    commission = total_sales * (commission_rate / 100)
+else:
+    commission = 0  # Ne jamais calculer si 0
 ```

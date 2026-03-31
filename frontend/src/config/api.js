@@ -36,12 +36,25 @@ export const getApiUrl = () => {
   return '';
 };
 
+export const getWsUrl = () => {
+  const apiUrl = getApiUrl();
+  if (!apiUrl) return '';
+  
+  // Convert http(s) to ws(s)
+  const wsProtocol = apiUrl.startsWith('https') ? 'wss' : 'ws';
+  const wsHost = apiUrl.replace(/^https?:\/\//, '');
+  
+  return `${wsProtocol}://${wsHost}`;
+};
+
 export const API_URL = getApiUrl();
+export const WS_URL = getWsUrl();
 
 // For debugging
 export const logApiConfig = () => {
   console.log('[LOTTOLAB] API Configuration:', {
     BACKEND_URL: API_URL,
+    WS_URL: WS_URL,
     API: `${API_URL}/api`,
     currentOrigin: typeof window !== 'undefined' ? window.location.origin : 'N/A',
     hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',

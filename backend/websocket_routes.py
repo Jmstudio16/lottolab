@@ -16,7 +16,7 @@ from websocket_manager import ws_manager
 
 ws_router = APIRouter(tags=["WebSocket"])
 
-JWT_SECRET = os.getenv("JWT_SECRET", "lottolab-super-secret-key-2024-production")
+JWT_SECRET = os.getenv("JWT_SECRET_KEY", os.getenv("JWT_SECRET", "lottolab-secure-production-key-jm-studio-2026-change-in-production"))
 JWT_ALGORITHM = "HS256"
 
 
@@ -40,17 +40,6 @@ async def websocket_endpoint(
     Main WebSocket endpoint for real-time updates.
     
     Connect with: ws://host/api/ws?token=YOUR_JWT_TOKEN
-    
-    Events received:
-    - CONNECTION_ESTABLISHED: Connection successful
-    - RESULT_PUBLISHED: New lottery result
-    - TICKET_SOLD: New ticket created
-    - TICKET_WINNER: Ticket won
-    - TICKET_PAID: Ticket paid out
-    - TICKET_DELETED: Ticket voided
-    - LOTTERY_TOGGLED: Lottery status changed
-    - SCHEDULE_UPDATED: Schedule modified
-    - SYNC_REQUIRED: Client should refresh data
     """
     
     # Validate token
@@ -82,39 +71,35 @@ async def websocket_endpoint(
     )
     
     try:
-        # Keep connection alive and listen for messages
         while True:
             try:
-                # Wait for messages from client (with timeout for heartbeat)
                 data = await asyncio.wait_for(
                     websocket.receive_text(),
                     timeout=30.0
                 )
                 
-                # Handle client messages
                 try:
                     message = json.loads(data)
                     msg_type = message.get("type", "")
                     
                     if msg_type == "PING":
-                        # Respond to ping
                         await websocket.send_json({
                             "type": "PONG",
                             "timestamp": datetime.now(timezone.utc).isoformat()
                         })
-                    
-                    elif msg_type == "SUBSCRIBE":
-                        # Client wants to subscribe to specific events
-                        # (Future enhancement)
-                        pass
+                    elif msg_type == "AUTH":
+                        # Re-auth (optional, already authenticated via token)
+                        await websocket.send_json({
+                            "type": "AUTH_OK",
+                            "user_id": user_id,
+                            "timestamp": datetime.now(timezone.utc).isoformat()
+                        })
                     
                 except json.JSONDecodeError:
-                    # Plain text message - could be a simple ping
                     if data.strip().lower() == "ping":
                         await websocket.send_text("pong")
                 
             except asyncio.TimeoutError:
-                # Send heartbeat to keep connection alive
                 try:
                     await websocket.send_json({
                         "type": "HEARTBEAT",
@@ -131,6 +116,19 @@ async def websocket_endpoint(
         await ws_manager.disconnect(user_id)
 
 
+@ws_router.websocket("/ws/notifications")
+async def notifications_websocket(
+    websocket: WebSocket,
+    token: Optional[str] = Query(None)
+):
+    """
+    Dedicated WebSocket endpoint for notifications.
+    Same as /ws but with explicit notification focus.
+    """
+    # Reuse main endpoint logic
+    await websocket_endpoint(websocket, token)
+
+
 @ws_router.get("/ws/stats")
 async def get_websocket_stats():
     """Get current WebSocket connection statistics."""
@@ -142,10 +140,7 @@ async def broadcast_test_message(
     message: str = "Test broadcast",
     event_type: str = "TEST"
 ):
-    """
-    Test endpoint to broadcast a message to all connected clients.
-    For debugging only - should be restricted in production.
-    """
+    """Test endpoint to broadcast a message."""
     event = {
         "type": event_type,
         "data": {"message": message},

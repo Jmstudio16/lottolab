@@ -1,6 +1,7 @@
 """
 LOTTOLAB - Notification System
 Full notification management with read/unread states, mark all read, and persistence.
+Real-time delivery via WebSocket + storage in MongoDB.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Request
@@ -8,10 +9,14 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel
+import logging
 
 from models import UserRole
 from auth import decode_token
 from utils import generate_id, get_current_timestamp
+from websocket_manager import ws_manager
+
+logger = logging.getLogger(__name__)
 
 notification_router = APIRouter(prefix="/api", tags=["Notifications"])
 security = HTTPBearer()
@@ -230,7 +235,7 @@ async def create_notification(
     data: CreateNotificationRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    """Create a new notification (Admin only)"""
+    """Create a new notification (Admin only) and send in real-time via WebSocket"""
     # Only admins can create notifications
     allowed_roles = [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.COMPANY_MANAGER]
     if current_user.get("role") not in allowed_roles:
@@ -254,7 +259,39 @@ async def create_notification(
     
     await db.notifications.insert_one(notification)
     
-    return {"message": "Notification créée", "notification_id": notification_id}
+    # Send real-time notification via WebSocket
+    ws_event = {
+        "type": "NOTIFICATION",
+        "data": {
+            "notification_id": notification_id,
+            "title": data.title,
+            "message": data.message,
+            "notification_type": data.type
+        },
+        "message": data.message,
+        "timestamp": now,
+        "priority": "high"
+    }
+    
+    # Determine broadcast target
+    if data.target_user_id:
+        # Send to specific user
+        await ws_manager.send_personal_message(data.target_user_id, ws_event)
+        logger.info(f"[NOTIF] Sent to user: {data.target_user_id}")
+    elif data.target_company_id:
+        # Send to entire company
+        count = await ws_manager.broadcast_to_company(data.target_company_id, ws_event)
+        logger.info(f"[NOTIF] Broadcast to company {data.target_company_id}: {count} recipients")
+    elif data.target_role:
+        # Send to specific role
+        count = await ws_manager.broadcast_to_role(data.target_role, ws_event)
+        logger.info(f"[NOTIF] Broadcast to role {data.target_role}: {count} recipients")
+    else:
+        # Global broadcast
+        count = await ws_manager.broadcast_global(ws_event)
+        logger.info(f"[NOTIF] Global broadcast: {count} recipients")
+    
+    return {"message": "Notification créée et envoyée", "notification_id": notification_id}
 
 
 # ============================================================================
@@ -296,7 +333,7 @@ async def create_system_notification(
     metadata: dict = None
 ):
     """
-    Create a system notification (called from other modules).
+    Create a system notification and send in real-time via WebSocket.
     Use this for automatic notifications like:
     - New result published
     - Winning ticket detected
@@ -319,4 +356,110 @@ async def create_system_notification(
     }
     
     await db.notifications.insert_one(notification)
+    
+    # Send real-time notification via WebSocket
+    ws_event = {
+        "type": "NOTIFICATION",
+        "data": {
+            "notification_id": notification_id,
+            "title": title,
+            "message": message,
+            "notification_type": notification_type,
+            **(metadata or {})
+        },
+        "message": message,
+        "timestamp": now,
+        "priority": "high" if notification_type in ["WINNER", "RESULT", "ALERT"] else "normal"
+    }
+    
+    # Determine broadcast target
+    try:
+        if target_user_id:
+            await ws_manager.send_personal_message(target_user_id, ws_event)
+            logger.info(f"[SYSTEM-NOTIF] Sent to user: {target_user_id}")
+        elif target_company_id:
+            count = await ws_manager.broadcast_to_company(target_company_id, ws_event)
+            logger.info(f"[SYSTEM-NOTIF] Broadcast to company {target_company_id}: {count} recipients")
+        elif target_role:
+            count = await ws_manager.broadcast_to_role(target_role, ws_event)
+            logger.info(f"[SYSTEM-NOTIF] Broadcast to role {target_role}: {count} recipients")
+        else:
+            count = await ws_manager.broadcast_global(ws_event)
+            logger.info(f"[SYSTEM-NOTIF] Global broadcast: {count} recipients")
+    except Exception as e:
+        logger.error(f"[SYSTEM-NOTIF] WebSocket error: {e}")
+    
     return notification_id
+
+
+async def notify_result_published(
+    lottery_name: str,
+    draw_name: str,
+    winning_numbers: str,
+    company_id: str = None
+):
+    """Notify when a lottery result is published."""
+    return await create_system_notification(
+        notification_type="RESULT",
+        title=f"Résultat {lottery_name} {draw_name}",
+        message=f"Numéros gagnants: {winning_numbers}",
+        target_company_id=company_id,
+        metadata={"lottery_name": lottery_name, "draw_name": draw_name, "winning_numbers": winning_numbers}
+    )
+
+
+async def notify_ticket_winner(
+    ticket_code: str,
+    win_amount: float,
+    lottery_name: str,
+    agent_id: str,
+    company_id: str
+):
+    """Notify when a ticket wins."""
+    # Notify the agent
+    await create_system_notification(
+        notification_type="WINNER",
+        title=f"GAGNANT! Ticket {ticket_code}",
+        message=f"Gain de {win_amount:,.0f} HTG sur {lottery_name}!",
+        target_user_id=agent_id,
+        metadata={"ticket_code": ticket_code, "win_amount": win_amount, "lottery_name": lottery_name}
+    )
+    
+    # Also notify company admins
+    return await create_system_notification(
+        notification_type="WINNER",
+        title=f"Ticket Gagnant: {ticket_code}",
+        message=f"Un ticket a gagné {win_amount:,.0f} HTG sur {lottery_name}",
+        target_company_id=company_id,
+        target_role="COMPANY_ADMIN",
+        metadata={"ticket_code": ticket_code, "win_amount": win_amount, "lottery_name": lottery_name}
+    )
+
+
+async def notify_payment_available(
+    ticket_code: str,
+    amount: float,
+    agent_id: str
+):
+    """Notify agent that payment is available."""
+    return await create_system_notification(
+        notification_type="PAYMENT",
+        title=f"Paiement disponible",
+        message=f"Le ticket {ticket_code} est prêt à être payé ({amount:,.0f} HTG)",
+        target_user_id=agent_id,
+        metadata={"ticket_code": ticket_code, "amount": amount}
+    )
+
+
+async def notify_admin_message(
+    title: str,
+    message: str,
+    company_id: str = None
+):
+    """Send admin message to all users or a specific company."""
+    return await create_system_notification(
+        notification_type="INFO",
+        title=title,
+        message=message,
+        target_company_id=company_id
+    )

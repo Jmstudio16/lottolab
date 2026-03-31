@@ -13,7 +13,7 @@ const VendeurMesVentes = () => {
   const { token } = useAuth();
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('today');
-  const [commissionRate, setCommissionRate] = useState(10);
+  const [commissionRate, setCommissionRate] = useState(0); // DEFAULT TO 0 - Only show if configured by admin
   const [stats, setStats] = useState({
     totalVentes: 0,
     totalTickets: 0,
@@ -25,16 +25,21 @@ const VendeurMesVentes = () => {
 
   const headers = { Authorization: `Bearer ${token}` };
 
-  // Fetch commission rate from profile
+  // Fetch commission rate from profile - Only if explicitly configured
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/vendeur/profile`, { headers });
-        if (res.data?.vendeur?.commission_rate) {
-          setCommissionRate(res.data.vendeur.commission_rate);
+        // Only set commission if it's explicitly configured (not 0 or undefined)
+        const rate = res.data?.vendeur?.commission_rate;
+        if (rate && rate > 0) {
+          setCommissionRate(rate);
+        } else {
+          setCommissionRate(0);
         }
       } catch (error) {
         console.error('Error fetching profile:', error);
+        setCommissionRate(0);
       }
     };
     fetchProfile();
@@ -180,17 +185,20 @@ const VendeurMesVentes = () => {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/30 rounded-xl p-3 sm:p-4">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-amber-500/20 rounded-lg">
-              <Percent className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm text-amber-300">Commission ({commissionRate}%)</p>
-              <p className="text-lg sm:text-xl font-bold text-amber-400 truncate">{formatCurrency(stats.commission)} HTG</p>
+        {/* Commission Card - Only show if commission rate > 0 */}
+        {commissionRate > 0 && (
+          <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/30 rounded-xl p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-amber-500/20 rounded-lg">
+                <Percent className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-amber-300">Commission ({commissionRate}%)</p>
+                <p className="text-lg sm:text-xl font-bold text-amber-400 truncate">{formatCurrency(stats.commission)} HTG</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">

@@ -51,9 +51,9 @@ const VendeurProfil = () => {
       return;
     }
 
-    // Increased limit to 10MB for better quality photos
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('L\'image ne doit pas dépasser 10MB');
+    // Limit to 2MB for profile photos
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('L\'image ne doit pas dépasser 2MB');
       return;
     }
 
@@ -62,14 +62,19 @@ const VendeurProfil = () => {
       const formData = new FormData();
       formData.append('file', file);
       
-      const res = await axios.post(`${API_URL}/api/vendeur/profile/photo`, formData, {
+      // Use the universal profile photo endpoint
+      const res = await axios.post(`${API_URL}/api/user/upload-profile-image`, formData, {
         headers: { ...headers, 'Content-Type': 'multipart/form-data' }
       });
       
       toast.success('Photo mise à jour avec succès!');
       setProfile(prev => ({
         ...prev,
-        vendeur: { ...prev.vendeur, photo_url: res.data.photo_url }
+        vendeur: { 
+          ...prev.vendeur, 
+          photo_url: res.data.profile_image_url,
+          profile_image_url: res.data.profile_image_url 
+        }
       }));
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erreur lors du téléchargement');

@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, X, Check, AlertCircle, Trophy, DollarSign, Users, Ticket, Clock, CheckCircle } from 'lucide-react';
+import { Bell, X, Check, AlertCircle, Trophy, DollarSign, Users, Ticket, Clock, CheckCircle, Volume2, VolumeX, Wifi, WifiOff } from 'lucide-react';
 import { useAuth } from '@/api/auth';
-import axios from 'axios';
-import { API_URL } from '@/config/api';
+import { useNotifications } from '@/hooks/useNotifications';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import UserAvatar from './UserAvatar';
 
@@ -26,13 +25,20 @@ const getNotificationIcon = (type) => {
 export const Header = ({ title, subtitle }) => {
   const { user, token } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const dropdownRef = useRef(null);
 
-  const headers = { Authorization: `Bearer ${token}` };
+  // Use the real-time notifications hook
+  const {
+    notifications,
+    unreadCount,
+    isConnected,
+    connectionMethod,
+    soundEnabled,
+    toggleSound,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications(token, user);
 
   // Real-time clock update every second
   useEffect(() => {
@@ -41,94 +47,6 @@ export const Header = ({ title, subtitle }) => {
     }, 1000);
     return () => clearInterval(clockInterval);
   }, []);
-
-  const fetchNotifications = async () => {
-    if (!token) return;
-    
-    try {
-      setLoading(true);
-      // Different endpoint based on role
-      let endpoint = '/api/notifications';
-      if (user?.role === 'SUPER_ADMIN') {
-        endpoint = '/api/saas/notifications';
-      } else if (user?.role === 'COMPANY_ADMIN' || user?.role === 'COMPANY_MANAGER') {
-        endpoint = '/api/company/notifications';
-      } else if (user?.role === 'BRANCH_SUPERVISOR') {
-        endpoint = '/api/supervisor/notifications';
-      } else if (user?.role === 'AGENT_POS') {
-        endpoint = '/api/vendeur/notifications';
-      }
-      
-      const res = await axios.get(`${API_URL}${endpoint}?limit=20`, { headers });
-      const notifs = Array.isArray(res.data) ? res.data : (res.data.notifications || []);
-      setNotifications(notifs);
-      setUnreadCount(notifs.filter(n => !n.read).length);
-    } catch (error) {
-      console.log('Notifications endpoint not available, using generated data');
-      // Generate sample notifications if endpoint doesn't exist
-      generateSampleNotifications();
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const generateSampleNotifications = () => {
-    const now = new Date();
-    const samples = [
-      {
-        id: '1',
-        type: 'RESULT',
-        title: 'Nouveau tirage LOTTO 3 ce soir 20h',
-        message: 'Les résultats seront publiés à 20h00',
-        read: false,
-        created_at: new Date(now - 1000 * 60 * 60).toISOString()
-      },
-      {
-        id: '2',
-        type: 'WINNER',
-        title: 'Résultats SUPER 6 disponibles',
-        message: 'Consultez les numéros gagnants',
-        read: false,
-        created_at: new Date(now - 1000 * 60 * 120).toISOString()
-      },
-      {
-        id: '3',
-        type: 'SALE',
-        title: 'Système mis à jour',
-        message: 'Nouvelles fonctionnalités disponibles',
-        read: true,
-        created_at: new Date(now - 1000 * 60 * 180).toISOString()
-      }
-    ];
-    setNotifications(samples);
-    setUnreadCount(samples.filter(n => !n.read).length);
-  };
-
-  const markAsRead = async (notifId) => {
-    setNotifications(prev => 
-      prev.map(n => (n.id === notifId || n.notification_id === notifId) ? { ...n, read: true } : n)
-    );
-    setUnreadCount(prev => Math.max(0, prev - 1));
-    
-    // Try to mark as read on server
-    try {
-      await axios.put(`${API_URL}/api/notifications/${notifId}/read`, {}, { headers });
-    } catch (e) {
-      // Ignore if endpoint doesn't exist
-    }
-  };
-
-  const markAllAsRead = async () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    setUnreadCount(0);
-    
-    // Try to mark all as read on server
-    try {
-      await axios.put(`${API_URL}/api/notifications/mark-all-read`, {}, { headers });
-    } catch (e) {
-      // Ignore if endpoint doesn't exist
-    }
-  };
 
   const formatTime = (dateStr) => {
     const date = new Date(dateStr);
@@ -161,13 +79,6 @@ export const Header = ({ title, subtitle }) => {
       timeZone: 'America/Port-au-Prince'
     });
   };
-
-  useEffect(() => {
-    fetchNotifications();
-    // Refresh every 15 seconds for real-time feel
-    const interval = setInterval(fetchNotifications, 15000);
-    return () => clearInterval(interval);
-  }, [token, user?.role]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -214,10 +125,15 @@ export const Header = ({ title, subtitle }) => {
             >
               <Bell className={`w-5 h-5 transition-colors ${unreadCount > 0 ? 'text-amber-400' : 'text-slate-400 group-hover:text-white'}`} />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs text-white font-bold animate-pulse">
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs text-white font-bold animate-pulse shadow-lg shadow-red-500/50">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
+              {/* Connection indicator */}
+              <span className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ${
+                connectionMethod === 'websocket' ? 'bg-emerald-500' :
+                connectionMethod === 'polling' ? 'bg-amber-500' : 'bg-red-500'
+              }`} title={connectionMethod === 'websocket' ? 'Temps réel' : connectionMethod === 'polling' ? 'Polling' : 'Déconnecté'} />
             </button>
 
             {/* Notifications Dropdown */}
@@ -228,29 +144,49 @@ export const Header = ({ title, subtitle }) => {
                     <Bell className="w-4 h-4 text-amber-400" />
                     <h3 className="font-semibold text-white">Notifications</h3>
                     {unreadCount > 0 && (
-                      <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded-full font-medium">
+                      <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded-full font-medium animate-pulse">
                         {unreadCount} nouveau{unreadCount > 1 ? 'x' : ''}
                       </span>
                     )}
                   </div>
-                  {unreadCount > 0 && (
-                    <button 
-                      onClick={markAllAsRead}
-                      className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                  <div className="flex items-center gap-2">
+                    {/* Sound toggle */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleSound(); }}
+                      className={`p-1.5 rounded-lg transition-colors ${soundEnabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}
+                      title={soundEnabled ? 'Son activé' : 'Son désactivé'}
                     >
-                      <CheckCircle className="w-3 h-3" />
-                      Tout lu
+                      {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
                     </button>
+                    {/* Mark all read */}
+                    {unreadCount > 0 && (
+                      <button 
+                        onClick={markAllAsRead}
+                        className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                      >
+                        <CheckCircle className="w-3 h-3" />
+                        Tout lu
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Connection status bar */}
+                <div className={`px-4 py-1.5 text-xs flex items-center gap-2 ${
+                  connectionMethod === 'websocket' ? 'bg-emerald-500/10 text-emerald-400' :
+                  connectionMethod === 'polling' ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'
+                }`}>
+                  {connectionMethod === 'websocket' ? (
+                    <><Wifi className="w-3 h-3" /> Temps réel activé</>
+                  ) : connectionMethod === 'polling' ? (
+                    <><Wifi className="w-3 h-3" /> Mode polling (10s)</>
+                  ) : (
+                    <><WifiOff className="w-3 h-3" /> Déconnecté</>
                   )}
                 </div>
 
                 <div className="max-h-96 overflow-y-auto">
-                  {loading ? (
-                    <div className="py-8 text-center text-slate-400">
-                      <div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-amber-400 border-t-transparent"></div>
-                      <p className="mt-2 text-sm">Chargement...</p>
-                    </div>
-                  ) : notifications.length === 0 ? (
+                  {notifications.length === 0 ? (
                     <div className="py-8 text-center text-slate-400">
                       <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
                       <p className="text-sm">Aucune notification</p>
@@ -258,7 +194,7 @@ export const Header = ({ title, subtitle }) => {
                   ) : (
                     notifications.map((notif, index) => (
                       <div 
-                        key={notif.id || notif.notification_id}
+                        key={notif.id || notif.notification_id || index}
                         className={`px-4 py-3 border-b border-slate-800 cursor-pointer transition-all duration-200 hover:bg-slate-800/80 ${
                           !notif.read ? 'bg-blue-500/10 border-l-2 border-l-blue-500' : 'hover:bg-slate-800/50'
                         }`}
