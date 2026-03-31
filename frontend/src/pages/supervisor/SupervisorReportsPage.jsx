@@ -52,7 +52,7 @@ export const SupervisorReportsPage = () => {
       );
       
       const data = res.data;
-      setSupervisorCommission(data.supervisor_commission || 10);
+      setSupervisorCommission(data.supervisor_commission || 0);
       setReportData(data.agents || []);
       setTotals(data.totals || {});
       
@@ -69,12 +69,13 @@ export const SupervisorReportsPage = () => {
 
   const fetchReportFallback = async () => {
     try {
-      // Get supervisor profile for commission
+      // Get supervisor profile for commission - Default to 0 if not configured
       try {
         const profileRes = await axios.get(`${API_URL}/api/supervisor/my-profile`, { headers });
-        setSupervisorCommission(profileRes.data.commission_percent || 10);
+        setSupervisorCommission(profileRes.data.commission_percent || 0);
       } catch (e) {
-        // Use default
+        // Use default 0
+        setSupervisorCommission(0);
       }
       
       // Get agents
@@ -103,9 +104,9 @@ export const SupervisorReportsPage = () => {
           const totalVentes = filteredTickets.reduce((sum, t) => sum + (t.total_amount || 0), 0);
           const totalPaye = filteredTickets.filter(t => t.status === 'WINNER')
             .reduce((sum, t) => sum + (t.winnings || t.payout_amount || 0), 0);
-          const agentComm = agent.commission_percent || 10;
-          const commAgent = (totalVentes * agentComm) / 100;
-          const commSup = (totalVentes * supervisorCommission) / 100;
+          const agentComm = agent.commission_percent || 0;  // Default to 0
+          const commAgent = agentComm > 0 ? (totalVentes * agentComm) / 100 : 0;
+          const commSup = supervisorCommission > 0 ? (totalVentes * supervisorCommission) / 100 : 0;
           
           agentsData.push({
             agent_id: agent.user_id,

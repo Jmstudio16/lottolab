@@ -805,7 +805,7 @@ class CompanyFullCreate(BaseModel):
     plan_id: Optional[str] = None
     timezone: str = "America/Port-au-Prince"
     currency: str = "HTG"
-    default_commission_rate: float = 10.0
+    default_commission_rate: float = 0.0  # DEFAULT TO 0 - Company Admin must configure
     max_agents: int = 50
     max_daily_sales: float = 1000000.0
 

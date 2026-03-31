@@ -1465,6 +1465,7 @@ async def pay_winner_ticket(
     # Create notification for company admin
     notification = {
         "id": generate_id("notif_"),
+        "notification_id": generate_id("notif_"),
         "company_id": company_id,
         "type": "PAYMENT",
         "title": "Ticket gagnant payé",
@@ -1478,6 +1479,29 @@ async def pay_winner_ticket(
         }
     }
     await db.company_notifications.insert_one(notification)
+    await db.notifications.insert_one(notification)  # Also add to global notifications
+    
+    # Broadcast real-time notification to company admins & supervisors
+    from websocket_manager import ws_manager
+    ws_event = {
+        "type": "TICKET_PAID",
+        "data": {
+            "ticket_id": ticket_id,
+            "ticket_code": ticket.get("ticket_code"),
+            "amount": winning_amount,
+            "vendeur_name": vendeur_name,
+            "title": "Ticket gagnant payé",
+            "message": f"Ticket #{ticket.get('ticket_code', '')} payé - {winning_amount:,.0f} HTG"
+        },
+        "message": f"Ticket #{ticket.get('ticket_code', '')} payé - {winning_amount:,.0f} HTG",
+        "timestamp": now,
+        "priority": "high"
+    }
+    try:
+        await ws_manager.broadcast_to_company(company_id, ws_event)
+        logger.info(f"[PAY-WINNER] Broadcast to company {company_id}")
+    except Exception as e:
+        logger.warning(f"[PAY-WINNER] WebSocket broadcast error: {e}")
     
     return {
         "success": True,
@@ -1569,3 +1593,112 @@ async def get_balance_history(
     ).sort("created_at", -1).limit(limit).to_list(limit)
     
     return transactions
+
+
+
+# ============================================================================
+# VENDEUR REPORT - RAPPORT COMPLET DU VENDEUR
+# ============================================================================
+
+@vendeur_router.get("/report")
+async def get_vendeur_report(
+    current_vendeur: dict = Depends(get_current_vendeur),
+    period: str = "today"
+):
+    """
+    Get comprehensive report for the vendor.
+    Period: today, week, month, all
+    """
+    vendeur_id = current_vendeur.get("user_id")
+    company_id = current_vendeur.get("company_id")
+    commission_rate = current_vendeur.get("commission_percent") or current_vendeur.get("commission_rate") or 0
+    
+    now = datetime.now(timezone.utc)
+    
+    # Determine date range
+    if period == "today":
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == "week":
+        start_date = now - timedelta(days=7)
+    elif period == "month":
+        start_date = now - timedelta(days=30)
+    else:
+        start_date = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    
+    start_date_str = start_date.isoformat()
+    
+    # Get all tickets for this vendor in period
+    pipeline = [
+        {
+            "$match": {
+                "vendeur_id": vendeur_id,
+                "company_id": company_id,
+                "created_at": {"$gte": start_date_str}
+            }
+        },
+        {
+            "$group": {
+                "_id": None,
+                "total_tickets": {"$sum": 1},
+                "total_sales": {"$sum": {"$ifNull": ["$total_amount", 0]}},
+                "winning_tickets": {
+                    "$sum": {"$cond": [{"$in": ["$status", ["WINNER", "WON", "PAID"]]}, 1, 0]}
+                },
+                "total_wins": {
+                    "$sum": {"$cond": [{"$in": ["$status", ["WINNER", "WON", "PAID"]]}, {"$ifNull": ["$winnings", {"$ifNull": ["$win_amount", 0]}]}, 0]}
+                },
+                "paid_tickets": {
+                    "$sum": {"$cond": [{"$eq": ["$payment_status", "PAID"]}, 1, 0]}
+                }
+            }
+        }
+    ]
+    
+    result = await db.lottery_transactions.aggregate(pipeline).to_list(1)
+    stats = result[0] if result else {}
+    
+    total_sales = stats.get("total_sales", 0)
+    total_tickets = stats.get("total_tickets", 0)
+    winning_tickets = stats.get("winning_tickets", 0)
+    paid_tickets = stats.get("paid_tickets", 0)
+    
+    # Calculate commission ONLY if rate > 0
+    total_commission = (total_sales * commission_rate / 100) if commission_rate > 0 else 0
+    
+    # Get tickets by lottery
+    lottery_pipeline = [
+        {
+            "$match": {
+                "vendeur_id": vendeur_id,
+                "company_id": company_id,
+                "created_at": {"$gte": start_date_str}
+            }
+        },
+        {
+            "$group": {
+                "_id": "$lottery_name",
+                "count": {"$sum": 1},
+                "amount": {"$sum": {"$ifNull": ["$total_amount", 0]}}
+            }
+        },
+        {"$sort": {"amount": -1}},
+        {"$limit": 10}
+    ]
+    
+    lottery_stats = await db.lottery_transactions.aggregate(lottery_pipeline).to_list(10)
+    
+    return {
+        "period": period,
+        "total_sales": total_sales,
+        "total_tickets": total_tickets,
+        "total_commission": total_commission if commission_rate > 0 else 0,
+        "commission_rate": commission_rate,
+        "winning_tickets": winning_tickets,
+        "total_wins": stats.get("total_wins", 0),
+        "paid_tickets": paid_tickets,
+        "unpaid_tickets": winning_tickets - paid_tickets,
+        "tickets_by_lottery": [
+            {"lottery": l["_id"], "count": l["count"], "amount": l["amount"]}
+            for l in lottery_stats
+        ]
+    }

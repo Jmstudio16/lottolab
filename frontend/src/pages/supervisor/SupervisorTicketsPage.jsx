@@ -54,7 +54,7 @@ export const SupervisorTicketsPage = () => {
           return (ticketsRes.data || []).map(t => ({
             ...t,
             agent_name: agent.name || agent.full_name || 'Agent',
-            agent_commission: agent.commission_percent || 10
+            agent_commission: agent.commission_percent || 0  // Default to 0
           }));
         } catch (e) {
           return [];
@@ -248,9 +248,13 @@ export const SupervisorTicketsPage = () => {
                     <td className="px-4 py-3 font-mono text-sm text-white">{ticket.ticket_code}</td>
                     <td className="px-4 py-3 text-sm text-slate-300">{ticket.agent_name}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded-full text-xs font-bold">
-                        {ticket.agent_commission || 10}%
-                      </span>
+                      {(ticket.agent_commission || 0) > 0 ? (
+                        <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded-full text-xs font-bold">
+                          {ticket.agent_commission}%
+                        </span>
+                      ) : (
+                        <span className="text-slate-500 text-xs">-</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-300">{ticket.lottery_name || '-'}</td>
                     <td className="px-4 py-3 text-right text-sm text-emerald-400 font-medium">
@@ -312,7 +316,9 @@ export const SupervisorTicketsPage = () => {
                 </div>
                 <div className="bg-slate-800/50 p-3 rounded-lg">
                   <p className="text-xs text-slate-400">Commission Agent</p>
-                  <p className="text-amber-400 font-bold">{selectedTicket.agent_commission || 10}%</p>
+                  <p className="text-amber-400 font-bold">
+                    {(selectedTicket.agent_commission || 0) > 0 ? `${selectedTicket.agent_commission}%` : 'Non définie'}
+                  </p>
                 </div>
                 <div className="bg-slate-800/50 p-3 rounded-lg">
                   <p className="text-xs text-slate-400">Loterie</p>

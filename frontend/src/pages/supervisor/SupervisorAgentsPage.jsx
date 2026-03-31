@@ -26,7 +26,7 @@ export const SupervisorAgentsPage = () => {
     email: '',
     telephone: '',
     password: '',
-    commission_percent: 10
+    commission_percent: 0  // DEFAULT TO 0 - Only apply if configured by Company Admin
   });
 
   const headers = { Authorization: `Bearer ${token}` };
@@ -133,7 +133,7 @@ export const SupervisorAgentsPage = () => {
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
           <p className="text-slate-400 text-sm">Commission Moy.</p>
           <p className="text-2xl font-bold text-amber-400">
-            {agents.length > 0 ? Math.round(agents.reduce((sum, a) => sum + (a.commission_percent || 10), 0) / agents.length) : 10}%
+            {agents.length > 0 ? Math.round(agents.reduce((sum, a) => sum + (a.commission_percent || 0), 0) / agents.length) : 0}%
           </p>
         </div>
       </div>
@@ -187,9 +187,13 @@ export const SupervisorAgentsPage = () => {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-bold">
-                        {agent.commission_percent || 10}%
-                      </span>
+                      {(agent.commission_percent || 0) > 0 ? (
+                        <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-bold">
+                          {agent.commission_percent}%
+                        </span>
+                      ) : (
+                        <span className="text-slate-500 text-sm">Non défini</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-bold ${

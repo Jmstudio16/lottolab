@@ -107,7 +107,7 @@ export const SupervisorDashboardPage = () => {
     setEditForm({
       name: agent.name || '',
       telephone: agent.telephone || '',
-      commission_percent: agent.commission_percent || 5
+      commission_percent: agent.commission_percent || 0  // Default to 0
     });
     setShowEditModal(true);
   };

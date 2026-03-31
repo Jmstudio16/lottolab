@@ -243,11 +243,17 @@ const VendeurLotsGagnants = () => {
                   <div className="flex items-center gap-3 mb-2">
                     <span className="font-mono font-bold text-amber-400">{ticket.ticket_code}</span>
                     <span className={`px-2 py-0.5 rounded text-xs ${
-                      ticket.status === 'PAID' 
+                      ticket.status === 'PAID' || ticket.payment_status === 'PAID'
                         ? 'bg-emerald-500/20 text-emerald-400'
+                        : ticket.status === 'WINNER'
+                        ? 'bg-amber-500/20 text-amber-400'
                         : 'bg-purple-500/20 text-purple-400'
                     }`}>
-                      {ticket.status === 'PAID' ? 'Payé' : 'En Attente'}
+                      {ticket.status === 'PAID' || ticket.payment_status === 'PAID' 
+                        ? 'Payé' 
+                        : ticket.status === 'WINNER' 
+                        ? 'Validé - À Payer' 
+                        : 'En Attente'}
                     </span>
                     {highlightedTicketId === ticket.ticket_id && (
                       <span className="px-2 py-0.5 rounded text-xs bg-emerald-500 text-white animate-bounce flex items-center gap-1">

@@ -110,17 +110,20 @@ const VendeurRapportPage = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-800/50 border-slate-700">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-400 text-xs">Commission</p>
-                <p className="text-xl font-bold text-emerald-400">{report?.total_commission || 0} HTG</p>
+        {/* Only show commission if > 0 */}
+        {(report?.total_commission || 0) > 0 && (
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-slate-400 text-xs">Commission</p>
+                  <p className="text-xl font-bold text-emerald-400">{report?.total_commission || 0} HTG</p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-emerald-400" />
               </div>
-              <TrendingUp className="w-8 h-8 text-emerald-400" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="bg-slate-800/50 border-slate-700">
           <CardContent className="p-4">
