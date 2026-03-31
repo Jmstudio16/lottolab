@@ -527,6 +527,20 @@ async def sell_lottery_ticket(
             detail=f"Mise refusée: {'; '.join(errors)}"
         )
     
+    # PHASE 4: Validate bet type limits (min/max per game type) - Company Admin configuration
+    from bet_type_limits_routes import validate_bet_type_limits
+    bet_type_limit_check = await validate_bet_type_limits(
+        company_id=company_id,
+        plays=validated_plays
+    )
+    
+    if not bet_type_limit_check["allowed"]:
+        errors = [e.get("error") for e in bet_type_limit_check.get("errors", [])]
+        raise HTTPException(
+            status_code=400,
+            detail=f"Mise refusée: {'; '.join(errors)}"
+        )
+    
     # Check agent balance (credit limit)
     agent_balance = await db.agent_balances.find_one({"agent_id": agent_id}, {"_id": 0})
     

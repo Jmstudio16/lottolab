@@ -66,6 +66,7 @@ from settlement_routes import settlement_router, prize_config_router as settleme
 from settlement_engine import set_settlement_engine_db, ensure_indexes as ensure_settlement_indexes
 from sync_service import sync_service_router, set_sync_service_db
 from profile_routes import profile_router, set_profile_db
+from bet_type_limits_routes import bet_type_limits_router, set_bet_type_limits_db, validate_bet_type_limits
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -868,6 +869,19 @@ async def lottery_sell_redirect(
             detail=f"Mise refusée: {'; '.join(errors)}"
         )
     
+    # PHASE 4: Validate bet type limits (min/max per game type) - Company Admin configuration
+    bet_type_limit_check = await validate_bet_type_limits(
+        company_id=company_id,
+        plays=plays_data
+    )
+    
+    if not bet_type_limit_check["allowed"]:
+        errors = [e.get("error") for e in bet_type_limit_check.get("errors", [])]
+        raise HTTPException(
+            status_code=400,
+            detail=f"Mise refusée: {'; '.join(errors)}"
+        )
+    
     # Get company
     company = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
     
@@ -1143,6 +1157,7 @@ set_settlement_routes_db(db)
 set_settlement_engine_db(db)
 set_sync_service_db(db)
 set_profile_db(db)
+set_bet_type_limits_db(db)
 
 # Initialize staff endpoints with dependency
 create_staff_endpoints(get_current_user)
@@ -1206,6 +1221,9 @@ app.include_router(notification_router)
 
 # Include profile router (profile photo upload)
 app.include_router(profile_router)
+
+# Include bet type limits router (Company Admin limits per game type)
+app.include_router(bet_type_limits_router)
 
 # Include draw times router (Super Admin CRUD for draw times)
 app.include_router(draw_times_router)

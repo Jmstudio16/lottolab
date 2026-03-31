@@ -58,6 +58,7 @@ import CompanyTicketConfigPage from '@/pages/company/CompanyTicketConfigPage';
 import CompanyPrinterConfigPage from '@/pages/company/CompanyPrinterConfigPage';
 import CompanyReportsExportPage from '@/pages/company/CompanyReportsExportPage';
 import CompanySettlementHistoryPage from '@/pages/company/CompanySettlementHistoryPage';
+import CompanyBetLimitsPage from '@/pages/company/CompanyBetLimitsPage';
 
 // Supervisor Pages
 import { SupervisorLayout } from '@/layouts/SupervisorLayout';
@@ -595,6 +596,14 @@ const SaaSApp = () => {
                   element={
                     <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
                       <CompanyConfigurationPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/company/bet-limits"
+                  element={
+                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
+                      <CompanyBetLimitsPage />
                     </ProtectedRoute>
                   }
                 />

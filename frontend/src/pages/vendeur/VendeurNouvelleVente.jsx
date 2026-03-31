@@ -78,6 +78,7 @@ const VendeurNouvelleVente = () => {
   const [maxBetAmount, setMaxBetAmount] = useState(999999);
   const [wsConnected, setWsConnected] = useState(false);
   const [serverTimezone, setServerTimezone] = useState('America/Port-au-Prince');
+  const [betTypeLimits, setBetTypeLimits] = useState({});  // Company-specific bet type limits
   
   const saleFormRef = useRef(null);
   const wsRef = useRef(null);
@@ -85,16 +86,46 @@ const VendeurNouvelleVente = () => {
 
   const headers = { Authorization: `Bearer ${token}` };
 
-  const BET_TYPES = [
-    { value: 'BORLETTE', label: 'Borlette', digits: '2-3' },
-    { value: 'LOTO3', label: 'Loto 3', digits: '3' },
-    { value: 'MARIAGE', label: 'Mariage', digits: '4' },
-    { value: 'LOTO4_OPT1', label: 'Loto 4 - Option 1', digits: '4', isLoto4: true, maxAmount: 20 },
-    { value: 'LOTO4_OPT2', label: 'Loto 4 - Option 2', digits: '4', isLoto4: true, maxAmount: 20 },
-    { value: 'LOTO4_OPT3', label: 'Loto 4 - Option 3', digits: '4', isLoto4: true, maxAmount: 20 },
-    { value: 'LOTO5_EXTRA1', label: 'Loto 5 - Extra 1', digits: '5', isLoto5: true, minAmount: 20, maxAmount: 250 },
-    { value: 'LOTO5_EXTRA2', label: 'Loto 5 - Extra 2', digits: '5', isLoto5: true, minAmount: 20, maxAmount: 250 },
+  // Map frontend bet types to backend keys
+  const BET_TYPE_MAP = {
+    'BORLETTE': 'BORLETTE',
+    'LOTO3': 'LOTO3',
+    'MARIAGE': 'MARIAGE',
+    'LOTO4_OPT1': 'L4O1',
+    'LOTO4_OPT2': 'L4O2',
+    'LOTO4_OPT3': 'L4O3',
+    'LOTO5_EXTRA1': 'L5O1',
+    'LOTO5_EXTRA2': 'L5O2'
+  };
+
+  // Base bet types - will be filtered based on company limits
+  const BASE_BET_TYPES = [
+    { value: 'BORLETTE', label: 'Borlette', digits: '2-3', backendKey: 'BORLETTE' },
+    { value: 'LOTO3', label: 'Loto 3', digits: '3', backendKey: 'LOTO3' },
+    { value: 'MARIAGE', label: 'Mariage', digits: '4', backendKey: 'MARIAGE' },
+    { value: 'LOTO4_OPT1', label: 'Loto 4 - Option 1', digits: '4', isLoto4: true, backendKey: 'L4O1' },
+    { value: 'LOTO4_OPT2', label: 'Loto 4 - Option 2', digits: '4', isLoto4: true, backendKey: 'L4O2' },
+    { value: 'LOTO4_OPT3', label: 'Loto 4 - Option 3', digits: '4', isLoto4: true, backendKey: 'L4O3' },
+    { value: 'LOTO5_EXTRA1', label: 'Loto 5 - Extra 1', digits: '5', isLoto5: true, backendKey: 'L5O1' },
+    { value: 'LOTO5_EXTRA2', label: 'Loto 5 - Extra 2', digits: '5', isLoto5: true, backendKey: 'L5O2' },
   ];
+
+  // Filter bet types based on company limits (only show enabled types)
+  const BET_TYPES = BASE_BET_TYPES.filter(bt => {
+    const limitConfig = betTypeLimits[bt.backendKey];
+    // If no limits loaded yet, show all
+    if (!limitConfig) return true;
+    // Only show if enabled
+    return limitConfig.enabled !== false;
+  }).map(bt => {
+    // Add dynamic min/max from company limits
+    const limitConfig = betTypeLimits[bt.backendKey] || {};
+    return {
+      ...bt,
+      minAmount: limitConfig.min_bet || (bt.isLoto5 ? 20 : 1),
+      maxAmount: limitConfig.max_bet || (bt.isLoto4 ? 20 : bt.isLoto5 ? 250 : 999999)
+    };
+  });
 
   const calculateMariagesGratis = (total) => {
     if (total >= 300) return 3;
@@ -126,15 +157,21 @@ const VendeurNouvelleVente = () => {
     try {
       setLoading(true);
       
-      // Use the new endpoint that only returns open lotteries
-      const [lotteriesRes, profileRes] = await Promise.all([
+      // Use the new endpoint that only returns open lotteries + bet type limits
+      const [lotteriesRes, profileRes, limitsRes] = await Promise.all([
         axios.get(`${API_URL}/api/sync/vendeur/open-lotteries`, { headers }),
-        axios.get(`${API_URL}/api/vendeur/profile`, { headers }).catch(() => ({ data: null }))
+        axios.get(`${API_URL}/api/vendeur/profile`, { headers }).catch(() => ({ data: null })),
+        axios.get(`${API_URL}/api/company/vendor/bet-type-limits`, { headers }).catch(() => ({ data: { limits: {} } }))
       ]);
       
       const openLotteries = lotteriesRes.data.lotteries || [];
       setLotteries(openLotteries);
       setServerTimezone(lotteriesRes.data.timezone || 'America/Port-au-Prince');
+      
+      // Set company-specific bet type limits
+      if (limitsRes.data?.limits) {
+        setBetTypeLimits(limitsRes.data.limits);
+      }
       
       // If selected lottery is no longer open, deselect it
       if (selectedLottery) {
@@ -295,6 +332,11 @@ const VendeurNouvelleVente = () => {
     }
 
     const betType = BET_TYPES.find(bt => bt.value === currentPlay.betType);
+    if (!betType) {
+      toast.error('Type de jeu non disponible');
+      return;
+    }
+    
     if ((betType?.isLoto4 || betType?.isLoto5) && !currentPlay.numbers2) {
       toast.error(t('vendeur.enterSecondNumber'));
       return;
@@ -302,30 +344,21 @@ const VendeurNouvelleVente = () => {
 
     const amount = parseFloat(currentPlay.amount) || 0;
     
-    if (amount < minBetAmount) {
-      toast.error(`${t('vendeur.minBetError')} ${minBetAmount} HTG`);
+    // Get bet type specific limits from company config
+    const backendKey = BET_TYPE_MAP[currentPlay.betType] || currentPlay.betType;
+    const typeLimit = betTypeLimits[backendKey] || {};
+    const typeMinBet = typeLimit.min_bet || betType.minAmount || minBetAmount;
+    const typeMaxBet = typeLimit.max_bet || betType.maxAmount || maxBetAmount;
+    
+    // Validate against type-specific limits
+    if (amount < typeMinBet) {
+      toast.error(`Mise minimum pour ${betType.label}: ${typeMinBet} HTG`);
       return;
     }
     
-    if (amount > maxBetAmount) {
-      toast.error(`${t('vendeur.maxBetError')} ${maxBetAmount} HTG`);
+    if (amount > typeMaxBet) {
+      toast.error(`Mise maximum pour ${betType.label}: ${typeMaxBet} HTG`);
       return;
-    }
-    
-    if (betType?.isLoto4 && amount > 20) {
-      toast.error(t('vendeur.loto4MaxError'));
-      return;
-    }
-    
-    if (betType?.isLoto5) {
-      if (amount < 20) {
-        toast.error(t('vendeur.loto5MinError'));
-        return;
-      }
-      if (amount > 250) {
-        toast.error(t('vendeur.loto5MaxError'));
-        return;
-      }
     }
 
     // Re-check if lottery is still in our open list
