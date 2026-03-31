@@ -158,8 +158,16 @@ const VendeurNouvelleVente = () => {
         setCompanyName(profileRes.data?.company?.name || '');
       }
     } catch (error) {
-      console.error('Error fetching lotteries:', error);
-      toast.error(t('vendeur.loadingError'));
+      console.error('[VendeurVente] Error fetching lotteries:', error);
+      console.error('[VendeurVente] Response:', error.response?.data);
+      
+      // Display actual error message instead of generic one
+      const errorDetail = error.response?.data?.detail || error.message || t('vendeur.loadingError');
+      toast.error(`Erreur: ${errorDetail}`);
+      
+      // Log debug info
+      console.log('[VendeurVente] Debug - Token exists:', !!token);
+      console.log('[VendeurVente] Debug - API URL:', API_URL);
     } finally {
       setLoading(false);
     }

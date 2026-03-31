@@ -587,8 +587,13 @@ async def get_open_lotteries_for_seller(
     Get ONLY open lotteries for vendor sale page.
     Closed lotteries are completely hidden from this endpoint.
     """
+    user_email = current_user.get("email", "unknown")
     company_id = current_user.get("company_id")
+    
+    logger.info(f"[VENDEUR-LOTTERIES] Request from user={user_email}, company_id={company_id}")
+    
     if not company_id:
+        logger.warning(f"[VENDEUR-LOTTERIES] No company_id for user={user_email}")
         raise HTTPException(status_code=400, detail="Compagnie non trouvée")
     
     # Get company
@@ -606,8 +611,11 @@ async def get_open_lotteries_for_seller(
     
     lottery_ids = [cl["lottery_id"] for cl in company_lotteries]
     
+    logger.info(f"[VENDEUR-LOTTERIES] company_id={company_id}, enabled_lotteries={len(lottery_ids)}")
+    
     if not lottery_ids:
-        return {"lotteries": [], "open_count": 0}
+        logger.warning(f"[VENDEUR-LOTTERIES] No enabled lotteries for company_id={company_id}")
+        return {"lotteries": [], "open_count": 0, "debug": {"company_id": company_id, "enabled_count": 0}}
     
     # Get active global lotteries
     lotteries = await db.master_lotteries.find(
@@ -615,11 +623,15 @@ async def get_open_lotteries_for_seller(
         {"_id": 0}
     ).to_list(500)
     
+    logger.info(f"[VENDEUR-LOTTERIES] master_lotteries found={len(lotteries)}")
+    
     # Get schedules
     schedules = await db.global_schedules.find(
         {"lottery_id": {"$in": lottery_ids}, "is_active": True},
         {"_id": 0}
     ).to_list(1000)
+    
+    logger.info(f"[VENDEUR-LOTTERIES] active_schedules found={len(schedules)}")
     
     schedule_map = {}
     for sched in schedules:
@@ -650,6 +662,8 @@ async def get_open_lotteries_for_seller(
         x.get("flag_type") != "HAITI",
         x.get("lottery_name", "")
     ))
+    
+    logger.info(f"[VENDEUR-LOTTERIES] FINAL: user={user_email}, company={company_id}, open_count={len(open_lotteries)}")
     
     return {
         "lotteries": open_lotteries,
