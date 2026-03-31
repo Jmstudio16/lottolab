@@ -445,6 +445,64 @@ async def get_company_summary(
     return summary
 
 
+@settlement_router.get("/company-history")
+async def get_company_settlement_history(
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Récupère l'historique des settlements pour la compagnie de l'utilisateur.
+    Pour Company Admin et Supervisors.
+    """
+    company_id = current_user.get("company_id")
+    if not company_id:
+        raise HTTPException(status_code=400, detail="Compagnie non trouvée")
+    
+    # Get settlements that affected this company's tickets
+    settlements = await db.settlements.find(
+        {},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Filter settlements that have items for this company
+    company_settlements = []
+    total_paid = 0
+    total_winners = 0
+    
+    for settlement in settlements:
+        # Get settlement items for this company
+        items = await db.settlement_items.find({
+            "settlement_id": settlement.get("settlement_id"),
+            "company_id": company_id
+        }, {"_id": 0}).to_list(100)
+        
+        if items:
+            company_payout = sum(item.get("payout_amount", 0) for item in items)
+            company_winners = len(items)
+            
+            company_settlements.append({
+                "settlement_id": settlement.get("settlement_id"),
+                "lottery_name": settlement.get("lottery_name"),
+                "draw_name": settlement.get("draw_name"),
+                "winning_numbers": settlement.get("winning_numbers"),
+                "status": settlement.get("status"),
+                "created_at": settlement.get("created_at"),
+                "tickets_processed": settlement.get("total_tickets_checked", 0),
+                "winners_count": company_winners,
+                "total_paid": company_payout
+            })
+            
+            total_paid += company_payout
+            total_winners += company_winners
+    
+    return {
+        "settlements": company_settlements,
+        "total_settlements": len(company_settlements),
+        "total_paid": total_paid,
+        "total_winners": total_winners
+    }
+
+
 @settlement_router.get("/winning-tickets")
 async def get_winning_tickets_list(
     lottery_id: Optional[str] = None,

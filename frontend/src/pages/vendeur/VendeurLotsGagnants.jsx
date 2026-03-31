@@ -296,32 +296,46 @@ const VendeurLotsGagnants = () => {
                 </div>
               </div>
               
-              {/* Winning Numbers with Animation */}
+              {/* Winning Numbers with GLOW Animation */}
               <div className="mt-3 pt-3 border-t border-slate-700">
                 <p className="text-xs text-slate-500 mb-2 flex items-center gap-1">
-                  <Star className="w-3 h-3 text-amber-400" />
+                  <Star className="w-3 h-3 text-amber-400 animate-spin" />
                   Numéros gagnants:
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {ticket.winning_plays?.length > 0 ? (
                     ticket.winning_plays.map((wp, idx) => (
-                      <div key={idx} className={`flex items-center gap-2 bg-gradient-to-r from-amber-500/20 to-emerald-500/20 border border-amber-500/50 rounded-lg px-3 py-2 ${highlightedTicketId === ticket.ticket_id ? 'animate-pulse' : ''}`}>
+                      <div 
+                        key={idx} 
+                        className="flex items-center gap-2 bg-gradient-to-r from-amber-500/30 to-emerald-500/30 border-2 border-amber-400 rounded-lg px-3 py-2 shadow-lg shadow-amber-500/30 animate-pulse"
+                        style={{
+                          animation: 'glow 1.5s ease-in-out infinite alternate',
+                          boxShadow: '0 0 20px rgba(245, 158, 11, 0.5), 0 0 40px rgba(16, 185, 129, 0.3)'
+                        }}
+                      >
                         <WinningNumberBadge 
                           number={wp.played_number} 
                           position={wp.winning_lot} 
-                          animate={highlightedTicketId === ticket.ticket_id}
+                          animate={true}
                         />
                         <div className="text-xs">
-                          <p className="text-amber-400 font-medium">{wp.winning_lot === 1 ? '1er' : wp.winning_lot === 2 ? '2e' : '3e'} Lot</p>
-                          <p className="text-emerald-400">×{wp.multiplier} = {wp.gain?.toLocaleString()} HTG</p>
+                          <p className="text-amber-400 font-bold text-base">{wp.winning_lot === 1 ? '1er' : wp.winning_lot === 2 ? '2e' : '3e'} Lot</p>
+                          <p className="text-emerald-400 font-bold">×{wp.multiplier} = {wp.gain?.toLocaleString()} HTG</p>
                         </div>
                       </div>
                     ))
                   ) : ticket.plays?.filter(p => p.is_winner).length > 0 ? (
                     ticket.plays.filter(p => p.is_winner).map((play, idx) => (
-                      <div key={idx} className={`flex items-center gap-2 bg-gradient-to-r from-amber-500/20 to-emerald-500/20 border border-amber-500/50 rounded-lg px-3 py-2 ${highlightedTicketId === ticket.ticket_id ? 'animate-pulse' : ''}`}>
-                        <span className="font-mono font-bold text-lg text-amber-400">{play.numbers}</span>
-                        <span className="text-xs text-emerald-400">GAGNANT</span>
+                      <div 
+                        key={idx} 
+                        className="flex items-center gap-2 bg-gradient-to-r from-amber-500/30 to-emerald-500/30 border-2 border-amber-400 rounded-lg px-4 py-3 shadow-lg shadow-amber-500/50"
+                        style={{
+                          animation: 'glow 1.5s ease-in-out infinite alternate',
+                          boxShadow: '0 0 20px rgba(245, 158, 11, 0.5), 0 0 40px rgba(16, 185, 129, 0.3)'
+                        }}
+                      >
+                        <span className="font-mono font-bold text-2xl text-amber-400 animate-bounce">{play.numbers}</span>
+                        <span className="text-sm text-emerald-400 font-bold bg-emerald-500/20 px-2 py-1 rounded">GAGNANT!</span>
                       </div>
                     ))
                   ) : (

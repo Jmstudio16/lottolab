@@ -14,7 +14,8 @@ import {
   Trophy,
   CalendarClock,
   Flag,
-  Trash2
+  Trash2,
+  Calculator
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -39,6 +40,7 @@ const SupervisorSidebar = ({ isOpen, onClose }) => {
     { path: '/supervisor/reports', icon: BarChart3, label: 'Rapports' },
     { path: '/supervisor/results', icon: Trophy, label: 'Résultats' },
     { path: '/supervisor/lots-gagnants', icon: Trophy, label: 'Fiches Gagnants' },
+    { path: '/supervisor/settlement-history', icon: Calculator, label: 'Historique Règlements' },
     { path: '/supervisor/fiches-supprimees', icon: Trash2, label: 'Fiches Supprimées' },
     { path: '/supervisor/lottery-schedules', icon: CalendarClock, label: 'Horaires Loteries' },
     { path: '/supervisor/lottery-flags', icon: Flag, label: 'Configuration Drapeaux' },

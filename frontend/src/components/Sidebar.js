@@ -31,7 +31,8 @@ import {
   Trash2,
   Zap,
   Shield,
-  AlertTriangle
+  AlertTriangle,
+  Calculator
 } from 'lucide-react';
 import { useAuth } from '@/api/auth';
 import Logo from './Logo';
@@ -50,7 +51,6 @@ const getSuperAdminMenu = (t) => [
   { path: '/super/global-schedules', label: t('nav.globalSchedules'), icon: Clock },
   { path: '/super/draw-times', label: t('nav.drawTimes', 'Heures de Tirage'), icon: CalendarClock },
   { path: '/super/security', label: t('nav.security', 'Sécurité & Anti-Fraude'), icon: Shield },
-  { path: '/super/settlement', label: t('nav.settlement', 'Moteur Règlement'), icon: Trophy },
   { path: '/super/publish-results', label: t('nav.publishResults', 'Publier Résultats'), icon: Trophy },
   { path: '/super/scheduled-results', label: t('nav.scheduledResults', 'Résultats Programmés'), icon: Zap },
   { path: '/super/companies', label: t('nav.companies', 'Entreprises SaaS'), icon: Building2 },
@@ -73,6 +73,7 @@ const getCompanyAdminMenu = (t) => [
   { path: '/company/lots-gagnants', label: t('nav.winningNumbers', 'Fiches Gagnants'), icon: Trophy },
   { path: '/company/deleted-tickets', label: t('nav.deletedTickets', 'Fiches Supprimées'), icon: Trash2 },
   { path: '/company/winning-tickets', label: t('nav.winnersPayments', 'Gagnants & Paiements'), icon: Banknote },
+  { path: '/company/settlement-history', label: 'Historique Règlements', icon: Calculator },
   { path: '/company/balance-management', label: t('nav.balanceManagement', 'Gestion Soldes'), icon: Wallet },
   { path: '/admin/financial', label: t('nav.financial', 'Gestion Financière'), icon: Wallet },
   { path: '/company/configuration', label: t('nav.configuration', 'Configuration'), icon: Sliders },

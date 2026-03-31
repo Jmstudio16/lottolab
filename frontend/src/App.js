@@ -57,6 +57,7 @@ import CompanyFichesSupprimees from '@/pages/CompanyFichesSupprimees';
 import CompanyTicketConfigPage from '@/pages/company/CompanyTicketConfigPage';
 import CompanyPrinterConfigPage from '@/pages/company/CompanyPrinterConfigPage';
 import CompanyReportsExportPage from '@/pages/company/CompanyReportsExportPage';
+import CompanySettlementHistoryPage from '@/pages/company/CompanySettlementHistoryPage';
 
 // Supervisor Pages
 import { SupervisorLayout } from '@/layouts/SupervisorLayout';
@@ -642,6 +643,14 @@ const SaaSApp = () => {
                   element={
                     <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
                       <CompanyBalanceManagementPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/company/settlement-history"
+                  element={
+                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
+                      <CompanySettlementHistoryPage />
                     </ProtectedRoute>
                   }
                 />

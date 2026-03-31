@@ -108,7 +108,7 @@ const VendeurNouvelleVente = () => {
   const generateMariageNumbers = () => {
     const num1 = Math.floor(Math.random() * 100).toString().padStart(2, '0');
     const num2 = Math.floor(Math.random() * 100).toString().padStart(2, '0');
-    return `${num1}-${num2}`;
+    return `${num1}*${num2}`;  // Format: 29*08
   };
 
   // Update time every second
@@ -669,17 +669,48 @@ const VendeurNouvelleVente = () => {
                 </div>
                 
                 <div className="space-y-4">
-                  {/* Number Input */}
+                  {/* Number Input - Special handling for MARIAGE (format: 29*08) */}
                   <div>
-                    <label className="text-sm text-slate-400 mb-1 block">{t('vendeur.number')} *</label>
-                    <Input
-                      value={currentPlay.numbers}
-                      onChange={(e) => setCurrentPlay({...currentPlay, numbers: e.target.value.replace(/[^0-9]/g, '')})}
-                      placeholder={t('vendeur.numberPlaceholder')}
-                      className="bg-slate-700 border-slate-600 text-lg sm:text-xl font-mono"
-                      maxLength={5}
-                      data-testid="number-input"
-                    />
+                    <label className="text-sm text-slate-400 mb-1 block">
+                      {t('vendeur.number')} *
+                      {currentPlay.betType === 'MARIAGE' && (
+                        <span className="text-amber-400 ml-2 text-xs">(Format: 29*08)</span>
+                      )}
+                    </label>
+                    
+                    {currentPlay.betType === 'MARIAGE' ? (
+                      // Special MARIAGE input with auto * separator
+                      <Input
+                        value={currentPlay.numbers}
+                        onChange={(e) => {
+                          let val = e.target.value.replace(/[^0-9*]/g, ''); // Keep only numbers and *
+                          
+                          // Auto-add * after first 2 digits if not present
+                          if (val.length === 2 && !val.includes('*')) {
+                            val = val + '*';
+                          }
+                          
+                          // Limit to format XX*XX (5 chars max)
+                          if (val.length > 5) val = val.slice(0, 5);
+                          
+                          setCurrentPlay({...currentPlay, numbers: val});
+                        }}
+                        placeholder="29*08"
+                        className="bg-slate-700 border-slate-600 text-lg sm:text-xl font-mono text-center tracking-widest"
+                        maxLength={5}
+                        data-testid="number-input"
+                      />
+                    ) : (
+                      // Regular input for other bet types
+                      <Input
+                        value={currentPlay.numbers}
+                        onChange={(e) => setCurrentPlay({...currentPlay, numbers: e.target.value.replace(/[^0-9]/g, '')})}
+                        placeholder={t('vendeur.numberPlaceholder')}
+                        className="bg-slate-700 border-slate-600 text-lg sm:text-xl font-mono"
+                        maxLength={5}
+                        data-testid="number-input"
+                      />
+                    )}
                     
                     {(BET_TYPES.find(bt => bt.value === currentPlay.betType)?.isLoto4 || 
                       BET_TYPES.find(bt => bt.value === currentPlay.betType)?.isLoto5) && (

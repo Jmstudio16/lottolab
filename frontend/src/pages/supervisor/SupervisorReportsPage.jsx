@@ -202,27 +202,29 @@ export const SupervisorReportsPage = () => {
         </div>
       </div>
 
-      {/* My Commission Card */}
-      <div className="bg-gradient-to-r from-purple-500/20 to-purple-600/20 border border-purple-500/30 rounded-xl p-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="p-3 bg-purple-500/20 rounded-xl">
-            <Percent className="w-8 h-8 text-purple-400" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm text-purple-300">Votre Commission Superviseur</p>
-            <p className="text-3xl font-bold text-purple-400">{supervisorCommission}%</p>
-            <p className="text-xs text-purple-300/70">
-              Sur les ventes de vos {reportData.length} agents
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-purple-300">Vos Gains</p>
-            <p className="text-2xl font-bold text-purple-400">
-              HTG {formatCurrency(totals.total_comm_sup || 0)}
-            </p>
+      {/* My Commission Card - Only show if commission > 0 */}
+      {supervisorCommission > 0 && (
+        <div className="bg-gradient-to-r from-purple-500/20 to-purple-600/20 border border-purple-500/30 rounded-xl p-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="p-3 bg-purple-500/20 rounded-xl">
+              <Percent className="w-8 h-8 text-purple-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm text-purple-300">Votre Commission Superviseur</p>
+              <p className="text-3xl font-bold text-purple-400">{supervisorCommission}%</p>
+              <p className="text-xs text-purple-300/70">
+                Sur les ventes de vos {reportData.length} agents
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-purple-300">Vos Gains</p>
+              <p className="text-2xl font-bold text-purple-400">
+                HTG {formatCurrency(totals.total_comm_sup || 0)}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
