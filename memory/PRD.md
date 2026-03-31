@@ -1,56 +1,77 @@
 # LOTTOLAB - Professional Lottery SaaS Platform
 
-## Version: 16.0.0 (Notifications & Profile Photo)
-## Last Updated: 2026-03-31 05:20 UTC
-## Deployed: 2026-03-31 01:20 Haiti Time
+## Version: 17.0.0 (Launch Ready)
+## Last Updated: 2026-03-31 13:30 UTC
+## Deployed: 2026-03-31 09:30 Haiti Time
 
 ---
 
-## STATUT: STABLE ✅
+## 🚀 STATUT: PRÊT POUR LE LANCEMENT ✅
 
-### Nouvelles Fonctionnalités (v16.0.0):
+### Fonctionnalités Validées pour le Lancement
 
-#### 1. 🔔 Notifications Temps Réel ✅
-- **Backend**: WebSocket + stockage MongoDB + broadcast par rôle/company
-- **Frontend**: Hook `useNotifications.js` avec fallback polling 10s
-- **Header**: Badge animé, dropdown moderne, indicateur connexion
-- **Son**: Activé par défaut avec toggle dans les notifications
-- **Endpoints**:
-  - `GET /api/notifications` - Récupérer notifications
-  - `POST /api/notifications` - Créer notification
-  - `PUT /api/notifications/{id}/read` - Marquer comme lu
-  - `PUT /api/notifications/mark-all-read` - Tout marquer comme lu
+#### 🔴 P0 - CRITIQUE (VALIDÉ)
 
-#### 2. 📷 Photo de Profil (Tous Utilisateurs) ✅
-- **Upload**: JPG, PNG, WebP - Max 2MB
-- **Stockage**: `/app/backend/uploads/profile-photos/`
-- **Endpoints**:
-  - `POST /api/user/upload-profile-image` - Upload photo
-  - `GET /api/user/profile-image/{filename}` - Servir photo
-  - `DELETE /api/user/profile-image` - Supprimer photo
-  - `GET /api/user/profile` - Profil complet
+##### 1. Commissions ✅
+- **Default = 0** : Si non configuré par Admin, commission = 0
+- **Pas de calcul** : Commission n'est pas calculée si taux = 0
+- **Masquée** : Commission invisible pour Vendeurs et Superviseurs
+- **Visible** : Uniquement pour Company Admin / Super Admin
 
-#### 3. 💰 Commissions Corrigées ✅
-- **Règle**: Commission masquée si = 0 ou non configurée
-- **Vendeurs**: Pas d'affichage de commission (réservé Admin)
-- **Calcul**: Seulement si commission > 0
-- **Fichiers modifiés**: `VendeurMesVentes.jsx`, `VendeurDashboard.jsx`
+##### 2. Tickets Gagnants / Paiements ✅
+- **Statut correct** : WINNER, PAID (pas "EN ATTENTE")
+- **Bouton Payer** : Activé et fonctionnel
+- **Double paiement impossible** : Vérification backend
+- **Rapport temps réel** : Notification WebSocket aux Admin/Superviseurs
+
+#### 🟠 P1 - IMPORTANT (VALIDÉ)
+
+##### 3. Synchronisation Rapports ✅
+- **Rapport Vendeur** : `/api/vendeur/report` - Synchronisé avec ventes, paiements
+- **Rapport Journalier Admin** : Complet et exact
+- **Statistiques cohérentes** : Même données partout
+
+##### 4. Configuration Company Admin → Impact Réel ✅
+- **Table des Primes** : 14 configurations (BORLETTE 60|20|10, LOTO3 500, etc.)
+- **Limites de mise** : Min 15 HTG, Max 8000 HTG, Max/numéro 5000 HTG
+- **Blocage Boules** : 555, 777, 123 (appliqué à tous les vendeurs)
+- **Commission Agent/Supervisor** : Configurable, default 0
+
+#### 🟡 P2 - BONUS (VALIDÉ)
+
+##### 5. Photo Profil ✅
+- **Upload** : JPG, PNG, WebP (max 2MB)
+- **Affichage** : Header, Dashboard, Profil
+- **Persistent** : Reste après refresh
 
 ---
 
-## État Actuel du Système
+## Configuration Validée
 
-### Fonctionnalités Validées
+### Company Admin - 6 Onglets Fonctionnels
+1. **Général** - Paramètres de vente, Texte tickets
+2. **Table des Primes** - 14 configurations avec "Charger les défauts"
+3. **Limites** - Min/Max mise, Max par numéro, Max par agent
+4. **Mariage** - Configuration mariage gratis
+5. **Statistiques** - Contrôle agent, statistiques
+6. **Blocage Boule** - Bloquer des numéros
 
-| Fonctionnalité | Statut |
-|----------------|--------|
-| Notifications temps réel | ✅ Polling 10s (WS en production) |
-| Badge cloche animé | ✅ Rouge avec compteur |
-| Toggle son notifications | ✅ ON par défaut |
-| Photo profil upload | ✅ Tous utilisateurs |
-| Commission masquée vendeur | ✅ |
-| Page vendeur nouvelle vente | ✅ 62 loteries ouvertes |
-| Settlement automatique | ✅ 60/20/10 |
+### Limites Actuelles
+| Paramètre | Valeur |
+|-----------|--------|
+| Mise minimum | 15 HTG |
+| Mise maximum | 8000 HTG |
+| Max par numéro | 5000 HTG |
+| Max par agent | 50000 HTG |
+
+### Primes Configurées
+| Type | Formule |
+|------|---------|
+| Borlette | 60\|20\|10 |
+| Loto 3 | 500x fixe |
+| Mariage | 750x fixe |
+| Loto 4 (O1/O2/O3) | 750x fixe |
+| Loto 5 (O1) | 750x fixe |
 
 ---
 
@@ -60,72 +81,55 @@
 |------|-------|----------|
 | Super Admin | jefferson@jmstudio.com | JMStudio@2026! |
 | Company Admin | admin@lotopam.com | LotoPAM2026! |
-| Vendeur Test | vendeur@lotopam.com | vendor123 |
-| Tous Vendeurs/Agents | * | vendor123 |
+| Vendeur | vendeur@lotopam.com | vendor123 |
 
 ---
 
-## Architecture Fichiers
+## Tests Passés (Itération 50)
+
+- ✅ Commission vendeur = 0 si non configurée
+- ✅ Commission NON calculée si = 0
+- ✅ Page Configuration Company Admin - 6 onglets
+- ✅ Page Payer Gagnants fonctionnelle
+- ✅ Tickets gagnants avec statut WINNER/PAID
+- ✅ Rapport vendeur synchronisé
+- ✅ Limites de mise configurées
+- ✅ Table des Primes (14 configs)
+- ✅ Blocage boules appliqué
+
+---
+
+## Architecture
 
 ```
 /app/backend/
-├── profile_routes.py         # NEW: Upload photo profil
-├── notification_routes.py    # UPDATED: Notifications + WebSocket
-├── websocket_routes.py       # UPDATED: /ws/notifications endpoint
-├── websocket_manager.py      # Broadcast par rôle/company
-├── sync_service.py           # Loteries vendeur
-└── server.py                 # Main entry
+├── vendeur/vendeur_routes.py  # Report, Pay winner, Commission logic
+├── sync_routes.py             # Device config with limits
+├── company_operational_routes.py # Prime configs
+├── settlement_routes.py       # Prize configurations
+└── notification_routes.py     # Real-time notifications
 
-/app/frontend/
-├── src/hooks/useNotifications.js     # NEW: Hook temps réel
-├── src/components/Header.js          # UPDATED: Cloche + dropdown
-├── src/components/ProfilePhotoUpload.jsx  # NEW: Upload photo
-├── src/components/UserAvatar.jsx     # Avatar avec photo
-└── public/notification.mp3           # Son notification
+/app/frontend/src/pages/
+├── CompanyConfigurationPage.js # 6 tabs configuration
+├── vendeur/
+│   ├── VendeurDashboard.jsx   # Commission hidden if = 0
+│   ├── VendeurPayerGagnants.jsx
+│   └── VendeurRapportPage.jsx
+└── supervisor/
+    └── SupervisorReportsPage.jsx # Commission = 0 default
 ```
 
 ---
 
-## Prochaines Étapes
+## Prêt pour la Production
 
-### P1 - Haute Priorité
-- [x] ~~Notifications temps réel~~
-- [x] ~~Photo de profil tous utilisateurs~~
-- [x] ~~Commission masquée vendeurs~~
-- [ ] Ajouter Adresse, Téléphone, QR Code dans Company Settings
+Le système LottoLab est maintenant prêt pour le lancement en production avec:
 
-### P2 - Moyenne Priorité
-- [ ] Notification 5 min avant fermeture loterie
-- [ ] Export rapports PDF
+1. ✅ Gestion des commissions professionnelle
+2. ✅ Paiement des tickets gagnants fonctionnel
+3. ✅ Rapports synchronisés entre tous les rôles
+4. ✅ Configuration centralisée par Company Admin
+5. ✅ Notifications temps réel
+6. ✅ Photo profil pour tous les utilisateurs
 
-### P3 - Basse Priorité
-- [ ] APK Android avec mode offline
-- [ ] Multi-langue (Espagnol, Anglais)
-
----
-
-## Notes Techniques
-
-### WebSocket
-- En environnement preview: WebSocket retourne 403 (normal)
-- Fallback automatique vers polling 10s
-- En production: WebSocket temps réel fonctionnel
-
-### Notifications Events
-```javascript
-// Types d'événements WebSocket
-RESULT_PUBLISHED  // Résultat loterie publié
-TICKET_WINNER     // Ticket gagnant détecté
-TICKET_PAID       // Ticket payé
-TICKET_SOLD       // Nouveau ticket vendu
-NOTIFICATION      // Message admin
-```
-
-### Commission Logic
-```python
-# Backend: vendeur_routes.py
-if commission_rate > 0:
-    commission = total_sales * (commission_rate / 100)
-else:
-    commission = 0  # Ne jamais calculer si 0
-```
+**Recommandation**: Effectuer un test final en production avec des transactions réelles avant le lancement public.
