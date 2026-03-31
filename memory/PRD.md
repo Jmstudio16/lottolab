@@ -1,14 +1,36 @@
 # LOTTOLAB - Professional Lottery SaaS Platform
 
-## Version: 18.0.0 (Full Sync & Launch Ready)
-## Last Updated: 2026-03-31 23:10 UTC
-## Deployed: 2026-03-31 19:10 Haiti Time
+## Version: 19.0.0 (Limites par Type de Pari)
+## Last Updated: 2026-03-31 23:45 UTC
+## Deployed: 2026-03-31 19:45 Haiti Time
 
 ---
 
 ## 🚀 STATUT: PRÊT POUR LE LANCEMENT ✅
 
-### Nouvelles Modifications (v18.0.0):
+### Nouvelles Modifications (v19.0.0):
+
+#### 1. Limites par Type de Pari ✅ (NOUVEAU)
+- **Nouvelle page**: `/company/bet-limits` pour Company Admin
+- **Types supportés**: Borlette, Loto 3, Mariage, Loto 4 O1/O2/O3, Loto 5 E1/E2
+- **Configuration par type**:
+  - `min_bet`: Mise minimum
+  - `max_bet`: Mise maximum  
+  - `max_per_number`: Maximum par numéro
+  - `enabled`: Activer/désactiver le type
+- **Validation double**:
+  - Frontend: Filtrage des types désactivés + validation montants
+  - Backend: Validation OBLIGATOIRE dans PHASE 4 (universal_pos_routes.py)
+- **Collection MongoDB**: `bet_type_limits`
+
+#### 2. Synchronisation Temps Réel ✅
+- Quand Company Admin change les limites → vendeurs impactés immédiatement
+- Types désactivés disparaissent du dropdown vendeur
+- Validation backend empêche toute fraude
+
+---
+
+### Modifications Précédentes (v18.0.0):
 
 #### 1. Menus Réorganisés ✅
 - **Super Admin**: "Moteur Règlement" supprimé, garde seulement "Publier Résultats"
@@ -36,6 +58,48 @@
 #### 6. Endpoint Settlement History ✅
 - `GET /api/settlement/company-history` créé
 - Retourne l'historique des règlements filtrés par compagnie
+
+---
+
+## Architecture API - Limites par Type de Pari
+
+### Endpoints
+```
+GET  /api/company/bet-type-limits      → Company Admin récupère les limites
+PUT  /api/company/bet-type-limits      → Company Admin met à jour les limites
+GET  /api/company/vendor/bet-type-limits → Vendeur récupère les limites de sa compagnie
+```
+
+### Structure DB (collection: bet_type_limits)
+```json
+{
+  "company_id": "comp_xxx",
+  "limits": {
+    "BORLETTE": { "min_bet": 5, "max_bet": 5000, "max_per_number": 10000, "enabled": true },
+    "LOTO3": { "min_bet": 5, "max_bet": 3000, "max_per_number": 6000, "enabled": true },
+    "MARIAGE": { "min_bet": 10, "max_bet": 2000, "max_per_number": 4000, "enabled": true },
+    "L4O1": { "min_bet": 5, "max_bet": 20, "max_per_number": 100, "enabled": true },
+    "L4O2": { "min_bet": 5, "max_bet": 20, "max_per_number": 100, "enabled": true },
+    "L4O3": { "min_bet": 5, "max_bet": 20, "max_per_number": 100, "enabled": true },
+    "L5O1": { "min_bet": 20, "max_bet": 250, "max_per_number": 500, "enabled": true },
+    "L5O2": { "min_bet": 20, "max_bet": 250, "max_per_number": 500, "enabled": true }
+  },
+  "updated_at": "2026-03-31T23:45:00Z"
+}
+```
+
+### Validation Backend (universal_pos_routes.py - PHASE 4)
+```python
+# Line ~530
+bet_type_limit_check = await validate_bet_type_limits(
+    company_id=company_id,
+    plays=validated_plays
+)
+
+if not bet_type_limit_check["allowed"]:
+    errors = [e.get("error") for e in bet_type_limit_check.get("errors", [])]
+    raise HTTPException(status_code=400, detail=f"Mise refusée: {'; '.join(errors)}")
+```
 
 ---
 
