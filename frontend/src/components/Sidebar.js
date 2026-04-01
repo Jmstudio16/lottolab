@@ -75,7 +75,6 @@ const getCompanyAdminMenu = (t) => [
   { path: '/company/deleted-tickets', label: t('nav.deletedTickets', 'Fiches Supprimées'), icon: Trash2 },
   { path: '/company/winning-tickets', label: t('nav.winnersPayments', 'Gagnants & Paiements'), icon: Banknote },
   { path: '/company/settlement-history', label: 'Historique Règlements', icon: Calculator },
-  { path: '/company/balance-management', label: t('nav.balanceManagement', 'Gestion Soldes'), icon: Wallet },
   { path: '/admin/financial', label: t('nav.financial', 'Gestion Financière'), icon: Wallet },
   { path: '/company/bet-limits', label: 'Limites Types de Mise', icon: Sliders },
   { path: '/company/configuration', label: t('nav.configuration', 'Configuration'), icon: Sliders },

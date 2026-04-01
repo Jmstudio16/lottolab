@@ -4,7 +4,7 @@ import { useAuth } from '@/api/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { 
-  Trophy, RefreshCw, Search, DollarSign, CheckCircle, Clock, Eye, Printer, Building2, Download, Check, X
+  Trophy, RefreshCw, Search, DollarSign, CheckCircle, Clock, Eye, Printer, Building2, Download, Check, X, Calendar, Filter
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,10 @@ export const CompanyLotsGagnants = () => {
   const [filterPaymentStatus, setFilterPaymentStatus] = useState('all');
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [updatingPayment, setUpdatingPayment] = useState(null);
+  // Date filters
+  const [dateFilter, setDateFilter] = useState('all');
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -27,9 +31,26 @@ export const CompanyLotsGagnants = () => {
     try {
       setLoading(true);
       let url = `${API_URL}/api/company/winning-tickets`;
+      const params = [];
+      
       if (filterPaymentStatus !== 'all') {
-        url += `?payment_status=${filterPaymentStatus}`;
+        params.push(`payment_status=${filterPaymentStatus}`);
       }
+      
+      // Add date filter
+      if (dateFilter === 'today') {
+        const today = new Date().toISOString().split('T')[0];
+        params.push(`date_from=${today}`);
+        params.push(`date_to=${today}`);
+      } else if (dateFilter === 'custom') {
+        params.push(`date_from=${startDate}`);
+        params.push(`date_to=${endDate}`);
+      }
+      
+      if (params.length > 0) {
+        url += '?' + params.join('&');
+      }
+      
       const res = await axios.get(url, { headers });
       setTickets(res.data.tickets || []);
       setSummary(res.data.summary || { total_count: 0, total_win_amount: 0 });
@@ -42,7 +63,7 @@ export const CompanyLotsGagnants = () => {
 
   useEffect(() => {
     fetchWinningTickets();
-  }, [token, filterPaymentStatus]);
+  }, [token, filterPaymentStatus, dateFilter]);
 
   const filteredTickets = tickets.filter(t => {
     const matchesSearch = 
@@ -134,7 +155,69 @@ export const CompanyLotsGagnants = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col gap-4">
+        {/* Date Filters */}
+        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-amber-400" />
+              <span className="text-white font-medium">Filtrer par date:</span>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                onClick={() => setDateFilter('all')}
+                variant={dateFilter === 'all' ? 'default' : 'outline'}
+                className={dateFilter === 'all' ? 'bg-amber-600' : 'border-slate-700'}
+                size="sm"
+              >
+                Tout
+              </Button>
+              <Button
+                onClick={() => setDateFilter('today')}
+                variant={dateFilter === 'today' ? 'default' : 'outline'}
+                className={dateFilter === 'today' ? 'bg-blue-600' : 'border-slate-700'}
+                size="sm"
+              >
+                Aujourd'hui
+              </Button>
+              <Button
+                onClick={() => setDateFilter('custom')}
+                variant={dateFilter === 'custom' ? 'default' : 'outline'}
+                className={dateFilter === 'custom' ? 'bg-purple-600' : 'border-slate-700'}
+                size="sm"
+              >
+                Personnalisé
+              </Button>
+            </div>
+            {dateFilter === 'custom' && (
+              <div className="flex gap-2 items-center">
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-36 bg-slate-900 border-slate-700 text-white text-sm"
+                />
+                <span className="text-slate-400">à</span>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-36 bg-slate-900 border-slate-700 text-white text-sm"
+                />
+                <Button 
+                  onClick={fetchWinningTickets}
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <Filter className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Search and Payment Status */}
+        <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
           <Input
@@ -172,6 +255,7 @@ export const CompanyLotsGagnants = () => {
             Non Payés
           </Button>
         </div>
+      </div>
       </div>
 
       {/* Tickets Table */}

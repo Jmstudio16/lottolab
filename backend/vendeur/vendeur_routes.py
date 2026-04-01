@@ -1603,11 +1603,14 @@ async def get_balance_history(
 @vendeur_router.get("/report")
 async def get_vendeur_report(
     current_vendeur: dict = Depends(get_current_vendeur),
-    period: str = "today"
+    period: str = "today",
+    start_date: str = None,
+    end_date: str = None
 ):
     """
     Get comprehensive report for the vendor.
-    Period: today, week, month, all
+    Period: today, yesterday, week, month, all
+    Or use custom date range with start_date and end_date (YYYY-MM-DD format)
     """
     vendeur_id = current_vendeur.get("user_id")
     company_id = current_vendeur.get("company_id")
@@ -1616,16 +1619,33 @@ async def get_vendeur_report(
     now = datetime.now(timezone.utc)
     
     # Determine date range
-    if period == "today":
-        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    if start_date and end_date:
+        # Custom date range
+        try:
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+        except ValueError:
+            start_dt = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_dt = now
+    elif period == "today":
+        start_dt = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_dt = now
+    elif period == "yesterday":
+        yesterday = now - timedelta(days=1)
+        start_dt = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_dt = yesterday.replace(hour=23, minute=59, second=59, microsecond=0)
     elif period == "week":
-        start_date = now - timedelta(days=7)
+        start_dt = now - timedelta(days=7)
+        end_dt = now
     elif period == "month":
-        start_date = now - timedelta(days=30)
+        start_dt = now - timedelta(days=30)
+        end_dt = now
     else:
-        start_date = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        start_dt = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        end_dt = now
     
-    start_date_str = start_date.isoformat()
+    start_date_str = start_dt.isoformat()
+    end_date_str = end_dt.isoformat()
     
     # Get all tickets for this vendor in period
     pipeline = [
@@ -1633,7 +1653,7 @@ async def get_vendeur_report(
             "$match": {
                 "vendeur_id": vendeur_id,
                 "company_id": company_id,
-                "created_at": {"$gte": start_date_str}
+                "created_at": {"$gte": start_date_str, "$lte": end_date_str}
             }
         },
         {
@@ -1671,7 +1691,7 @@ async def get_vendeur_report(
             "$match": {
                 "vendeur_id": vendeur_id,
                 "company_id": company_id,
-                "created_at": {"$gte": start_date_str}
+                "created_at": {"$gte": start_date_str, "$lte": end_date_str}
             }
         },
         {

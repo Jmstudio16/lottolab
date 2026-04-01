@@ -16,7 +16,8 @@ import {
   Filter,
   Eye,
   CreditCard,
-  AlertCircle
+  AlertCircle,
+  Calendar
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,17 +48,38 @@ export const CompanyWinningTicketsPage = () => {
     notes: ''
   });
   const [summary, setSummary] = useState(null);
+  // Date filters
+  const [dateFilter, setDateFilter] = useState('all');
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     fetchData();
     fetchSummary();
-  }, []);
+  }, [dateFilter]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
+      // Build URL with date filters
+      let winnersUrl = '/company/winning-tickets';
+      const params = [];
+      
+      if (dateFilter === 'today') {
+        const today = new Date().toISOString().split('T')[0];
+        params.push(`date_from=${today}`);
+        params.push(`date_to=${today}`);
+      } else if (dateFilter === 'custom') {
+        params.push(`date_from=${startDate}`);
+        params.push(`date_to=${endDate}`);
+      }
+      
+      if (params.length > 0) {
+        winnersUrl += '?' + params.join('&');
+      }
+      
       const [winnersRes, payoutsRes] = await Promise.all([
-        apiClient.get('/company/winning-tickets').catch(() => ({ data: { tickets: [] } })),
+        apiClient.get(winnersUrl).catch(() => ({ data: { tickets: [] } })),
         apiClient.get('/company/payouts').catch(() => ({ data: { payouts: [] } }))
       ]);
       // Handle both array and object responses
@@ -203,6 +225,69 @@ export const CompanyWinningTicketsPage = () => {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+
+        {/* Date Filter */}
+        <Card className="md:col-span-4 bg-slate-800/50 border-slate-700">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-yellow-400" />
+                <span className="text-white font-medium">Filtrer par date:</span>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  onClick={() => setDateFilter('all')}
+                  variant={dateFilter === 'all' ? 'default' : 'outline'}
+                  className={dateFilter === 'all' ? 'bg-yellow-600' : 'border-slate-700'}
+                  size="sm"
+                >
+                  Tout
+                </Button>
+                <Button
+                  onClick={() => setDateFilter('today')}
+                  variant={dateFilter === 'today' ? 'default' : 'outline'}
+                  className={dateFilter === 'today' ? 'bg-blue-600' : 'border-slate-700'}
+                  size="sm"
+                >
+                  Aujourd'hui
+                </Button>
+                <Button
+                  onClick={() => setDateFilter('custom')}
+                  variant={dateFilter === 'custom' ? 'default' : 'outline'}
+                  className={dateFilter === 'custom' ? 'bg-purple-600' : 'border-slate-700'}
+                  size="sm"
+                >
+                  Personnalisé
+                </Button>
+              </div>
+              {dateFilter === 'custom' && (
+                <div className="flex gap-2 items-center">
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-36 bg-slate-900 border-slate-700 text-white text-sm"
+                  />
+                  <span className="text-slate-400">à</span>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-36 bg-slate-900 border-slate-700 text-white text-sm"
+                  />
+                  <Button 
+                    onClick={fetchData}
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    <Filter className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
           <Card className="bg-slate-800/50 border-slate-700">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm text-slate-400 flex items-center gap-2">
