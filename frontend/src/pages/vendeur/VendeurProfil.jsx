@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 
 
 const VendeurProfil = () => {
-  const { user, token, logout } = useAuth();
+  const { user, token, logout, refreshUser, updateUserLocal } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
@@ -68,6 +68,8 @@ const VendeurProfil = () => {
       });
       
       toast.success('Photo mise à jour avec succès!');
+      
+      // Update local profile state
       setProfile(prev => ({
         ...prev,
         vendeur: { 
@@ -76,6 +78,15 @@ const VendeurProfil = () => {
           profile_image_url: res.data.profile_image_url 
         }
       }));
+      
+      // Update global auth context so photo shows in sidebar/header
+      if (updateUserLocal) {
+        updateUserLocal({
+          photo_url: res.data.profile_image_url,
+          profile_image_url: res.data.profile_image_url
+        });
+      }
+      
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erreur lors du téléchargement');
     } finally {

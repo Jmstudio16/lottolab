@@ -6,7 +6,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   Ticket, Search, Filter, Printer, Eye, Clock,
-  CheckCircle, XCircle, Trophy, RefreshCw, Download, Trash2
+  CheckCircle, XCircle, Trophy, RefreshCw, Download, Trash2, Calendar, DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,24 +20,76 @@ const VendeurMesTickets = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedTicket, setSelectedTicket] = useState(null);
+  // Date filters
+  const [dateFilter, setDateFilter] = useState('today');
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [markingPayment, setMarkingPayment] = useState(null);
 
   const headers = { Authorization: `Bearer ${token}` };
 
   const fetchTickets = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_URL}/api/vendeur/mes-tickets`, { headers });
+      let url = `${API_URL}/api/vendeur/mes-tickets`;
+      const params = [];
+      
+      // Add date filter
+      if (dateFilter === 'today') {
+        const today = new Date().toISOString().split('T')[0];
+        params.push(`date_from=${today}`);
+        params.push(`date_to=${today}`);
+      } else if (dateFilter === 'yesterday') {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        params.push(`date_from=${yesterdayStr}`);
+        params.push(`date_to=${yesterdayStr}`);
+      } else if (dateFilter === 'week') {
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        params.push(`date_from=${weekAgo.toISOString().split('T')[0]}`);
+        params.push(`date_to=${new Date().toISOString().split('T')[0]}`);
+      } else if (dateFilter === 'custom') {
+        params.push(`date_from=${startDate}`);
+        params.push(`date_to=${endDate}`);
+      }
+      // 'all' = no date filter
+      
+      if (params.length > 0) {
+        url += '?' + params.join('&');
+      }
+      
+      const res = await axios.get(url, { headers });
       setTickets(res.data || []);
     } catch (error) {
       toast.error(t('common.error'));
     } finally {
       setLoading(false);
     }
-  }, [token, t]);
+  }, [token, t, dateFilter, startDate, endDate]);
 
   useEffect(() => {
     fetchTickets();
   }, [fetchTickets]);
+
+  // Mark ticket as paid/unpaid
+  const handleMarkPayment = async (ticket, paymentStatus) => {
+    try {
+      setMarkingPayment(ticket.ticket_id);
+      await axios.put(
+        `${API_URL}/api/vendeur/winning-tickets/${ticket.ticket_id}/payment`,
+        { payment_status: paymentStatus },
+        { headers }
+      );
+      toast.success(paymentStatus === 'PAID' ? 'Ticket marqué comme PAYÉ' : 'Ticket marqué comme NON PAYÉ');
+      fetchTickets();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la mise à jour');
+    } finally {
+      setMarkingPayment(null);
+    }
+  };
 
   const getStatusIcon = (status) => {
     switch (status?.toUpperCase()) {
@@ -160,6 +212,59 @@ const VendeurMesTickets = () => {
         </div>
       </div>
 
+      {/* Date Filters */}
+      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-purple-400" />
+            <span className="text-white font-medium">Filtrer par date:</span>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { value: 'today', label: "Aujourd'hui" },
+              { value: 'yesterday', label: 'Hier' },
+              { value: 'week', label: 'Cette semaine' },
+              { value: 'all', label: 'Tout' },
+              { value: 'custom', label: 'Personnalisé' }
+            ].map(opt => (
+              <Button
+                key={opt.value}
+                onClick={() => setDateFilter(opt.value)}
+                variant={dateFilter === opt.value ? 'default' : 'outline'}
+                className={dateFilter === opt.value ? 'bg-purple-600' : 'border-slate-700'}
+                size="sm"
+              >
+                {opt.label}
+              </Button>
+            ))}
+          </div>
+          {dateFilter === 'custom' && (
+            <div className="flex gap-2 items-center">
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-36 bg-slate-900 border-slate-700 text-white text-sm"
+              />
+              <span className="text-slate-400">à</span>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-36 bg-slate-900 border-slate-700 text-white text-sm"
+              />
+              <Button 
+                onClick={fetchTickets}
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                <Filter className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
@@ -274,10 +379,44 @@ const VendeurMesTickets = () => {
               </div>
 
               {/* Win Amount */}
-              {(ticket.status === 'WINNER' || ticket.status === 'WON') && ticket.win_amount > 0 && (
-                <div className="mt-3 pt-3 border-t border-amber-500/30 flex items-center justify-between">
-                  <span className="text-amber-400">Gain</span>
-                  <span className="text-xl font-bold text-amber-400">{ticket.win_amount?.toLocaleString()} HTG</span>
+              {(ticket.status === 'WINNER' || ticket.status === 'WON' || ticket.status === 'PAID') && ticket.win_amount > 0 && (
+                <div className="mt-3 pt-3 border-t border-amber-500/30">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-amber-400">Gain</span>
+                    <span className="text-xl font-bold text-amber-400">{ticket.win_amount?.toLocaleString()} HTG</span>
+                  </div>
+                  {/* Payment Status Buttons */}
+                  <div className="flex gap-2 items-center justify-between bg-slate-900/50 p-3 rounded-lg">
+                    <span className="text-sm text-slate-400">Statut paiement:</span>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleMarkPayment(ticket, 'PAID')}
+                        disabled={markingPayment === ticket.ticket_id}
+                        className={`${ticket.payment_status === 'PAID' ? 'bg-emerald-600' : 'bg-slate-700 hover:bg-emerald-600'}`}
+                        data-testid={`mark-paid-${ticket.ticket_id}`}
+                      >
+                        {markingPayment === ticket.ticket_id ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Payé
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleMarkPayment(ticket, 'UNPAID')}
+                        disabled={markingPayment === ticket.ticket_id}
+                        className={`${ticket.payment_status !== 'PAID' ? 'bg-orange-600' : 'bg-slate-700 hover:bg-orange-600'}`}
+                        data-testid={`mark-unpaid-${ticket.ticket_id}`}
+                      >
+                        <Clock className="w-4 h-4 mr-1" />
+                        Non Payé
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
 

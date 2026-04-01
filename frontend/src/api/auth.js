@@ -22,12 +22,38 @@ export const AuthProvider = ({ children }) => {
   const verifyToken = async () => {
     try {
       const response = await apiClient.get('/auth/me');
-      setUser(response.data);
+      // Update user with fresh data from server (including profile photo)
+      const freshUserData = response.data;
+      setUser(freshUserData);
+      localStorage.setItem('user', JSON.stringify(freshUserData));
     } catch (error) {
       logout();
     } finally {
       setLoading(false);
     }
+  };
+
+  // Function to refresh user data (e.g., after uploading profile photo)
+  const refreshUser = async () => {
+    try {
+      const response = await apiClient.get('/auth/me');
+      const freshUserData = response.data;
+      setUser(freshUserData);
+      localStorage.setItem('user', JSON.stringify(freshUserData));
+      return freshUserData;
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+      return null;
+    }
+  };
+
+  // Function to update user locally (for immediate UI feedback)
+  const updateUserLocal = (updates) => {
+    setUser(prev => {
+      const updated = { ...prev, ...updates };
+      localStorage.setItem('user', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const login = async (email, password) => {
@@ -61,7 +87,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, updateUserLocal }}>
       {children}
     </AuthContext.Provider>
   );

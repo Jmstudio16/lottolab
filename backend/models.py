@@ -70,6 +70,8 @@ class User(BaseModel):
     company_id: Optional[str] = None
     status: str = "ACTIVE"
     last_login: Optional[str] = None
+    profile_image_url: Optional[str] = None
+    photo_url: Optional[str] = None
     created_at: str
     updated_at: str
 

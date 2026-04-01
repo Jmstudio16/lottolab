@@ -1096,6 +1096,60 @@ async def get_winning_ticket_detail(
     }
 
 
+@vendeur_router.put("/winning-tickets/{ticket_id}/payment")
+async def update_winning_ticket_payment(
+    ticket_id: str,
+    data: dict,
+    current_vendeur: dict = Depends(get_current_vendeur)
+):
+    """
+    Update payment status of a winning ticket.
+    Vendeur can mark their own winning tickets as PAID or UNPAID.
+    """
+    vendeur_id = current_vendeur.get("user_id")
+    payment_status = data.get("payment_status", "UNPAID")
+    
+    if payment_status not in ["PAID", "UNPAID"]:
+        raise HTTPException(status_code=400, detail="Statut invalide. Utilisez PAID ou UNPAID.")
+    
+    # Find the ticket
+    ticket = await db.lottery_transactions.find_one(
+        {
+            "ticket_id": ticket_id,
+            "agent_id": vendeur_id,
+            "status": {"$in": ["WINNER", "WON", "PAID"]}
+        },
+        {"_id": 0}
+    )
+    
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Fiche gagnante non trouvée")
+    
+    # Update payment status
+    now = datetime.now(timezone.utc).isoformat()
+    update_data = {
+        "payment_status": payment_status,
+        "payment_updated_at": now,
+        "payment_updated_by": vendeur_id
+    }
+    
+    # If marking as PAID, update status to PAID
+    if payment_status == "PAID":
+        update_data["status"] = "PAID"
+    
+    await db.lottery_transactions.update_one(
+        {"ticket_id": ticket_id},
+        {"$set": update_data}
+    )
+    
+    return {
+        "success": True,
+        "message": f"Ticket marqué comme {payment_status}",
+        "ticket_id": ticket_id,
+        "payment_status": payment_status
+    }
+
+
 # ============================================================================
 # DELETED/CANCELLED TICKETS / FICHES SUPPRIMÉES
 # ============================================================================

@@ -122,6 +122,26 @@ const VendeurLotsGagnants = () => {
     setTimeout(() => fetchWinningTickets(), 2000);
   }, [fetchWinningTickets]));
 
+  // Mark payment status
+  const [markingPayment, setMarkingPayment] = useState(null);
+  
+  const handleMarkPayment = async (ticket, paymentStatus) => {
+    try {
+      setMarkingPayment(ticket.ticket_id);
+      await axios.put(
+        `${API_URL}/api/vendeur/winning-tickets/${ticket.ticket_id}/payment`,
+        { payment_status: paymentStatus },
+        { headers }
+      );
+      toast.success(paymentStatus === 'PAID' ? 'Ticket marqué comme PAYÉ' : 'Ticket marqué comme NON PAYÉ');
+      fetchWinningTickets();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la mise à jour');
+    } finally {
+      setMarkingPayment(null);
+    }
+  };
+
   const filteredTickets = tickets.filter(t => {
     const matchesSearch = 
       t.ticket_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -377,6 +397,43 @@ const VendeurLotsGagnants = () => {
                       <Printer className="w-4 h-4" />
                     </Button>
                   </div>
+                </div>
+              </div>
+              
+              {/* Payment Status Actions */}
+              <div className="mt-3 pt-3 border-t border-slate-700 flex items-center justify-between bg-slate-900/50 p-3 rounded-lg">
+                <span className="text-sm text-slate-400 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4" />
+                  Statut paiement:
+                  <span className={`font-bold ${ticket.payment_status === 'PAID' ? 'text-emerald-400' : 'text-orange-400'}`}>
+                    {ticket.payment_status === 'PAID' ? 'PAYÉ' : 'EN ATTENTE'}
+                  </span>
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => handleMarkPayment(ticket, 'PAID')}
+                    disabled={markingPayment === ticket.ticket_id}
+                    className={`${ticket.payment_status === 'PAID' ? 'bg-emerald-600' : 'bg-slate-700 hover:bg-emerald-600'}`}
+                  >
+                    {markingPayment === ticket.ticket_id ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                        Payé
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleMarkPayment(ticket, 'UNPAID')}
+                    disabled={markingPayment === ticket.ticket_id}
+                    className={`${ticket.payment_status !== 'PAID' ? 'bg-orange-600' : 'bg-slate-700 hover:bg-orange-600'}`}
+                  >
+                    <Clock className="w-4 h-4 mr-1" />
+                    Non Payé
+                  </Button>
                 </div>
               </div>
               
