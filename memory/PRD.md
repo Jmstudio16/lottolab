@@ -1,16 +1,35 @@
 # LOTTOLAB - Professional Lottery SaaS Platform
 
-## Version: 19.0.0 (Limites par Type de Pari)
-## Last Updated: 2026-03-31 23:45 UTC
-## Deployed: 2026-03-31 19:45 Haiti Time
+## Version: 20.0.0 (Filtres de Dates + Cleanup)
+## Last Updated: 2026-04-01 06:00 UTC
+## Deployed: 2026-04-01 02:00 Haiti Time
 
 ---
 
 ## 🚀 STATUT: PRÊT POUR LE LANCEMENT ✅
 
-### Nouvelles Modifications (v19.0.0):
+### Nouvelles Modifications (v20.0.0):
 
-#### 1. Limites par Type de Pari ✅ (NOUVEAU)
+#### 1. Filtres de Dates Complets ✅ (NOUVEAU)
+- **Pages mises à jour**:
+  - `VendeurRapportPage.jsx` - Mon Rapport vendeur
+  - `CompanyLotsGagnants.jsx` - Fiches Gagnants Company Admin
+  - `CompanyWinningTicketsPage.jsx` - Tickets Gagnants & Paiements
+  - `SupervisorLotsGagnants.jsx` - Fiches Gagnants Supervisor
+  - `VendeurLotsGagnants.jsx` - Tickets Gagnants Vendeur
+- **Filtres rapides**: Tout, Aujourd'hui, Hier, Cette semaine, Ce mois
+- **Dates personnalisées**: Sélecteurs date début + date fin
+- **Backend mis à jour**: Support `start_date`, `end_date`, `date_from`, `date_to`
+
+#### 2. Menu Nettoyé ✅
+- **Supprimé**: "Gestion des Soldes" du menu Company Admin
+- Menu plus clair et focalisé sur les fonctionnalités essentielles
+
+---
+
+### Modifications Précédentes (v19.0.0):
+
+#### 1. Limites par Type de Pari ✅
 - **Nouvelle page**: `/company/bet-limits` pour Company Admin
 - **Types supportés**: Borlette, Loto 3, Mariage, Loto 4 O1/O2/O3, Loto 5 E1/E2
 - **Configuration par type**:
