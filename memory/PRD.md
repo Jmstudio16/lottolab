@@ -1,14 +1,34 @@
 # LOTTOLAB - Professional Lottery SaaS Platform
 
-## Version: 20.0.0 (Filtres de Dates + Cleanup)
-## Last Updated: 2026-04-01 06:00 UTC
-## Deployed: 2026-04-01 02:00 Haiti Time
+## Version: 21.0.0 (Vendeur Features Complete)
+## Last Updated: 2026-04-01 06:15 UTC
+## Deployed: 2026-04-01 02:15 Haiti Time
 
 ---
 
 ## 🚀 STATUT: PRÊT POUR LE LANCEMENT ✅
 
-### Nouvelles Modifications (v20.0.0):
+### Nouvelles Modifications (v21.0.0):
+
+#### 1. Filtres de Dates - Mes Tickets Vendeur ✅ (NOUVEAU)
+- **Page**: `/vendeur/mes-tickets`
+- **Filtres rapides**: Aujourd'hui, Hier, Cette semaine, Tout
+- **Personnalisé**: Sélecteurs date début + date fin
+
+#### 2. Boutons Payé/Non Payé - Tickets Gagnants ✅ (NOUVEAU)
+- **Page**: `/vendeur/fiches-gagnants`
+- **Endpoint**: `PUT /api/vendeur/winning-tickets/{ticket_id}/payment`
+- **Statut visible**: "PAYÉ" en vert ou "EN ATTENTE" en orange
+- **Actions**: Bouton "Payé" et "Non Payé" pour chaque ticket gagnant
+
+#### 3. Photo de Profil Persistante ✅ (NOUVEAU)
+- **Contexte Auth**: `updateUserLocal` met à jour immédiatement le UI
+- **Stockage**: Photo stockée en DB et localStorage
+- **Affichage**: Photo visible dans Sidebar et Header après upload
+
+---
+
+### Modifications Précédentes (v20.0.0):
 
 #### 1. Filtres de Dates Complets ✅ (NOUVEAU)
 - **Pages mises à jour**:
