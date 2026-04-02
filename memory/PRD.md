@@ -1,14 +1,36 @@
 # LOTTOLAB - Professional Lottery SaaS Platform
 
-## Version: 21.0.0 (Vendeur Features Complete)
-## Last Updated: 2026-04-01 06:15 UTC
-## Deployed: 2026-04-01 02:15 Haiti Time
+## Version: 22.0.0 (Rapports Journaliers SGL-Style)
+## Last Updated: 2026-04-02 04:10 UTC
+## Deployed: 2026-04-02 00:10 Haiti Time
 
 ---
 
 ## 🚀 STATUT: PRÊT POUR LE LANCEMENT ✅
 
-### Nouvelles Modifications (v21.0.0):
+### Nouvelles Modifications (v22.0.0):
+
+#### 1. Rapport Journalier Style SGL ✅ (NOUVEAU)
+- **Endpoint**: `GET /api/reports/daily-summary?start_date=&end_date=`
+- **Colonnes**: No, Agent, Tfiche, Vente, A payé, %Agent, P/P sans %agent, P/P avec %agent, %Sup, B.Final
+- **Fonctionnalités**:
+  - Lignes en rouge pour les balances négatives
+  - Totaux calculés automatiquement
+  - Export CSV/Excel
+  - Filtrage par dates
+
+#### 2. Menu Vendeur Nettoyé ✅
+- **Supprimé**: Bouton "Payer Gagnant" du menu vendeur
+- Le paiement se fait maintenant directement dans "Lots Gagnants"
+
+#### 3. Calcul des Gains ✅
+- Le Settlement Engine calcule automatiquement les gains lors de la publication des résultats
+- Multiplicateurs 60/20/10 appliqués correctement
+- Synchronisation complète entre tickets joués et gains
+
+---
+
+### Modifications Précédentes (v21.0.0):
 
 #### 1. Filtres de Dates - Mes Tickets Vendeur ✅ (NOUVEAU)
 - **Page**: `/vendeur/mes-tickets`
