@@ -1,6 +1,6 @@
-import { API_URL } from '@/config/api';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/api/auth';
+import { API_URL } from '@/config/api';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { 
@@ -10,9 +10,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import CompanyLayout from '@/components/CompanyLayout';
+import { AdminLayout } from '@/components/AdminLayout';
 
-export const CompanyDailyReportsPage = () => {
+const CompanyDailyReportPage = () => {
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState(null);
@@ -49,18 +49,17 @@ export const CompanyDailyReportsPage = () => {
   const exportToCSV = () => {
     if (!filteredAgents.length) return;
     
-    const csvHeaders = ['No', 'Agent', 'Tfiche', 'Vente', 'A payé', '%Agent', 'P/P sans %agent', 'P/P avec %agent', '%Sup', 'B.Final'];
+    const headers = ['No', 'Agent', 'Tfiche', 'Vente', 'A payé', '%Agent', 'P/P sans %agent', 'P/P avec %agent', '%Sup', 'B.Final'];
     const rows = filteredAgents.map(a => [
       a.no, a.agent_name, a.tfiche, a.vente, a.a_paye, a.pct_agent, a.pp_sans_agent, a.pp_avec_agent, a.pct_sup, a.b_final
     ]);
     
-    const csvContent = [csvHeaders.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `rapport_journalier_${startDate}_${endDate}.csv`;
     link.click();
-    toast.success('Export CSV généré');
   };
 
   const formatCurrency = (value) => {
@@ -71,13 +70,16 @@ export const CompanyDailyReportsPage = () => {
   };
 
   return (
-    <CompanyLayout title="Rapport Journalier" subtitle="Rapport détaillé des ventes et profits par agent">
-      <div className="space-y-6 p-6" data-testid="daily-report-page">
+    <AdminLayout 
+      title="Rapport Journalier" 
+      subtitle="Rapport détaillé des ventes et profits par agent"
+    >
+      <div className="space-y-6" data-testid="daily-report-page">
         {/* Date Filters */}
         <Card className="bg-slate-800/50 border-slate-700">
           <CardContent className="p-4">
-            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-              <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+              <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-blue-400" />
                   <span className="text-white font-medium">Période:</span>
@@ -107,13 +109,13 @@ export const CompanyDailyReportsPage = () => {
               
               {/* Export Buttons */}
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="border-green-500/50 text-green-400 hover:bg-green-500/20" onClick={exportToCSV}>
+                <Button variant="outline" size="sm" className="border-slate-700" onClick={exportToCSV}>
                   <FileText className="w-4 h-4 mr-1" />
-                  EXCEL
+                  CSV
                 </Button>
-                <Button variant="outline" size="sm" className="border-blue-500/50 text-blue-400 hover:bg-blue-500/20" onClick={() => window.print()}>
+                <Button variant="outline" size="sm" className="border-slate-700" onClick={() => window.print()}>
                   <Printer className="w-4 h-4 mr-1" />
-                  IMPRIMER
+                  Imprimer
                 </Button>
               </div>
             </div>
@@ -122,7 +124,7 @@ export const CompanyDailyReportsPage = () => {
 
         {/* Summary Cards */}
         {report && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="bg-gradient-to-br from-blue-500/20 to-blue-500/5 border-blue-500/30">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -135,24 +137,12 @@ export const CompanyDailyReportsPage = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-purple-500/20 to-purple-500/5 border-purple-500/30">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-purple-300 text-xs">Total Fiches</p>
-                    <p className="text-2xl font-bold text-white">{report.totals?.total_tickets || 0}</p>
-                  </div>
-                  <FileText className="w-8 h-8 text-purple-400 opacity-80" />
-                </div>
-              </CardContent>
-            </Card>
-
             <Card className="bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border-emerald-500/30">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-emerald-300 text-xs">Total Vente</p>
-                    <p className="text-xl font-bold text-white">{formatCurrency(report.totals?.total_vente)}</p>
+                    <p className="text-2xl font-bold text-white">{formatCurrency(report.totals?.total_vente)} HTG</p>
                   </div>
                   <DollarSign className="w-8 h-8 text-emerald-400 opacity-80" />
                 </div>
@@ -163,8 +153,8 @@ export const CompanyDailyReportsPage = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-amber-300 text-xs">A Payé</p>
-                    <p className="text-xl font-bold text-white">{formatCurrency(report.totals?.total_paye)}</p>
+                    <p className="text-amber-300 text-xs">Total Payé (Gains)</p>
+                    <p className="text-2xl font-bold text-white">{formatCurrency(report.totals?.total_paye)} HTG</p>
                   </div>
                   <TrendingDown className="w-8 h-8 text-amber-400 opacity-80" />
                 </div>
@@ -175,9 +165,9 @@ export const CompanyDailyReportsPage = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className={`text-xs ${report.totals?.total_balance >= 0 ? 'text-green-300' : 'text-red-300'}`}>B.Final</p>
-                    <p className={`text-xl font-bold ${report.totals?.total_balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {formatCurrency(report.totals?.total_balance)}
+                    <p className={`text-xs ${report.totals?.total_balance >= 0 ? 'text-green-300' : 'text-red-300'}`}>Balance Finale</p>
+                    <p className={`text-2xl font-bold ${report.totals?.total_balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {formatCurrency(report.totals?.total_balance)} HTG
                     </p>
                   </div>
                   {report.totals?.total_balance >= 0 ? (
@@ -194,10 +184,10 @@ export const CompanyDailyReportsPage = () => {
         {/* Agents Table */}
         <Card className="bg-slate-800/50 border-slate-700">
           <CardHeader className="pb-2">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center justify-between">
               <CardTitle className="text-white text-lg flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-blue-400" />
-                Rapport par Agent
+                Agents
               </CardTitle>
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -242,10 +232,10 @@ export const CompanyDailyReportsPage = () => {
                         <td className="p-3 text-slate-300">{agent.no}</td>
                         <td className="p-3 text-white font-medium">{agent.agent_name}</td>
                         <td className="p-3 text-right text-slate-300">{agent.tfiche}</td>
-                        <td className="p-3 text-right text-emerald-400 font-medium">{formatCurrency(agent.vente)}</td>
+                        <td className="p-3 text-right text-emerald-400">{formatCurrency(agent.vente)}</td>
                         <td className="p-3 text-right text-amber-400">{formatCurrency(agent.a_paye)}</td>
                         <td className="p-3 text-right text-slate-400">{agent.pct_agent.toFixed(2)}</td>
-                        <td className={`p-3 text-right font-medium ${agent.pp_sans_agent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        <td className={`p-3 text-right ${agent.pp_sans_agent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                           {formatCurrency(agent.pp_sans_agent)}
                         </td>
                         <td className={`p-3 text-right ${agent.pp_avec_agent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -258,8 +248,8 @@ export const CompanyDailyReportsPage = () => {
                       </tr>
                     ))}
                     {/* Totals Row */}
-                    {report && filteredAgents.length > 0 && (
-                      <tr className="bg-slate-900/80 font-bold border-t-2 border-blue-500/50">
+                    {report && (
+                      <tr className="bg-slate-900/80 font-bold border-t-2 border-slate-600">
                         <td className="p-3 text-white" colSpan={2}>TOTAL</td>
                         <td className="p-3 text-right text-white">{report.totals?.total_tickets}</td>
                         <td className="p-3 text-right text-emerald-400">{formatCurrency(report.totals?.total_vente)}</td>
@@ -288,8 +278,8 @@ export const CompanyDailyReportsPage = () => {
           </CardContent>
         </Card>
       </div>
-    </CompanyLayout>
+    </AdminLayout>
   );
 };
 
-export default CompanyDailyReportsPage;
+export default CompanyDailyReportPage;

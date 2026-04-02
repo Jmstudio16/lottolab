@@ -67,6 +67,7 @@ from settlement_engine import set_settlement_engine_db, ensure_indexes as ensure
 from sync_service import sync_service_router, set_sync_service_db
 from profile_routes import profile_router, set_profile_db
 from bet_type_limits_routes import bet_type_limits_router, set_bet_type_limits_db, validate_bet_type_limits
+from daily_report_routes import daily_report_router, set_daily_report_db
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -1158,6 +1159,7 @@ set_settlement_engine_db(db)
 set_sync_service_db(db)
 set_profile_db(db)
 set_bet_type_limits_db(db)
+set_daily_report_db(db)
 
 # Initialize staff endpoints with dependency
 create_staff_endpoints(get_current_user)
@@ -1224,6 +1226,9 @@ app.include_router(profile_router)
 
 # Include bet type limits router (Company Admin limits per game type)
 app.include_router(bet_type_limits_router)
+
+# Include daily report router (SGL-style reports)
+app.include_router(daily_report_router)
 
 # Include draw times router (Super Admin CRUD for draw times)
 app.include_router(draw_times_router)

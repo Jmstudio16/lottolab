@@ -1705,7 +1705,7 @@ async def get_vendeur_report(
     pipeline = [
         {
             "$match": {
-                "vendeur_id": vendeur_id,
+                "agent_id": vendeur_id,
                 "company_id": company_id,
                 "created_at": {"$gte": start_date_str, "$lte": end_date_str}
             }
@@ -1743,7 +1743,7 @@ async def get_vendeur_report(
     lottery_pipeline = [
         {
             "$match": {
-                "vendeur_id": vendeur_id,
+                "agent_id": vendeur_id,
                 "company_id": company_id,
                 "created_at": {"$gte": start_date_str, "$lte": end_date_str}
             }

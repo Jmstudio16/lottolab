@@ -62,7 +62,6 @@ const VendeurLayout = () => {
     { path: '/vendeur/tirages', icon: Calendar, label: t('nav.availableDraws', 'Tirages Disponibles') },
     { path: '/vendeur/resultats', icon: Trophy, label: t('nav.results') },
     { path: '/vendeur/fiches-gagnants', icon: Trophy, label: t('nav.winningTickets', 'Lots Gagnants'), highlight: 'amber' },
-    { path: '/vendeur/payer-gagnants', icon: Banknote, label: 'Payer Gagnant', highlight: 'green' },
     { path: '/vendeur/fiches-supprimees', icon: Trash2, label: t('nav.deletedTickets', 'Fiches Supprimées'), highlight: 'red' },
     { path: '/vendeur/mes-ventes', icon: BarChart3, label: t('nav.mySales') },
     { path: '/vendeur/rapport', icon: BarChart3, label: t('nav.reports', 'Mon Rapport'), highlight: 'blue' },
