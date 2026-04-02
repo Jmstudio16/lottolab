@@ -1,14 +1,63 @@
 # LOTTOLAB - Professional Lottery SaaS Platform
 
-## Version: 22.0.0 (Rapports Journaliers SGL-Style)
-## Last Updated: 2026-04-02 04:10 UTC
-## Deployed: 2026-04-02 00:10 Haiti Time
+## Version: 23.0.0 (Création Loteries + Gestion Utilisateurs Complète)
+## Last Updated: 2026-04-02 04:45 UTC
+## Deployed: 2026-04-02 04:45 Haiti Time
 
 ---
 
 ## 🚀 STATUT: PRÊT POUR LE LANCEMENT ✅
 
-### Nouvelles Modifications (v22.0.0):
+### Nouvelles Modifications (v23.0.0):
+
+#### 1. Création Dynamique de Loteries (Super Admin) ✅ (NOUVEAU)
+- **Page**: `/super/lottery-catalog`
+- **Endpoint**: `POST /api/saas/master-lotteries`
+- **Champs du formulaire**:
+  - Nom de la loterie
+  - Code État/Région
+  - Nom État/Région
+  - Pays (HAITI, USA, DOMINICAN_REPUBLIC)
+  - Type de Jeu (BORLETTE, LOTO3, LOTO4, LOTO5, MARIAGE, PICK3, PICK4, PICK5)
+  - Catégorie (STANDARD, PREMIUM, SPECIAL)
+  - Heures de tirage par défaut
+  - Description (optionnel)
+  - Toggle "Activer Globalement"
+- **Synchronisation automatique**: Loterie disponible immédiatement pour toutes les compagnies
+
+#### 2. Modification Complète des Superviseurs ✅ (NOUVEAU)
+- **Page**: `/company/succursales`
+- **Endpoint**: `PUT /api/company/succursales/{id}/supervisor`
+- **Champs modifiables**:
+  - Prénom et Nom
+  - Email (avec validation d'unicité)
+  - Téléphone
+  - Mot de passe (avec confirmation)
+  - Commission %
+- **Bouton violet (KeyRound)** sur chaque carte de succursale pour ouvrir le modal
+
+#### 3. Modification Complète des Vendeurs/Agents ✅ (NOUVEAU)
+- **Page**: `/company/succursales` → Détails → Liste des agents
+- **Endpoint**: `PUT /api/company/succursales/{id}/agents/{agent_id}/full`
+- **Champs modifiables**:
+  - Prénom et Nom
+  - Email (avec validation d'unicité)
+  - Téléphone
+  - Mot de passe (avec confirmation et bouton voir/cacher)
+  - Numéro de série POS
+  - Commission %
+  - Limite Crédit
+  - Limite Gain
+- **Modal redesigné** avec sections claires et icônes
+
+#### 4. Endpoints Credentials ✅ (NOUVEAU)
+- `GET /api/company/succursales/{id}/supervisor/credentials` - Obtenir infos superviseur
+- `GET /api/company/succursales/{id}/agents/{agent_id}/credentials` - Obtenir infos agent
+- Retournent les informations complètes sauf le mot de passe hashé
+
+---
+
+### Modifications Précédentes (v22.0.0):
 
 #### 1. Rapport Journalier Style SGL ✅ (NOUVEAU)
 - **Endpoint**: `GET /api/reports/daily-summary?start_date=&end_date=`
