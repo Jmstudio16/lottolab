@@ -4,8 +4,8 @@ import { useAuth } from '@/api/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { 
-  Building2, Plus, Trash2, Save, Users, Eye, 
-  RefreshCw, UserPlus, Store, Mail, Phone, User, Lock, Edit, PlayCircle, StopCircle, Settings, Percent, Smartphone
+  Building2, Plus, Trash2, Save, Users, Eye, EyeOff,
+  RefreshCw, UserPlus, Store, Mail, Phone, User, Lock, Edit, PlayCircle, StopCircle, Settings, Percent, Smartphone, KeyRound
 } from 'lucide-react';
 import CompanyLayout from '@/components/CompanyLayout';
 import { useNavigate } from 'react-router-dom';
@@ -254,38 +254,116 @@ export const CompanySuccursalesPage = () => {
   const openEditAgentModal = (agent) => {
     setEditingAgent({
       user_id: agent.user_id,
-      nom_agent: agent.name?.split(' ')[0] || '',
-      prenom_agent: agent.name?.split(' ').slice(1).join(' ') || '',
+      nom_agent: agent.name?.split(' ').slice(1).join(' ') || '',
+      prenom_agent: agent.name?.split(' ')[0] || '',
       email: agent.email || '',
       telephone: agent.telephone || '',
+      new_password: '',
+      new_password_confirm: '',
       commission_percent: agent.commission_percent || 0,
       limite_credit: agent.limite_credit || 50000,
       limite_gain: agent.limite_gain || 100000,
       status: agent.status || 'ACTIVE',
       pos_serial_number: agent.pos_serial_number || ''
     });
+    setShowAgentPassword(false);
     setShowEditAgentModal(true);
+  };
+  
+  // Open Edit Supervisor Modal
+  const openEditSupervisorModal = async (succursale) => {
+    try {
+      // Fetch supervisor credentials
+      const res = await axios.get(
+        `${API_URL}/api/company/succursales/${succursale.succursale_id}/supervisor/credentials`,
+        { headers }
+      );
+      setEditingSupervisor({
+        succursale_id: succursale.succursale_id,
+        ...res.data
+      });
+      setSupervisorForm({
+        supervisor_nom: succursale.supervisor_nom || res.data.name?.split(' ').slice(1).join(' ') || '',
+        supervisor_prenom: succursale.supervisor_prenom || res.data.name?.split(' ')[0] || '',
+        supervisor_email: res.data.email || '',
+        supervisor_telephone: res.data.telephone || '',
+        supervisor_password: '',
+        supervisor_password_confirm: '',
+        supervisor_commission_percent: succursale.supervisor_commission_percent || 10
+      });
+      setShowSupervisorPassword(false);
+      setShowEditSupervisorModal(true);
+    } catch (error) {
+      toast.error('Erreur lors du chargement des informations du superviseur');
+    }
+  };
+  
+  // Handle Update Supervisor
+  const handleUpdateSupervisor = async (e) => {
+    e.preventDefault();
+    if (!editingSupervisor) return;
+    
+    // Validate passwords if provided
+    if (supervisorForm.supervisor_password && supervisorForm.supervisor_password !== supervisorForm.supervisor_password_confirm) {
+      toast.error('Les mots de passe ne correspondent pas');
+      return;
+    }
+    
+    try {
+      setCreating(true);
+      await axios.put(
+        `${API_URL}/api/company/succursales/${editingSupervisor.succursale_id}/supervisor`,
+        supervisorForm,
+        { headers }
+      );
+      toast.success('Superviseur mis à jour avec succès');
+      setShowEditSupervisorModal(false);
+      setEditingSupervisor(null);
+      fetchSuccursales();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la mise à jour');
+    } finally {
+      setCreating(false);
+    }
   };
 
   const handleUpdateAgent = async (e) => {
     e.preventDefault();
     if (!editingAgent) return;
     
+    // Validate passwords if provided
+    if (editingAgent.new_password && editingAgent.new_password !== editingAgent.new_password_confirm) {
+      toast.error('Les mots de passe ne correspondent pas');
+      return;
+    }
+    
     try {
       setCreating(true);
+      
+      // Build update payload
+      const updatePayload = {
+        nom_agent: editingAgent.nom_agent,
+        prenom_agent: editingAgent.prenom_agent,
+        email: editingAgent.email,
+        telephone: editingAgent.telephone,
+        commission_percent: editingAgent.commission_percent,
+        limite_credit: editingAgent.limite_credit,
+        limite_gain: editingAgent.limite_gain,
+        pos_serial_number: editingAgent.pos_serial_number
+      };
+      
+      // Include password only if provided
+      if (editingAgent.new_password) {
+        updatePayload.password = editingAgent.new_password;
+        updatePayload.password_confirm = editingAgent.new_password_confirm;
+      }
+      
       await axios.put(
-        `${API_URL}/api/company/succursales/${selectedSuccursale.succursale_id}/agents/${editingAgent.user_id}`,
-        {
-          nom_agent: editingAgent.nom_agent,
-          prenom_agent: editingAgent.prenom_agent,
-          telephone: editingAgent.telephone,
-          commission_percent: editingAgent.commission_percent,
-          limite_credit: editingAgent.limite_credit,
-          limite_gain: editingAgent.limite_gain
-        },
+        `${API_URL}/api/company/succursales/${selectedSuccursale.succursale_id}/agents/${editingAgent.user_id}/full`,
+        updatePayload,
         { headers }
       );
-      toast.success('Agent mis à jour');
+      toast.success('Agent mis à jour avec succès');
       setShowEditAgentModal(false);
       setEditingAgent(null);
       fetchSuccursaleDetail(selectedSuccursale.succursale_id);
@@ -370,6 +448,24 @@ export const CompanySuccursalesPage = () => {
     message: ''
   });
   const [editingSuccursaleId, setEditingSuccursaleId] = useState(null);
+  
+  // Edit Supervisor state - FULL EDIT with email/password
+  const [showEditSupervisorModal, setShowEditSupervisorModal] = useState(false);
+  const [editingSupervisor, setEditingSupervisor] = useState(null);
+  const [showSupervisorPassword, setShowSupervisorPassword] = useState(false);
+  const [supervisorForm, setSupervisorForm] = useState({
+    supervisor_nom: '',
+    supervisor_prenom: '',
+    supervisor_email: '',
+    supervisor_telephone: '',
+    supervisor_password: '',
+    supervisor_password_confirm: '',
+    supervisor_commission_percent: 10
+  });
+  
+  // Password visibility states
+  const [showAgentPassword, setShowAgentPassword] = useState(false);
+  const [showNewAgentPassword, setShowNewAgentPassword] = useState(false);
 
   const openEditSuccursaleModal = (succ) => {
     setEditingSuccursaleId(succ.succursale_id);
@@ -494,6 +590,14 @@ export const CompanySuccursalesPage = () => {
                   >
                     <Eye className="w-4 h-4" />
                     Détails
+                  </button>
+                  <button
+                    onClick={() => openEditSupervisorModal(succ)}
+                    className="px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded-lg transition-colors"
+                    title="Modifier le superviseur (email/mot de passe)"
+                    data-testid={`edit-supervisor-${succ.succursale_id}`}
+                  >
+                    <KeyRound className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => openEditSuccursaleModal(succ)}
@@ -1188,29 +1292,20 @@ export const CompanySuccursalesPage = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Edit Agent Modal */}
+        {/* Edit Agent Modal - FULL EDIT with email/password */}
         <Dialog open={showEditAgentModal} onOpenChange={setShowEditAgentModal}>
-          <DialogContent className="bg-slate-900 border-slate-800 max-w-lg">
+          <DialogContent className="bg-slate-900 border-slate-800 max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-xl text-white flex items-center gap-2">
                 <Edit className="w-5 h-5 text-blue-400" />
-                Modifier Agent
+                Modifier Agent (Complet)
               </DialogTitle>
             </DialogHeader>
 
             {editingAgent && (
               <form onSubmit={handleUpdateAgent} className="space-y-4">
+                {/* Name */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-slate-400 text-sm">Nom</Label>
-                    <Input
-                      value={editingAgent.nom_agent}
-                      onChange={(e) => setEditingAgent({...editingAgent, nom_agent: e.target.value})}
-                      placeholder="Nom"
-                      className="bg-slate-800 border-slate-700 text-white"
-                      data-testid="edit-agent-nom"
-                    />
-                  </div>
                   <div>
                     <Label className="text-slate-400 text-sm">Prénom</Label>
                     <Input
@@ -1221,17 +1316,35 @@ export const CompanySuccursalesPage = () => {
                       data-testid="edit-agent-prenom"
                     />
                   </div>
+                  <div>
+                    <Label className="text-slate-400 text-sm">Nom</Label>
+                    <Input
+                      value={editingAgent.nom_agent}
+                      onChange={(e) => setEditingAgent({...editingAgent, nom_agent: e.target.value})}
+                      placeholder="Nom"
+                      className="bg-slate-800 border-slate-700 text-white"
+                      data-testid="edit-agent-nom"
+                    />
+                  </div>
                 </div>
 
+                {/* Email - EDITABLE */}
                 <div>
-                  <Label className="text-slate-400 text-sm">Email (lecture seule)</Label>
+                  <Label className="text-slate-300 flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-blue-400" />
+                    Email (Login) - Modifiable
+                  </Label>
                   <Input
+                    type="email"
                     value={editingAgent.email}
-                    disabled
-                    className="bg-slate-800/50 border-slate-700 text-slate-500"
+                    onChange={(e) => setEditingAgent({...editingAgent, email: e.target.value})}
+                    className="bg-slate-800 border-slate-700 text-white"
+                    placeholder="agent@email.com"
+                    data-testid="edit-agent-email"
                   />
                 </div>
 
+                {/* Telephone */}
                 <div>
                   <Label className="text-slate-400 text-sm">Téléphone</Label>
                   <div className="relative">
@@ -1246,6 +1359,60 @@ export const CompanySuccursalesPage = () => {
                   </div>
                 </div>
 
+                {/* POS Serial */}
+                <div>
+                  <Label className="text-slate-400 text-sm flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 text-amber-400" />
+                    Numéro de série POS
+                  </Label>
+                  <Input
+                    value={editingAgent.pos_serial_number}
+                    onChange={(e) => setEditingAgent({...editingAgent, pos_serial_number: e.target.value.toUpperCase()})}
+                    className="bg-slate-800 border-slate-700 text-white"
+                    placeholder="POS-XXXX"
+                    data-testid="edit-agent-pos"
+                  />
+                </div>
+
+                {/* Password Section */}
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg space-y-3">
+                  <h4 className="text-sm font-semibold text-red-400 uppercase flex items-center gap-2">
+                    <Lock className="w-4 h-4" />
+                    Modifier le mot de passe (optionnel)
+                  </h4>
+                  <p className="text-xs text-slate-400">
+                    Laissez vide pour ne pas changer le mot de passe actuel
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="relative">
+                      <Input
+                        type={showAgentPassword ? "text" : "password"}
+                        value={editingAgent.new_password || ''}
+                        onChange={(e) => setEditingAgent({...editingAgent, new_password: e.target.value})}
+                        placeholder="Nouveau mot de passe"
+                        className="bg-slate-800 border-slate-700 text-white pr-10"
+                        data-testid="edit-agent-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAgentPassword(!showAgentPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      >
+                        {showAgentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <Input
+                      type={showAgentPassword ? "text" : "password"}
+                      value={editingAgent.new_password_confirm || ''}
+                      onChange={(e) => setEditingAgent({...editingAgent, new_password_confirm: e.target.value})}
+                      placeholder="Confirmer"
+                      className="bg-slate-800 border-slate-700 text-white"
+                      data-testid="edit-agent-password-confirm"
+                    />
+                  </div>
+                </div>
+
+                {/* Financial Settings */}
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <Label className="text-slate-400 text-sm">Commission %</Label>
@@ -1301,7 +1468,168 @@ export const CompanySuccursalesPage = () => {
                     {creating ? 'Mise à jour...' : (
                       <>
                         <Save className="w-4 h-4 mr-2" />
-                        Mettre à jour
+                        Enregistrer
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Supervisor Modal - FULL EDIT with email/password */}
+        <Dialog open={showEditSupervisorModal} onOpenChange={setShowEditSupervisorModal}>
+          <DialogContent className="bg-slate-900 border-slate-800 max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-xl text-white flex items-center gap-2">
+                <KeyRound className="w-5 h-5 text-purple-400" />
+                Modifier Superviseur
+              </DialogTitle>
+            </DialogHeader>
+
+            {editingSupervisor && (
+              <form onSubmit={handleUpdateSupervisor} className="space-y-4">
+                {/* Info Box */}
+                <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                  <p className="text-sm text-purple-400">
+                    Modification complète du superviseur: nom, email, téléphone, mot de passe et commission
+                  </p>
+                </div>
+
+                {/* Name */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-slate-300">Prénom</Label>
+                    <Input
+                      value={supervisorForm.supervisor_prenom}
+                      onChange={(e) => setSupervisorForm({...supervisorForm, supervisor_prenom: e.target.value})}
+                      placeholder="Prénom"
+                      className="bg-slate-800 border-slate-700 text-white"
+                      data-testid="edit-supervisor-prenom"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-slate-300">Nom</Label>
+                    <Input
+                      value={supervisorForm.supervisor_nom}
+                      onChange={(e) => setSupervisorForm({...supervisorForm, supervisor_nom: e.target.value})}
+                      placeholder="Nom"
+                      className="bg-slate-800 border-slate-700 text-white"
+                      data-testid="edit-supervisor-nom"
+                    />
+                  </div>
+                </div>
+
+                {/* Email - EDITABLE */}
+                <div>
+                  <Label className="text-slate-300 flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-blue-400" />
+                    Email (Login) - Modifiable
+                  </Label>
+                  <Input
+                    type="email"
+                    value={supervisorForm.supervisor_email}
+                    onChange={(e) => setSupervisorForm({...supervisorForm, supervisor_email: e.target.value})}
+                    className="bg-slate-800 border-slate-700 text-white"
+                    placeholder="superviseur@email.com"
+                    data-testid="edit-supervisor-email"
+                  />
+                </div>
+
+                {/* Telephone */}
+                <div>
+                  <Label className="text-slate-300 flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-green-400" />
+                    Téléphone
+                  </Label>
+                  <Input
+                    value={supervisorForm.supervisor_telephone}
+                    onChange={(e) => setSupervisorForm({...supervisorForm, supervisor_telephone: e.target.value})}
+                    className="bg-slate-800 border-slate-700 text-white"
+                    placeholder="+509-XXXX-XXXX"
+                    data-testid="edit-supervisor-telephone"
+                  />
+                </div>
+
+                {/* Commission */}
+                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <Label className="text-amber-300 flex items-center gap-2 mb-2">
+                    <Percent className="w-4 h-4" />
+                    Pourcentage Commission
+                  </Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="number"
+                      value={supervisorForm.supervisor_commission_percent}
+                      onChange={(e) => setSupervisorForm({...supervisorForm, supervisor_commission_percent: parseFloat(e.target.value) || 0})}
+                      className="w-24 bg-slate-800 border-slate-700 text-white"
+                      min="0"
+                      max="100"
+                      step="0.5"
+                      data-testid="edit-supervisor-commission"
+                    />
+                    <span className="text-amber-300">%</span>
+                  </div>
+                </div>
+
+                {/* Password Section */}
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg space-y-3">
+                  <h4 className="text-sm font-semibold text-red-400 uppercase flex items-center gap-2">
+                    <Lock className="w-4 h-4" />
+                    Modifier le mot de passe (optionnel)
+                  </h4>
+                  <p className="text-xs text-slate-400">
+                    Laissez vide pour ne pas changer le mot de passe actuel
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="relative">
+                      <Input
+                        type={showSupervisorPassword ? "text" : "password"}
+                        value={supervisorForm.supervisor_password}
+                        onChange={(e) => setSupervisorForm({...supervisorForm, supervisor_password: e.target.value})}
+                        placeholder="Nouveau mot de passe"
+                        className="bg-slate-800 border-slate-700 text-white pr-10"
+                        data-testid="edit-supervisor-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowSupervisorPassword(!showSupervisorPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      >
+                        {showSupervisorPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <Input
+                      type={showSupervisorPassword ? "text" : "password"}
+                      value={supervisorForm.supervisor_password_confirm}
+                      onChange={(e) => setSupervisorForm({...supervisorForm, supervisor_password_confirm: e.target.value})}
+                      placeholder="Confirmer"
+                      className="bg-slate-800 border-slate-700 text-white"
+                      data-testid="edit-supervisor-password-confirm"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => { setShowEditSupervisorModal(false); setEditingSupervisor(null); }}
+                    className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800"
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-purple-600 hover:bg-purple-700"
+                    disabled={creating}
+                    data-testid="update-supervisor-btn"
+                  >
+                    {creating ? 'Mise à jour...' : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Enregistrer
                       </>
                     )}
                   </Button>

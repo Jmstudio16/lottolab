@@ -135,6 +135,32 @@ class AgentUpdate(BaseModel):
     status: Optional[str] = None
 
 
+class AgentFullUpdate(BaseModel):
+    """Full update model for agents - includes email and password"""
+    nom_agent: Optional[str] = None
+    prenom_agent: Optional[str] = None
+    email: Optional[EmailStr] = None  # Can change email
+    telephone: Optional[str] = None
+    password: Optional[str] = None  # Can change password
+    password_confirm: Optional[str] = None
+    pos_serial_number: Optional[str] = None
+    commission_percent: Optional[float] = None
+    limite_credit: Optional[float] = None
+    limite_gain: Optional[float] = None
+    status: Optional[str] = None
+
+
+class SupervisorFullUpdate(BaseModel):
+    """Full update model for supervisors - includes email and password"""
+    supervisor_nom: Optional[str] = None
+    supervisor_prenom: Optional[str] = None
+    supervisor_email: Optional[EmailStr] = None  # Can change email
+    supervisor_telephone: Optional[str] = None
+    supervisor_password: Optional[str] = None  # Can change password
+    supervisor_password_confirm: Optional[str] = None
+    supervisor_commission_percent: Optional[float] = None
+
+
 # ============================================================================
 # HELPER: UPDATE COMPANY AGENT COUNT
 # ============================================================================
@@ -448,6 +474,169 @@ async def update_succursale(
     )
     
     return {"message": "Succursale mise à jour"}
+
+
+@succursale_router.put("/{succursale_id}/supervisor")
+async def update_supervisor_full(
+    succursale_id: str,
+    updates: SupervisorFullUpdate,
+    request: Request,
+    current_user: dict = Depends(get_company_admin)
+):
+    """
+    Full update of supervisor - includes ability to change email and password.
+    This allows Company Admin to modify ALL supervisor details.
+    """
+    company_id = require_admin(current_user)
+    
+    # Get succursale
+    succursale = await db.succursales.find_one(
+        {"succursale_id": succursale_id, "company_id": company_id},
+        {"_id": 0}
+    )
+    if not succursale:
+        raise HTTPException(status_code=404, detail="Succursale non trouvée")
+    
+    supervisor_id = succursale.get("supervisor_id")
+    if not supervisor_id:
+        raise HTTPException(status_code=404, detail="Superviseur non trouvé pour cette succursale")
+    
+    # Get supervisor user
+    supervisor = await db.users.find_one({"user_id": supervisor_id}, {"_id": 0})
+    if not supervisor:
+        raise HTTPException(status_code=404, detail="Superviseur non trouvé")
+    
+    now = get_current_timestamp()
+    user_updates = {"updated_at": now}
+    succursale_updates = {"updated_at": now}
+    old_values = {}
+    
+    # Handle name update
+    if updates.supervisor_nom or updates.supervisor_prenom:
+        first_name = updates.supervisor_prenom or succursale.get("supervisor_prenom", "")
+        last_name = updates.supervisor_nom or succursale.get("supervisor_nom", "")
+        new_name = f"{first_name} {last_name}".strip()
+        old_values["name"] = supervisor.get("name")
+        user_updates["name"] = new_name
+        if updates.supervisor_nom:
+            succursale_updates["supervisor_nom"] = updates.supervisor_nom
+        if updates.supervisor_prenom:
+            succursale_updates["supervisor_prenom"] = updates.supervisor_prenom
+    
+    # Handle telephone update
+    if updates.supervisor_telephone:
+        old_values["telephone"] = supervisor.get("telephone")
+        user_updates["telephone"] = updates.supervisor_telephone
+        succursale_updates["supervisor_telephone"] = updates.supervisor_telephone
+    
+    # Handle email update - CHECK UNIQUENESS
+    if updates.supervisor_email:
+        new_email = updates.supervisor_email.lower()
+        if new_email != supervisor.get("email", "").lower():
+            # Check if email already exists for another user
+            existing = await db.users.find_one({
+                "email": new_email,
+                "user_id": {"$ne": supervisor_id}
+            })
+            if existing:
+                raise HTTPException(status_code=400, detail="Cet email est déjà utilisé par un autre utilisateur")
+            
+            old_values["email"] = supervisor.get("email")
+            user_updates["email"] = new_email
+            succursale_updates["supervisor_email"] = new_email
+    
+    # Handle password update
+    if updates.supervisor_password:
+        if updates.supervisor_password_confirm and updates.supervisor_password != updates.supervisor_password_confirm:
+            raise HTTPException(status_code=400, detail="Les mots de passe ne correspondent pas")
+        
+        user_updates["password_hash"] = get_password_hash(updates.supervisor_password)
+        old_values["password"] = "***CHANGED***"
+    
+    # Handle commission update
+    if updates.supervisor_commission_percent is not None:
+        old_values["commission_percent"] = succursale.get("supervisor_commission_percent")
+        succursale_updates["supervisor_commission_percent"] = updates.supervisor_commission_percent
+        # Also update supervisor policy
+        await db.supervisor_policies.update_one(
+            {"supervisor_id": supervisor_id},
+            {"$set": {
+                "commission_percent": updates.supervisor_commission_percent,
+                "updated_at": now
+            }}
+        )
+    
+    # Apply updates
+    if len(user_updates) > 1:  # More than just updated_at
+        await db.users.update_one({"user_id": supervisor_id}, {"$set": user_updates})
+    
+    if len(succursale_updates) > 1:  # More than just updated_at
+        await db.succursales.update_one({"succursale_id": succursale_id}, {"$set": succursale_updates})
+    
+    # Log activity
+    await log_activity(
+        db=db,
+        action_type="SUPERVISOR_UPDATED",
+        entity_type="supervisor",
+        entity_id=supervisor_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={
+            "succursale_id": succursale_id,
+            "changes": old_values,
+            "email_changed": "email" in old_values,
+            "password_changed": "password" in old_values
+        },
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {
+        "message": "Superviseur mis à jour avec succès",
+        "email_changed": "email" in old_values,
+        "password_changed": "password" in old_values
+    }
+
+
+@succursale_router.get("/{succursale_id}/supervisor/credentials")
+async def get_supervisor_credentials(
+    succursale_id: str,
+    current_user: dict = Depends(get_company_admin)
+):
+    """
+    Get supervisor credentials (email only - password hash cannot be reversed).
+    For password viewing, Company Admin must reset it.
+    Returns a masked password indicator.
+    """
+    company_id = require_admin(current_user)
+    
+    succursale = await db.succursales.find_one(
+        {"succursale_id": succursale_id, "company_id": company_id},
+        {"_id": 0}
+    )
+    if not succursale:
+        raise HTTPException(status_code=404, detail="Succursale non trouvée")
+    
+    supervisor_id = succursale.get("supervisor_id")
+    if not supervisor_id:
+        raise HTTPException(status_code=404, detail="Superviseur non trouvé")
+    
+    supervisor = await db.users.find_one(
+        {"user_id": supervisor_id},
+        {"_id": 0, "email": 1, "name": 1, "telephone": 1, "created_at": 1}
+    )
+    
+    if not supervisor:
+        raise HTTPException(status_code=404, detail="Superviseur non trouvé dans la base de données")
+    
+    return {
+        "user_id": supervisor_id,
+        "name": supervisor.get("name"),
+        "email": supervisor.get("email"),
+        "telephone": supervisor.get("telephone"),
+        "has_password": True,  # Password exists but cannot be viewed
+        "password_hint": "Pour voir le mot de passe, vous devez le réinitialiser",
+        "created_at": supervisor.get("created_at")
+    }
 
 
 @succursale_router.delete("/{succursale_id}")
@@ -939,6 +1128,185 @@ async def update_agent_in_succursale(
     )
     
     return {"message": "Agent mis à jour"}
+
+
+@succursale_router.put("/{succursale_id}/agents/{agent_id}/full")
+async def update_agent_full(
+    succursale_id: str,
+    agent_id: str,
+    updates: AgentFullUpdate,
+    request: Request,
+    current_user: dict = Depends(get_company_admin)
+):
+    """
+    Full update of agent - includes ability to change email and password.
+    This allows Company Admin to modify ALL agent details including credentials.
+    """
+    company_id = require_admin(current_user)
+    
+    agent = await db.users.find_one({
+        "user_id": agent_id,
+        "succursale_id": succursale_id,
+        "company_id": company_id,
+        "role": UserRole.AGENT_POS
+    })
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent non trouvé")
+    
+    now = get_current_timestamp()
+    user_updates = {"updated_at": now}
+    policy_updates = {"updated_at": now}
+    old_values = {}
+    
+    # Handle name update
+    if updates.nom_agent or updates.prenom_agent:
+        policy = await db.agent_policies.find_one({"agent_id": agent_id}, {"_id": 0})
+        first_name = updates.prenom_agent or (policy.get("first_name", "") if policy else "")
+        last_name = updates.nom_agent or (policy.get("last_name", "") if policy else "")
+        new_name = f"{first_name} {last_name}".strip()
+        old_values["name"] = agent.get("name")
+        user_updates["name"] = new_name
+        if updates.nom_agent:
+            policy_updates["last_name"] = updates.nom_agent
+        if updates.prenom_agent:
+            policy_updates["first_name"] = updates.prenom_agent
+    
+    # Handle telephone update
+    if updates.telephone:
+        old_values["telephone"] = agent.get("telephone")
+        user_updates["telephone"] = updates.telephone
+        policy_updates["phone"] = updates.telephone
+    
+    # Handle email update - CHECK UNIQUENESS
+    if updates.email:
+        new_email = updates.email.lower()
+        if new_email != agent.get("email", "").lower():
+            # Check if email already exists for another user
+            existing = await db.users.find_one({
+                "email": new_email,
+                "user_id": {"$ne": agent_id}
+            })
+            if existing:
+                raise HTTPException(status_code=400, detail="Cet email est déjà utilisé par un autre utilisateur")
+            
+            old_values["email"] = agent.get("email")
+            user_updates["email"] = new_email
+            policy_updates["email"] = new_email
+    
+    # Handle password update
+    if updates.password:
+        if updates.password_confirm and updates.password != updates.password_confirm:
+            raise HTTPException(status_code=400, detail="Les mots de passe ne correspondent pas")
+        
+        user_updates["password_hash"] = get_password_hash(updates.password)
+        old_values["password"] = "***CHANGED***"
+    
+    # Handle financial settings
+    if updates.commission_percent is not None:
+        old_values["commission_percent"] = policy_updates.get("commission_percent")
+        policy_updates["commission_percent"] = updates.commission_percent
+    
+    if updates.limite_credit is not None:
+        policy_updates["max_credit_limit"] = updates.limite_credit
+        # Also update balance
+        await db.agent_balances.update_one(
+            {"agent_id": agent_id},
+            {"$set": {"credit_limit": updates.limite_credit, "updated_at": now}}
+        )
+    
+    if updates.limite_gain is not None:
+        policy_updates["max_win_limit"] = updates.limite_gain
+    
+    # Handle POS serial update
+    if updates.pos_serial_number is not None:
+        pos_serial = updates.pos_serial_number.strip().upper() if updates.pos_serial_number else None
+        if pos_serial:
+            # Check uniqueness
+            existing_pos = await db.pos_devices.find_one({
+                "pos_serial_number": pos_serial,
+                "assigned_agent_id": {"$ne": agent_id},
+                "status": {"$ne": "DELETED"}
+            })
+            if existing_pos:
+                raise HTTPException(status_code=400, detail=f"Le numéro de série POS '{pos_serial}' est déjà utilisé")
+        
+        user_updates["pos_serial_number"] = pos_serial
+    
+    # Handle status update
+    if updates.status:
+        user_updates["status"] = updates.status
+        policy_updates["status"] = "active" if updates.status == "ACTIVE" else "suspended"
+    
+    # Apply updates
+    if len(user_updates) > 1:
+        await db.users.update_one({"user_id": agent_id}, {"$set": user_updates})
+    
+    if len(policy_updates) > 1:
+        await db.agent_policies.update_one({"agent_id": agent_id}, {"$set": policy_updates})
+    
+    # Log activity
+    await log_activity(
+        db=db,
+        action_type="AGENT_FULL_UPDATED",
+        entity_type="agent",
+        entity_id=agent_id,
+        performed_by=current_user["user_id"],
+        company_id=company_id,
+        metadata={
+            "succursale_id": succursale_id,
+            "changes": old_values,
+            "email_changed": "email" in old_values,
+            "password_changed": "password" in old_values
+        },
+        ip_address=request.client.host if request.client else None
+    )
+    
+    return {
+        "message": "Agent mis à jour avec succès",
+        "email_changed": "email" in old_values,
+        "password_changed": "password" in old_values
+    }
+
+
+@succursale_router.get("/{succursale_id}/agents/{agent_id}/credentials")
+async def get_agent_credentials(
+    succursale_id: str,
+    agent_id: str,
+    current_user: dict = Depends(get_company_admin)
+):
+    """
+    Get agent credentials (email only - password hash cannot be reversed).
+    Returns agent info for display in edit modal.
+    """
+    company_id = require_admin(current_user)
+    
+    agent = await db.users.find_one({
+        "user_id": agent_id,
+        "succursale_id": succursale_id,
+        "company_id": company_id,
+        "role": UserRole.AGENT_POS
+    }, {"_id": 0, "password_hash": 0})
+    
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent non trouvé")
+    
+    # Get policy for additional info
+    policy = await db.agent_policies.find_one({"agent_id": agent_id}, {"_id": 0})
+    
+    return {
+        "user_id": agent_id,
+        "name": agent.get("name"),
+        "email": agent.get("email"),
+        "telephone": agent.get("telephone"),
+        "pos_serial_number": agent.get("pos_serial_number"),
+        "commission_percent": policy.get("commission_percent", 0) if policy else 0,
+        "limite_credit": policy.get("max_credit_limit", 50000) if policy else 50000,
+        "limite_gain": policy.get("max_win_limit", 100000) if policy else 100000,
+        "status": agent.get("status"),
+        "has_password": True,
+        "password_hint": "Pour changer le mot de passe, entrez un nouveau mot de passe",
+        "created_at": agent.get("created_at")
+    }
 
 
 @succursale_router.put("/{succursale_id}/agents/{agent_id}/suspend")
