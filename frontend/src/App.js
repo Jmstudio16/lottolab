@@ -31,6 +31,7 @@ import SuperLotteryFlagsPage from '@/pages/SuperLotteryFlagsPage';
 import SuperScheduledResultsPage from '@/pages/SuperScheduledResultsPage';
 import { SuperSettlementPage } from '@/pages/SuperSettlementPage';
 import { SuperCompanyAnalyticsPage } from '@/pages/SuperCompanyAnalyticsPage';
+import SuperNotificationsPage from '@/pages/SuperNotificationsPage';
 
 // Company Admin Pages
 import { CompanyDashboardPage } from '@/pages/CompanyDashboardPage';
@@ -48,6 +49,7 @@ import { CompanyConfigurationPage } from '@/pages/CompanyConfigurationPage';
 import { CompanyStatisticsPage } from '@/pages/CompanyStatisticsPage';
 import { CompanyDailyReportsPage } from '@/pages/CompanyDailyReportsPage';
 import CompanyProfileSettingsPage from '@/pages/company/CompanySettingsPage';
+import CompanyNotificationsPage from '@/pages/company/CompanyNotificationsPage';
 import { CompanyWinningTicketsPage } from '@/pages/CompanyWinningTicketsPage';
 import { BranchLotteriesPage } from '@/pages/BranchLotteriesPage';
 import CompanyRapportVentes from '@/pages/CompanyRapportVentes';
@@ -373,6 +375,14 @@ const SaaSApp = () => {
                   }
                 />
                 <Route
+                  path="/super/notifications"
+                  element={
+                    <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                      <SuperNotificationsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/super/publish-results"
                   element={
                     <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
@@ -637,6 +647,14 @@ const SaaSApp = () => {
                   element={
                     <ProtectedRoute allowedRoles={['COMPANY_ADMIN']}>
                       <CompanyProfileSettingsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/company/notifications"
+                  element={
+                    <ProtectedRoute allowedRoles={['COMPANY_ADMIN', 'COMPANY_MANAGER']}>
+                      <CompanyNotificationsPage />
                     </ProtectedRoute>
                   }
                 />

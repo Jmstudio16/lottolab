@@ -32,7 +32,8 @@ import {
   Zap,
   Shield,
   AlertTriangle,
-  Calculator
+  Calculator,
+  Bell
 } from 'lucide-react';
 import { useAuth } from '@/api/auth';
 import Logo from './Logo';
@@ -46,6 +47,7 @@ import UserAvatar from './UserAvatar';
 const getSuperAdminMenu = (t) => [
   { path: '/super/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
   { path: '/super/company-analytics', label: 'Analytics Compagnies', icon: ChartLine },
+  { path: '/super/notifications', label: 'Notifications', icon: Bell },
   { path: '/super/lottery-catalog', label: t('nav.lotteryCatalog'), icon: Globe },
   { path: '/super/lottery-flags', label: t('nav.lotteryFlags', 'Config Drapeaux'), icon: Flag },
   { path: '/super/global-schedules', label: t('nav.globalSchedules'), icon: Clock },
@@ -65,6 +67,7 @@ const getSuperAdminMenu = (t) => [
 const getCompanyAdminMenu = (t) => [
   { path: '/company/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
   { path: '/admin/analytics', label: 'Analytics Pro', icon: ChartLine },
+  { path: '/company/notifications', label: 'Notifications', icon: Bell },
   { path: '/company/succursales', label: t('nav.branches', 'Succursales'), icon: Store },
   { path: '/company/lotteries', label: t('nav.lotteryCatalog', 'Catalogue Loteries'), icon: Ticket },
   { path: '/company/lottery-flags', label: t('nav.lotteryFlags', 'Config Drapeaux'), icon: Flag },

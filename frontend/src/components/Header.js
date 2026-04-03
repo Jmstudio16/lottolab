@@ -186,18 +186,19 @@ export const Header = ({ title, subtitle }) => {
                 </div>
 
                 <div className="max-h-96 overflow-y-auto">
-                  {notifications.length === 0 ? (
+                  {notifications.filter(n => !n.read).length === 0 ? (
                     <div className="py-8 text-center text-slate-400">
                       <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Aucune notification</p>
+                      <p className="text-sm">Aucune nouvelle notification</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Les notifications lues sont archivées
+                      </p>
                     </div>
                   ) : (
-                    notifications.map((notif, index) => (
+                    notifications.filter(n => !n.read).map((notif, index) => (
                       <div 
                         key={notif.id || notif.notification_id || index}
-                        className={`px-4 py-3 border-b border-slate-800 cursor-pointer transition-all duration-200 hover:bg-slate-800/80 ${
-                          !notif.read ? 'bg-blue-500/10 border-l-2 border-l-blue-500' : 'hover:bg-slate-800/50'
-                        }`}
+                        className={`px-4 py-3 border-b border-slate-800 cursor-pointer transition-all duration-200 hover:bg-slate-800/80 bg-blue-500/10 border-l-2 border-l-blue-500`}
                         onClick={() => markAsRead(notif.id || notif.notification_id)}
                         style={{ animationDelay: `${index * 50}ms` }}
                       >
@@ -207,17 +208,12 @@ export const Header = ({ title, subtitle }) => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
-                              <p className={`text-sm font-medium transition-colors ${notif.read ? 'text-slate-400' : 'text-white'}`}>
+                              <p className="text-sm font-medium text-white">
                                 {notif.title}
                               </p>
-                              {!notif.read && (
-                                <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1.5 animate-pulse"></span>
-                              )}
-                              {notif.read && (
-                                <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                              )}
+                              <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1.5 animate-pulse"></span>
                             </div>
-                            <p className={`text-sm mt-0.5 line-clamp-2 ${notif.read ? 'text-slate-500' : 'text-slate-300'}`}>
+                            <p className="text-sm mt-0.5 line-clamp-2 text-slate-300">
                               {notif.message}
                             </p>
                             <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
