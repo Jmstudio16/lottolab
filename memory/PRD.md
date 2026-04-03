@@ -1,14 +1,53 @@
 # LOTTOLAB - Professional Lottery SaaS Platform
 
-## Version: 23.0.0 (Création Loteries + Gestion Utilisateurs Complète)
-## Last Updated: 2026-04-02 04:45 UTC
-## Deployed: 2026-04-02 04:45 Haiti Time
+## Version: 24.0.0 (Synchronisation Globale + Settlement Engine Complet)
+## Last Updated: 2026-04-03 03:25 UTC
+## Deployed: 2026-04-03 23:25 Haiti Time
 
 ---
 
-## 🚀 STATUT: PRÊT POUR LE LANCEMENT ✅
+## 🚀 STATUT: PRODUCTION READY ✅
 
-### Nouvelles Modifications (v23.0.0):
+### Nouvelles Modifications (v24.0.0):
+
+#### 1. Page Historique Règlements Superviseur ✅ (NOUVEAU)
+- **Route**: `/supervisor/settlement-history`
+- **Endpoint**: `GET /api/settlement/supervisor-history`
+- **Fonctionnalités**:
+  - Affichage des règlements de tous les agents sous la supervision
+  - Statistiques: Total règlements, Total payé, Tickets gagnants
+  - Recherche par loterie
+  - Détails extensibles pour chaque règlement
+
+#### 2. Synchronisation Globale des Loteries ✅ (CORRIGÉ)
+- **Super Admin désactive une loterie** → Disparaît immédiatement:
+  - Company Admin: Config Drapeau
+  - Supervisor: Config Drapeau
+  - Vendeur: Liste des jeux pour vente
+- **Endpoints modifiés**:
+  - `GET /api/supervisor/lottery-flags` - Filtre `is_active_global`
+  - `GET /api/company/available-lotteries` - Filtre `is_active_global`
+  - `GET /api/sync/vendeur/open-lotteries` - Filtre `is_active_global` + flags de branche
+
+#### 3. Settlement Engine Complet ✅ (ÉTENDU)
+- **Types de jeux supportés avec multiplicateurs**:
+  - BORLETTE: 60x (1er), 20x (2ème), 10x (3ème)
+  - LOTO3: 500x
+  - LOTO4: 5000x
+  - L4O1, L4O2, L4O3: 5000x chacun
+  - LOTO5: 50000x
+  - L5O1, L5O2, L5O3: 50000x chacun
+  - MARIAGE: 750x
+  - MARIAGE_GRATUIT: 750x
+
+#### 4. Commission 0% par Défaut ✅ (VÉRIFIÉ)
+- Si commission non configurée dans Succursales → 0% partout
+- Superviseur et Vendeur affichent 0 HTG de commission
+- Carte de commission masquée si taux = 0
+
+---
+
+### Modifications Précédentes (v23.0.0):
 
 #### 1. Création Dynamique de Loteries (Super Admin) ✅ (NOUVEAU)
 - **Page**: `/super/lottery-catalog`
