@@ -1843,12 +1843,15 @@ class BulkFlagAssignment(BaseModel):
 
 @company_admin_router.get("/available-lotteries")
 async def get_available_lotteries(current_user: dict = Depends(get_company_admin)):
-    """Get all available lotteries from master catalog with their flag assignments"""
+    """
+    Get all available lotteries from master catalog with their flag assignments.
+    ONLY returns lotteries that are ACTIVE GLOBALLY (Super Admin controls this).
+    """
     company_id = current_user.get("company_id")
     
-    # Get all master lotteries
+    # Get all master lotteries - ONLY ACTIVE GLOBAL
     master_lotteries = await db.master_lotteries.find(
-        {"$or": [{"is_active": True}, {"is_active_global": True}, {"status": "ACTIVE"}]},
+        {"is_active_global": True},
         {"_id": 0}
     ).to_list(500)
     

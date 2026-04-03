@@ -586,11 +586,17 @@ async def get_open_lotteries_for_seller(
     """
     Get ONLY open lotteries for vendor sale page.
     Closed lotteries are completely hidden from this endpoint.
+    
+    Respects:
+    1. Global lottery status (Super Admin can disable globally)
+    2. Company lottery status (Company Admin can disable for company)
+    3. Branch lottery status (Supervisor can disable for branch)
     """
     user_email = current_user.get("email", "unknown")
     company_id = current_user.get("company_id")
+    succursale_id = current_user.get("succursale_id")
     
-    logger.info(f"[VENDEUR-LOTTERIES] Request from user={user_email}, company_id={company_id}")
+    logger.info(f"[VENDEUR-LOTTERIES] Request from user={user_email}, company_id={company_id}, succursale_id={succursale_id}")
     
     if not company_id:
         logger.warning(f"[VENDEUR-LOTTERIES] No company_id for user={user_email}")
@@ -603,13 +609,15 @@ async def get_open_lotteries_for_seller(
     )
     company_tz = company.get("timezone", "America/Port-au-Prince") if company else "America/Port-au-Prince"
     
-    # Get enabled lotteries
+    # Get enabled lotteries for company
     company_lotteries = await db.company_lotteries.find(
         {"company_id": company_id, "$or": [{"is_enabled": True}, {"enabled": True}, {"is_enabled_for_company": True}]},
         {"_id": 0}
     ).to_list(500)
     
-    lottery_ids = [cl["lottery_id"] for cl in company_lotteries]
+    # Build map of company lottery settings
+    company_lottery_map = {cl["lottery_id"]: cl for cl in company_lotteries}
+    lottery_ids = list(company_lottery_map.keys())
     
     logger.info(f"[VENDEUR-LOTTERIES] company_id={company_id}, enabled_lotteries={len(lottery_ids)}")
     
@@ -617,9 +625,32 @@ async def get_open_lotteries_for_seller(
         logger.warning(f"[VENDEUR-LOTTERIES] No enabled lotteries for company_id={company_id}")
         return {"lotteries": [], "open_count": 0, "debug": {"company_id": company_id, "enabled_count": 0}}
     
-    # Get active global lotteries
+    # Get branch-level overrides (if vendor has succursale)
+    branch_flags = {}
+    if succursale_id:
+        branch_flag_docs = await db.branch_lottery_flags.find(
+            {"branch_id": succursale_id, "lottery_id": {"$in": lottery_ids}},
+            {"_id": 0}
+        ).to_list(500)
+        branch_flags = {bf["lottery_id"]: bf for bf in branch_flag_docs}
+    
+    # Filter out lotteries disabled at branch level
+    active_lottery_ids = []
+    for lid in lottery_ids:
+        branch_flag = branch_flags.get(lid)
+        # If branch has explicitly disabled this lottery, skip it
+        if branch_flag and branch_flag.get("is_enabled") == False:
+            logger.info(f"[VENDEUR-LOTTERIES] Lottery {lid} disabled at branch level")
+            continue
+        active_lottery_ids.append(lid)
+    
+    if not active_lottery_ids:
+        logger.warning(f"[VENDEUR-LOTTERIES] All lotteries disabled at branch level")
+        return {"lotteries": [], "open_count": 0}
+    
+    # Get active global lotteries (must be active globally)
     lotteries = await db.master_lotteries.find(
-        {"lottery_id": {"$in": lottery_ids}, "is_active_global": True},
+        {"lottery_id": {"$in": active_lottery_ids}, "is_active_global": True},
         {"_id": 0}
     ).to_list(500)
     
@@ -627,7 +658,7 @@ async def get_open_lotteries_for_seller(
     
     # Get schedules
     schedules = await db.global_schedules.find(
-        {"lottery_id": {"$in": lottery_ids}, "is_active": True},
+        {"lottery_id": {"$in": active_lottery_ids}, "is_active": True},
         {"_id": 0}
     ).to_list(1000)
     
@@ -646,12 +677,18 @@ async def get_open_lotteries_for_seller(
         lid = lottery.get("lottery_id")
         lottery_schedules = schedule_map.get(lid, [])
         
+        # Get flag type from branch > company > master
+        branch_flag = branch_flags.get(lid, {})
+        company_lottery = company_lottery_map.get(lid, {})
+        flag_type = branch_flag.get("flag_type") or company_lottery.get("flag_type") or lottery.get("flag_type") or "USA"
+        
         for sched in lottery_schedules:
             status = calculate_lottery_status(sched, company_tz)
             if status.get("is_open"):
                 open_lotteries.append({
                     **lottery,
                     **status,
+                    "flag_type": flag_type,  # Use resolved flag type
                     "draw_name": sched.get("draw_name"),
                     "schedule_id": sched.get("schedule_id")
                 })

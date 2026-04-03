@@ -503,6 +503,87 @@ async def get_company_settlement_history(
     }
 
 
+@settlement_router.get("/supervisor-history")
+async def get_supervisor_settlement_history(
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Récupère l'historique des settlements pour le superviseur.
+    Retourne les settlements des agents sous sa supervision.
+    """
+    company_id = current_user.get("company_id")
+    succursale_id = current_user.get("succursale_id")
+    
+    if not company_id:
+        raise HTTPException(status_code=400, detail="Compagnie non trouvée")
+    
+    # Get agents under this supervisor
+    agent_ids = []
+    if succursale_id:
+        agents = await db.users.find(
+            {"succursale_id": succursale_id, "role": {"$in": ["AGENT_POS", "VENDEUR"]}},
+            {"user_id": 1, "_id": 0}
+        ).to_list(100)
+        agent_ids = [a.get("user_id") for a in agents]
+    
+    # Get all settlements
+    settlements = await db.settlements.find(
+        {},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Filter settlements that have items for this supervisor's agents
+    supervisor_settlements = []
+    total_paid = 0
+    total_winners = 0
+    
+    for settlement in settlements:
+        settlement_id = settlement.get("settlement_id")
+        
+        # Get settlement items for this supervisor's agents
+        items_query = {"settlement_id": settlement_id}
+        if agent_ids:
+            items_query["$or"] = [
+                {"agent_id": {"$in": agent_ids}},
+                {"sold_by": {"$in": agent_ids}}
+            ]
+        elif company_id:
+            items_query["company_id"] = company_id
+        
+        items = await db.settlement_items.find(items_query, {"_id": 0}).to_list(100)
+        
+        if items or settlement.get("company_id") == company_id:
+            supervisor_payout = sum(item.get("payout_amount", 0) for item in items)
+            supervisor_winners = len(items)
+            
+            supervisor_settlements.append({
+                "settlement_id": settlement_id,
+                "lottery_name": settlement.get("lottery_name"),
+                "draw_date": settlement.get("draw_date"),
+                "draw_name": settlement.get("draw_name"),
+                "winning_numbers": settlement.get("winning_numbers"),
+                "status": settlement.get("status"),
+                "created_at": settlement.get("created_at"),
+                "completed_at": settlement.get("completed_at"),
+                "total_tickets_scanned": settlement.get("total_tickets_scanned", 0),
+                "total_winning_tickets": supervisor_winners if items else settlement.get("total_winning_tickets", 0),
+                "total_sales_amount": settlement.get("total_sales_amount", 0),
+                "total_payout_amount": supervisor_payout if items else settlement.get("total_payout_amount", 0),
+                "winners_by_rank": settlement.get("winners_by_rank", {})
+            })
+            
+            total_paid += supervisor_payout if items else settlement.get("total_payout_amount", 0)
+            total_winners += supervisor_winners if items else settlement.get("total_winning_tickets", 0)
+    
+    return {
+        "settlements": supervisor_settlements,
+        "total_settlements": len(supervisor_settlements),
+        "total_paid": total_paid,
+        "total_winners": total_winners
+    }
+
+
 @settlement_router.get("/winning-tickets")
 async def get_winning_tickets_list(
     lottery_id: Optional[str] = None,

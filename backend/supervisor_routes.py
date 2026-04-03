@@ -596,6 +596,7 @@ async def get_supervisor_lottery_flags(current_user: dict = Depends(get_current_
     """
     Get all lotteries with their flag configurations for supervisor's view.
     Shows all company lotteries that the supervisor can configure for their agents.
+    ONLY returns lotteries that are ACTIVE GLOBALLY (Super Admin has not disabled).
     """
     current_user = require_supervisor(current_user)
     
@@ -613,14 +614,19 @@ async def get_supervisor_lottery_flags(current_user: dict = Depends(get_current_
     
     lottery_ids = [cl["lottery_id"] for cl in company_lotteries]
     
-    # Get master lottery details
+    # Get master lottery details - ONLY ACTIVE GLOBAL LOTTERIES
     master_data = {}
+    active_global_ids = set()
     if lottery_ids:
         masters = await db.master_lotteries.find(
             {"lottery_id": {"$in": lottery_ids}},
             {"_id": 0}
         ).to_list(300)
-        master_data = {m["lottery_id"]: m for m in masters}
+        for m in masters:
+            master_data[m["lottery_id"]] = m
+            # Only include lotteries that are active globally
+            if m.get("is_active_global", True):
+                active_global_ids.add(m["lottery_id"])
     
     # Get branch-level flag overrides (if supervisor has configured any)
     branch_flags = {}
@@ -631,11 +637,16 @@ async def get_supervisor_lottery_flags(current_user: dict = Depends(get_current_
         ).to_list(300)
         branch_flags = {bf["lottery_id"]: bf for bf in branch_flag_docs}
     
-    # Build result
+    # Build result - FILTER OUT globally disabled lotteries
     result = []
     for cl in company_lotteries:
         lottery_id = cl["lottery_id"]
         master = master_data.get(lottery_id, {})
+        
+        # Skip if lottery is disabled globally by Super Admin
+        if lottery_id not in active_global_ids and lottery_id in master_data:
+            continue
+        
         branch_flag = branch_flags.get(lottery_id, {})
         
         # Priority: branch flag > company flag > master flag

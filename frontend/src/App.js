@@ -71,6 +71,7 @@ import { SupervisorLotterySchedulesPage } from '@/pages/supervisor/SupervisorLot
 import SupervisorLotteryFlagsPage from '@/pages/supervisor/SupervisorLotteryFlagsPage';
 import SupervisorLotsGagnants from '@/pages/supervisor/SupervisorLotsGagnants';
 import SupervisorFichesSupprimees from '@/pages/supervisor/SupervisorFichesSupprimees';
+import SupervisorSettlementHistoryPage from '@/pages/supervisor/SupervisorSettlementHistoryPage';
 
 // Vendeur Pages
 import VendeurLayout from '@/layouts/VendeurLayout';
@@ -723,6 +724,7 @@ const SaaSApp = () => {
                   <Route path="lottery-flags" element={<SupervisorLotteryFlagsPage />} />
                   <Route path="lots-gagnants" element={<SupervisorLotsGagnants />} />
                   <Route path="fiches-supprimees" element={<SupervisorFichesSupprimees />} />
+                  <Route path="settlement-history" element={<SupervisorSettlementHistoryPage />} />
                   <Route index element={<Navigate to="/supervisor/dashboard" replace />} />
                 </Route>
 

@@ -415,10 +415,42 @@ DEFAULT_PRIZE_CONFIGS = {
         "multipliers": [5000],
         "description": "5000x pour match exact"
     },
+    # Loto4 Options
+    "L4O1": {
+        "payout_model": PayoutModel.FIXED_MULTIPLIER,
+        "multipliers": [5000],
+        "description": "Loto4 Option 1 - 5000x pour match exact"
+    },
+    "L4O2": {
+        "payout_model": PayoutModel.FIXED_MULTIPLIER,
+        "multipliers": [5000],
+        "description": "Loto4 Option 2 - 5000x pour match exact"
+    },
+    "L4O3": {
+        "payout_model": PayoutModel.FIXED_MULTIPLIER,
+        "multipliers": [5000],
+        "description": "Loto4 Option 3 - 5000x pour match exact"
+    },
     "LOTO5": {
         "payout_model": PayoutModel.FIXED_MULTIPLIER,
         "multipliers": [50000],
         "description": "50000x pour match exact"
+    },
+    # Loto5 Extras
+    "L5O1": {
+        "payout_model": PayoutModel.FIXED_MULTIPLIER,
+        "multipliers": [50000],
+        "description": "Loto5 Extra 1 - 50000x pour match exact"
+    },
+    "L5O2": {
+        "payout_model": PayoutModel.FIXED_MULTIPLIER,
+        "multipliers": [50000],
+        "description": "Loto5 Extra 2 - 50000x pour match exact"
+    },
+    "L5O3": {
+        "payout_model": PayoutModel.FIXED_MULTIPLIER,
+        "multipliers": [50000],
+        "description": "Loto5 Extra 3 - 50000x pour match exact"
     },
     "MARIAGE": {
         "payout_model": PayoutModel.FIXED_MULTIPLIER,
