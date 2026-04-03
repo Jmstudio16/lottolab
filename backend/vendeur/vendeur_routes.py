@@ -1776,3 +1776,52 @@ async def get_vendeur_report(
             for l in lottery_stats
         ]
     }
+
+
+
+# ============================================================================
+# NOTIFICATIONS - Real-time for Vendeur
+# ============================================================================
+
+@vendeur_router.get("/notifications")
+async def get_vendeur_notifications(
+    limit: int = 50,
+    current_vendeur: dict = Depends(get_current_vendeur)
+):
+    """
+    Get notifications for vendeur/agent - real-time enabled.
+    Returns both read and unread notifications.
+    """
+    require_agent(current_vendeur)
+    
+    user_id = current_vendeur.get("user_id")
+    company_id = current_vendeur.get("company_id")
+    succursale_id = current_vendeur.get("succursale_id")
+    
+    # Query for notifications visible to this vendor
+    query = {
+        "$or": [
+            {"target_user_id": user_id},
+            {"target_role": {"$in": ["AGENT_POS", "VENDEUR"]}},
+            {"target_company_id": company_id, "target_role": None, "target_user_id": None},
+            {"target_branch_id": succursale_id}
+        ]
+    }
+    
+    notifications = await db.notifications.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Get read status
+    read_records = await db.notification_reads.find(
+        {"user_id": user_id},
+        {"notification_id": 1, "_id": 0}
+    ).to_list(1000)
+    read_ids = {r.get("notification_id") for r in read_records}
+    
+    # Add read status to notifications
+    for notif in notifications:
+        notif["read"] = notif.get("notification_id") in read_ids
+    
+    return {"notifications": notifications, "unread_count": sum(1 for n in notifications if not n.get("read"))}

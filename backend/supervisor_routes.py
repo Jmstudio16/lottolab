@@ -1186,3 +1186,51 @@ async def get_supervisor_notifications(
     notifications.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     
     return notifications[:limit]
+
+
+
+# ============================================================================
+# NOTIFICATIONS - Real-time for Supervisor
+# ============================================================================
+
+@supervisor_router.get("/notifications")
+async def get_supervisor_notifications(
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get notifications for supervisor - real-time enabled.
+    Returns both read and unread notifications.
+    """
+    current_user = require_supervisor(current_user)
+    
+    user_id = current_user.get("user_id")
+    company_id = current_user.get("company_id")
+    succursale_id = current_user.get("succursale_id")
+    
+    # Query for notifications visible to this supervisor
+    query = {
+        "$or": [
+            {"target_user_id": user_id},
+            {"target_role": {"$in": ["BRANCH_SUPERVISOR", "SUPERVISOR"]}},
+            {"target_company_id": company_id, "target_role": None, "target_user_id": None}
+        ]
+    }
+    
+    notifications = await db.notifications.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Get read status
+    read_records = await db.notification_reads.find(
+        {"user_id": user_id},
+        {"notification_id": 1, "_id": 0}
+    ).to_list(1000)
+    read_ids = {r.get("notification_id") for r in read_records}
+    
+    # Add read status to notifications
+    for notif in notifications:
+        notif["read"] = notif.get("notification_id") in read_ids
+    
+    return {"notifications": notifications, "unread_count": sum(1 for n in notifications if not n.get("read"))}

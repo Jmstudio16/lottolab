@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/api/auth';
+import { API_URL } from '@/config/api';
+import axios from 'axios';
+import { toast } from 'sonner';
 import { 
   Home, 
   Users, 
@@ -15,12 +18,15 @@ import {
   CalendarClock,
   Flag,
   Trash2,
-  Calculator
+  Calculator,
+  Bell,
+  Volume2,
+  VolumeX,
+  Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import Logo from '@/components/Logo';
-import { API_URL } from '@/config/api';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 const SupervisorSidebar = ({ isOpen, onClose }) => {
@@ -34,6 +40,7 @@ const SupervisorSidebar = ({ isOpen, onClose }) => {
 
   const navItems = [
     { path: '/supervisor/dashboard', icon: Home, label: 'Tableau de bord' },
+    { path: '/supervisor/notifications', icon: Bell, label: 'Notifications' },
     { path: '/supervisor/agents', icon: Users, label: 'Mes Agents' },
     { path: '/supervisor/tickets', icon: Ticket, label: 'Tickets' },
     { path: '/supervisor/fiches-jouees', icon: Ticket, label: 'Fiches Jouées' },
@@ -109,6 +116,61 @@ const SupervisorSidebar = ({ isOpen, onClose }) => {
 };
 
 const SupervisorHeader = ({ onMenuClick }) => {
+  const { token } = useAuth();
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  const headers = { Authorization: `Bearer ${token}` };
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/supervisor/notifications?limit=20`, { headers });
+      const data = Array.isArray(res.data) ? res.data : (res.data.notifications || []);
+      setNotifications(data);
+      setUnreadCount(data.filter(n => !n.read).length);
+    } catch (e) {
+      console.log('Notification fetch error');
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 10000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  const markAsRead = async (id) => {
+    try {
+      await axios.put(`${API_URL}/api/notifications/${id}/read`, {}, { headers });
+      setNotifications(prev => prev.map(n => n.notification_id === id ? { ...n, read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (e) {}
+  };
+
+  const markAllRead = async () => {
+    try {
+      await axios.put(`${API_URL}/api/notifications/mark-all-read`, {}, { headers });
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+      toast.success('Toutes les notifications marquées comme lues');
+    } catch (e) {}
+  };
+
+  const formatTime = (dateStr) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMins = Math.floor((now - date) / 60000);
+    if (diffMins < 1) return "À l'instant";
+    if (diffMins < 60) return `${diffMins} min`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h`;
+    return date.toLocaleDateString('fr-FR');
+  };
+
+  const unreadNotifications = notifications.filter(n => !n.read);
+
   return (
     <header className="sticky top-0 z-40 bg-slate-800 border-b border-slate-700 px-4 py-3">
       <div className="flex items-center justify-between">
@@ -123,6 +185,69 @@ const SupervisorHeader = ({ onMenuClick }) => {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Notifications Bell */}
+          <div className="relative">
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="relative p-2 text-slate-400 hover:text-white transition-colors"
+            >
+              <Bell size={22} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {showDropdown && (
+              <div className="absolute right-0 mt-2 w-80 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50">
+                <div className="p-3 border-b border-slate-700 flex items-center justify-between">
+                  <span className="font-semibold text-white">Notifications</span>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setSoundEnabled(!soundEnabled)} className="text-slate-400 hover:text-white">
+                      {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                    </button>
+                    {unreadCount > 0 && (
+                      <button onClick={markAllRead} className="text-xs text-blue-400 hover:text-blue-300">
+                        Tout lu
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {unreadNotifications.length === 0 ? (
+                    <div className="py-8 text-center text-slate-400">
+                      <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Aucune nouvelle notification</p>
+                    </div>
+                  ) : (
+                    unreadNotifications.slice(0, 10).map((notif) => (
+                      <div
+                        key={notif.notification_id}
+                        onClick={() => markAsRead(notif.notification_id)}
+                        className="px-4 py-3 border-b border-slate-700 hover:bg-slate-700/50 cursor-pointer"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 animate-pulse" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-white">{notif.title}</p>
+                            <p className="text-xs text-slate-400 line-clamp-2">{notif.message}</p>
+                            <p className="text-xs text-slate-500 mt-1">{formatTime(notif.created_at)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="p-2 border-t border-slate-700">
+                  <a href="/supervisor/notifications" className="block text-center text-sm text-blue-400 hover:text-blue-300 py-2">
+                    Voir toutes les notifications
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+
           <LanguageSwitcher />
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-400" />

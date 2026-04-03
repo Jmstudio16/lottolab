@@ -74,6 +74,7 @@ import SupervisorLotteryFlagsPage from '@/pages/supervisor/SupervisorLotteryFlag
 import SupervisorLotsGagnants from '@/pages/supervisor/SupervisorLotsGagnants';
 import SupervisorFichesSupprimees from '@/pages/supervisor/SupervisorFichesSupprimees';
 import SupervisorSettlementHistoryPage from '@/pages/supervisor/SupervisorSettlementHistoryPage';
+import SupervisorNotificationsPage from '@/pages/supervisor/SupervisorNotificationsPage';
 
 // Vendeur Pages
 import VendeurLayout from '@/layouts/VendeurLayout';
@@ -88,6 +89,7 @@ import {
   VendeurRecherche
 } from '@/pages/vendeur';
 import VendeurLotsGagnants from '@/pages/vendeur/VendeurLotsGagnants';
+import VendeurNotificationsPage from '@/pages/vendeur/VendeurNotificationsPage';
 import VendeurPayerGagnants from '@/pages/vendeur/VendeurPayerGagnants';
 import VendeurFicheGagnant from '@/pages/vendeur/VendeurFicheGagnant';
 import VendeurFichesSupprimees from '@/pages/vendeur/VendeurFichesSupprimees';
@@ -743,6 +745,7 @@ const SaaSApp = () => {
                   <Route path="lots-gagnants" element={<SupervisorLotsGagnants />} />
                   <Route path="fiches-supprimees" element={<SupervisorFichesSupprimees />} />
                   <Route path="settlement-history" element={<SupervisorSettlementHistoryPage />} />
+                  <Route path="notifications" element={<SupervisorNotificationsPage />} />
                   <Route index element={<Navigate to="/supervisor/dashboard" replace />} />
                 </Route>
 
@@ -764,6 +767,7 @@ const SaaSApp = () => {
                   <Route path="mes-ventes" element={<VendeurMesVentes />} />
                   <Route path="profil" element={<VendeurProfil />} />
                   <Route path="fiches-gagnants" element={<VendeurLotsGagnants />} />
+                  <Route path="notifications" element={<VendeurNotificationsPage />} />
                   <Route path="payer-gagnants" element={<VendeurPayerGagnants />} />
                   <Route path="fiches-payees" element={<VendeurFicheGagnant />} />
                   <Route path="fiches-supprimees" element={<VendeurFichesSupprimees />} />

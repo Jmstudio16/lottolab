@@ -1,15 +1,16 @@
 import { API_URL } from '@/config/api';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/api/auth';
 import { useTranslation } from 'react-i18next';
 import { useWebSocketContext, useWebSocketEvent, WSEventType } from '@/context/WebSocketContext';
 import { WebSocketIndicatorCompact } from '@/components/WebSocketIndicator';
 import axios from 'axios';
+import { toast } from 'sonner';
 import { 
   LayoutDashboard, ShoppingCart, Ticket, Search, Calendar,
   Trophy, BarChart3, User, LogOut, Menu, X, Store, Building2, Trash2,
-  Banknote, Receipt, Wifi
+  Banknote, Receipt, Wifi, Bell, Volume2, VolumeX
 } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import UserAvatar from '@/components/UserAvatar';
@@ -56,6 +57,7 @@ const VendeurLayout = () => {
 
   const menuItems = [
     { path: '/vendeur/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
+    { path: '/vendeur/notifications', icon: Bell, label: 'Notifications' },
     { path: '/vendeur/nouvelle-vente', icon: ShoppingCart, label: t('vendeur.newSale') },
     { path: '/vendeur/mes-tickets', icon: Ticket, label: t('vendeur.myTickets') },
     { path: '/vendeur/recherche', icon: Search, label: t('nav.searchTickets', 'Recherche Fiches') },
@@ -68,6 +70,61 @@ const VendeurLayout = () => {
     { path: '/vendeur/imprimante', icon: Receipt, label: 'Config. Imprimante', highlight: 'cyan' },
     { path: '/vendeur/profil', icon: User, label: t('common.profile') },
   ];
+  
+  // Notifications state
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/vendeur/notifications?limit=20`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = Array.isArray(res.data) ? res.data : (res.data.notifications || []);
+      setNotifications(data);
+      setUnreadCount(data.filter(n => !n.read).length);
+    } catch (e) {}
+  }, [token]);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 10000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  const markAsRead = async (id) => {
+    try {
+      await axios.put(`${API_URL}/api/notifications/${id}/read`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNotifications(prev => prev.map(n => n.notification_id === id ? { ...n, read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (e) {}
+  };
+
+  const markAllRead = async () => {
+    try {
+      await axios.put(`${API_URL}/api/notifications/mark-all-read`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+      toast.success('Toutes les notifications marquées comme lues');
+    } catch (e) {}
+  };
+
+  const formatTime = (dateStr) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMins = Math.floor((now - date) / 60000);
+    if (diffMins < 1) return "À l'instant";
+    if (diffMins < 60) return `${diffMins} min`;
+    return `${Math.floor(diffMins / 60)}h`;
+  };
+
+  const unreadNotifications = notifications.filter(n => !n.read);
 
   const handleLogout = () => {
     logout();
@@ -100,6 +157,55 @@ const VendeurLayout = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Notifications Bell */}
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+              className="relative p-2 text-slate-400 hover:text-white"
+            >
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+            {showNotifDropdown && (
+              <div className="absolute right-0 mt-2 w-72 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50">
+                <div className="p-3 border-b border-slate-700 flex items-center justify-between">
+                  <span className="font-semibold text-white text-sm">Notifications</span>
+                  {unreadCount > 0 && (
+                    <button onClick={markAllRead} className="text-xs text-blue-400">Tout lu</button>
+                  )}
+                </div>
+                <div className="max-h-60 overflow-y-auto">
+                  {unreadNotifications.length === 0 ? (
+                    <div className="py-6 text-center text-slate-400">
+                      <Bell className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                      <p className="text-xs">Aucune notification</p>
+                    </div>
+                  ) : (
+                    unreadNotifications.slice(0, 8).map((notif) => (
+                      <div
+                        key={notif.notification_id}
+                        onClick={() => markAsRead(notif.notification_id)}
+                        className="px-3 py-2 border-b border-slate-700 hover:bg-slate-700/50 cursor-pointer"
+                      >
+                        <p className="text-xs font-medium text-white">{notif.title}</p>
+                        <p className="text-xs text-slate-400 line-clamp-1">{notif.message}</p>
+                        <p className="text-xs text-slate-500 mt-1">{formatTime(notif.created_at)}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="p-2 border-t border-slate-700">
+                  <a href="/vendeur/notifications" className="block text-center text-xs text-blue-400 py-1">
+                    Voir tout
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
           <LanguageSwitcher />
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
