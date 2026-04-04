@@ -151,8 +151,8 @@ const LotoPamLotteryPlayPage = () => {
       if (!/^\d+$/.test(play.number)) {
         return 'Les numéros doivent contenir uniquement des chiffres';
       }
-      if (play.amount < 10) {
-        return 'Le montant minimum par pari est 10 HTG';
+      if (play.amount <= 0) {
+        return 'Le montant doit être supérieur à 0';
       }
     }
     return null;

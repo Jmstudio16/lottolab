@@ -508,7 +508,6 @@ async def validate_ticket_sale(company_id: str, lottery_id: str, draw_date: str,
             }
     
     if limits:
-        min_bet = limits.get("min_bet", 1)
         max_bet = limits.get("max_bet", 10000)
         max_per_num = limits.get("max_bet_per_number", 5000)
         max_total = limits.get("max_total_per_ticket", 50000)
@@ -519,8 +518,7 @@ async def validate_ticket_sale(company_id: str, lottery_id: str, draw_date: str,
             num = play.get("numbers", "")
             total_amount += amount
             
-            if amount < min_bet:
-                errors.append(f"Mise minimum {min_bet} HTG pour le numéro {num}")
+            # NO minimum validation - only check maximum
             if amount > max_per_num:
                 errors.append(f"Mise maximum {max_per_num} HTG par numéro ({num}: {amount} HTG)")
         

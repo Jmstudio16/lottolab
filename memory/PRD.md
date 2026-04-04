@@ -24,11 +24,18 @@
   - `/supervisor/reports` - Rapport Superviseur
   - `/vendeur/rapport` - Rapport Vendeur
 
-#### 2. Suppression Limite Minimum de Mise ✅ (CONFIRMÉ)
-- Le message "minimum 1 HTG" a été retiré
-- Aucune limite minimum - vendeurs peuvent miser de 1 à X HTG
-- Validation backend: `min_bet` ignoré dans `bet_type_limits_routes.py`
-- Frontend: UI de validation de minimum supprimée de `VendeurNouvelleVente.jsx`
+#### 2. Suppression TOTALE des Limites Minimum de Mise ✅ (CONFIRMÉ)
+- Toutes les validations "minimum X HTG" ont été supprimées
+- Fichiers modifiés:
+  - `/app/backend/vendeur/vendeur_routes.py` - Validation de vente
+  - `/app/backend/universal_pos_routes.py` - Validation POS
+  - `/app/backend/bet_type_limits_routes.py` - Validation des limites
+  - `/app/backend/export_routes.py` - Validation export
+  - `/app/frontend/src/pages/lotopam/LotoPamLotteryPlayPage.jsx` - UI en ligne
+  - `/app/frontend/src/pages/company/CompanyBetLimitsPage.jsx` - Champ min supprimé
+  - `/app/frontend/src/pages/company/CompanySettingsPage.jsx` - Champ min supprimé
+- **Vendeurs peuvent miser N'IMPORTE QUEL MONTANT positif (même 0.5 HTG)**
+- Testé avec succès: Ticket créé avec 0.5 HTG
 
 #### 3. Impression Thermique ✅ (VÉRIFIÉ)
 - Endpoint `/api/ticket/print/{ticket_id}?format=thermal` fonctionne

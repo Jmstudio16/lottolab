@@ -281,38 +281,21 @@ const CompanyBetLimitsPage = () => {
                 </CardHeader>
                 
                 <CardContent className="space-y-4">
-                  {/* Min / Max Amount */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-slate-400 mb-1 block flex items-center gap-1">
-                        <DollarSign className="w-3 h-3" />
-                        Mise Minimum (HTG)
-                      </label>
-                      <Input
-                        type="number"
-                        value={limits[betType.id]?.min_bet || 0}
-                        onChange={(e) => handleLimitChange(betType.id, 'min_bet', e.target.value)}
-                        className="bg-slate-900/50 border-slate-700 text-white"
-                        disabled={!limits[betType.id]?.enabled}
-                        min={1}
-                        data-testid={`min-bet-${betType.id}`}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-400 mb-1 block flex items-center gap-1">
-                        <DollarSign className="w-3 h-3" />
-                        Mise Maximum (HTG)
-                      </label>
-                      <Input
-                        type="number"
-                        value={limits[betType.id]?.max_bet || 0}
-                        onChange={(e) => handleLimitChange(betType.id, 'max_bet', e.target.value)}
-                        className="bg-slate-900/50 border-slate-700 text-white"
-                        disabled={!limits[betType.id]?.enabled}
-                        min={1}
-                        data-testid={`max-bet-${betType.id}`}
-                      />
-                    </div>
+                  {/* Max Amount Only - No minimum */}
+                  <div>
+                    <label className="text-xs text-slate-400 mb-1 block flex items-center gap-1">
+                      <DollarSign className="w-3 h-3" />
+                      Mise Maximum (HTG)
+                    </label>
+                    <Input
+                      type="number"
+                      value={limits[betType.id]?.max_bet || 0}
+                      onChange={(e) => handleLimitChange(betType.id, 'max_bet', e.target.value)}
+                      className="bg-slate-900/50 border-slate-700 text-white"
+                      disabled={!limits[betType.id]?.enabled}
+                      min={1}
+                      data-testid={`max-bet-${betType.id}`}
+                    />
                   </div>
 
                   {/* Max per Number */}
@@ -338,10 +321,9 @@ const CompanyBetLimitsPage = () => {
                   {limits[betType.id]?.enabled ? (
                     <div className="pt-2 border-t border-slate-700 bg-emerald-500/5 p-2 rounded-lg">
                       <p className="text-xs text-slate-400">
-                        Vendeurs peuvent miser entre{' '}
-                        <span className="text-emerald-400 font-bold">{formatCurrency(limits[betType.id]?.min_bet)}</span>
-                        {' '}et{' '}
+                        Vendeurs peuvent miser jusqu'à{' '}
                         <span className="text-emerald-400 font-bold">{formatCurrency(limits[betType.id]?.max_bet)} HTG</span>
+                        {' '}<span className="text-slate-500">(Pas de limite minimum)</span>
                       </p>
                     </div>
                   ) : (
@@ -378,7 +360,7 @@ const CompanyBetLimitsPage = () => {
             <ul className="space-y-2 text-sm text-slate-400">
               <li className="flex items-start gap-2">
                 <span className="text-emerald-400">1.</span>
-                Si montant {"<"} min_bet → Vente REFUSÉE
+                Pas de limite minimum - Vendeurs peuvent miser n'importe quel montant positif
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-emerald-400">2.</span>

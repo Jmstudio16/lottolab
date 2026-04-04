@@ -805,29 +805,9 @@ const CompanySettingsPage = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Minimum Bet Amount */}
-            <div className="space-y-2">
-              <Label htmlFor="min_bet_amount" className="text-gray-300 flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Montant Minimum de Mise (HTG)
-              </Label>
-              <Input
-                id="min_bet_amount"
-                name="min_bet_amount"
-                type="number"
-                min="1"
-                value={settings.min_bet_amount}
-                onChange={handleInputChange}
-                className="bg-gray-700 border-gray-600 text-white"
-                placeholder="1"
-                data-testid="min-bet-input"
-              />
-              <p className="text-xs text-gray-500">Montant minimum qu'un vendeur peut accepter (défaut: 1 HTG)</p>
-            </div>
-
-            {/* Maximum Bet Amount */}
-            <div className="space-y-2">
+          <div className="space-y-4">
+            {/* Maximum Bet Amount - No minimum limit */}
+            <div className="space-y-2 max-w-md">
               <Label htmlFor="max_bet_amount" className="text-gray-300 flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
                 Montant Maximum de Mise (HTG)
@@ -844,6 +824,7 @@ const CompanySettingsPage = () => {
                 data-testid="max-bet-input"
               />
               <p className="text-xs text-gray-500">Montant maximum par mise (laissez vide ou 999999 pour illimité)</p>
+              <p className="text-xs text-emerald-500 mt-1">✓ Pas de limite minimum - Vendeurs peuvent miser n'importe quel montant positif</p>
             </div>
           </div>
 

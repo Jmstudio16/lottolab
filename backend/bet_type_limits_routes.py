@@ -325,14 +325,13 @@ async def validate_bet_type_limits(
             })
             continue
         
-        # NO MINIMUM BET VALIDATION - Allow any amount >= 1
-        # Just ensure the amount is positive
-        if amount < 1:
+        # NO MINIMUM BET VALIDATION - Allow any positive amount
+        if amount <= 0:
             errors.append({
                 "play_index": idx,
                 "bet_type": bet_type,
                 "amount": amount,
-                "error": f"Montant invalide: {amount:.0f} HTG"
+                "error": f"Montant doit être supérieur à 0"
             })
         
         # Check max bet (only if configured)
