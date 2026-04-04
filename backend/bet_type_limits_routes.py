@@ -325,18 +325,17 @@ async def validate_bet_type_limits(
             })
             continue
         
-        # Check min bet
-        min_bet = float(type_limits.get("min_bet", 0))
-        if amount < min_bet:
+        # NO MINIMUM BET VALIDATION - Allow any amount >= 1
+        # Just ensure the amount is positive
+        if amount < 1:
             errors.append({
                 "play_index": idx,
                 "bet_type": bet_type,
                 "amount": amount,
-                "min_bet": min_bet,
-                "error": f"Mise minimum pour {bet_type}: {min_bet:.0f} HTG (vous avez mis {amount:.0f} HTG)"
+                "error": f"Montant invalide: {amount:.0f} HTG"
             })
         
-        # Check max bet
+        # Check max bet (only if configured)
         max_bet = float(type_limits.get("max_bet", 999999))
         if amount > max_bet:
             errors.append({

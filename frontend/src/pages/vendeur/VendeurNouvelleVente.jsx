@@ -344,19 +344,19 @@ const VendeurNouvelleVente = () => {
 
     const amount = parseFloat(currentPlay.amount) || 0;
     
-    // Get bet type specific limits from company config
-    const backendKey = BET_TYPE_MAP[currentPlay.betType] || currentPlay.betType;
-    const typeLimit = betTypeLimits[backendKey] || {};
-    const typeMinBet = typeLimit.min_bet || betType.minAmount || minBetAmount;
-    const typeMaxBet = typeLimit.max_bet || betType.maxAmount || maxBetAmount;
-    
-    // Validate against type-specific limits
-    if (amount < typeMinBet) {
-      toast.error(`Mise minimum pour ${betType.label}: ${typeMinBet} HTG`);
+    // Validate amount is positive (no minimum limit)
+    if (amount <= 0) {
+      toast.error('Montant invalide');
       return;
     }
     
-    if (amount > typeMaxBet) {
+    // Get bet type specific limits from company config (only max)
+    const backendKey = BET_TYPE_MAP[currentPlay.betType] || currentPlay.betType;
+    const typeLimit = betTypeLimits[backendKey] || {};
+    const typeMaxBet = typeLimit.max_bet || 999999; // No practical max limit
+    
+    // Only validate max (no minimum validation)
+    if (typeMaxBet && amount > typeMaxBet) {
       toast.error(`Mise maximum pour ${betType.label}: ${typeMaxBet} HTG`);
       return;
     }
@@ -788,13 +788,10 @@ const VendeurNouvelleVente = () => {
                       onChange={(e) => setCurrentPlay({...currentPlay, amount: e.target.value})}
                       placeholder={t('vendeur.amountPlaceholder')}
                       className="bg-slate-700 border-slate-600 text-lg font-semibold"
-                      min="0"
+                      min="1"
                       step="1"
                       data-testid="amount-input"
                     />
-                    <p className="text-xs text-slate-500 mt-1">
-                      Min: {minBetAmount} HTG {maxBetAmount < 999999 ? `| Max: ${maxBetAmount} HTG` : ''}
-                    </p>
                     
                     {totalAmount >= 50 && (
                       <div className="mt-2 p-2 bg-amber-500/20 border border-amber-500/30 rounded-lg">
