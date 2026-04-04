@@ -381,19 +381,19 @@ async def sell_lottery_ticket(
     # Get company config
     config = await db.company_configurations.find_one({"company_id": company_id}, {"_id": 0})
     min_bet = config.get("min_bet_amount", 1) if config else 1  # Minimum 1 HTG
-    max_bet = config.get("max_bet_amount", 10000) if config else 10000
+    max_bet = config.get("max_bet_amount", 1000) if config else 1000  # Maximum 1000 HTG
     
     # Get company info for timezone
     company_info = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
     
     # Get company-specific bet limits
     company_settings = await db.company_settings.find_one({"company_id": company_id}, {"_id": 0})
-    loto4_max_limit = 20.0  # Default max for Loto 4
-    loto5_max_limit = 250.0  # Default max for Loto 5
+    loto4_max_limit = 1000.0  # Default max for Loto 4
+    loto5_max_limit = 1000.0  # Default max for Loto 5
     
     if company_settings:
-        loto4_max_limit = company_settings.get("loto4_max_limit", 20.0)
-        loto5_max_limit = company_settings.get("loto5_max_limit", 250.0)
+        loto4_max_limit = company_settings.get("loto4_max_limit", 1000.0)
+        loto5_max_limit = company_settings.get("loto5_max_limit", 1000.0)
     
     # Validate plays
     total_amount = 0.0

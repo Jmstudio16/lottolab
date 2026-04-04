@@ -122,8 +122,8 @@ const VendeurNouvelleVente = () => {
     const limitConfig = betTypeLimits[bt.backendKey] || {};
     return {
       ...bt,
-      minAmount: limitConfig.min_bet || (bt.isLoto5 ? 20 : 1),
-      maxAmount: limitConfig.max_bet || (bt.isLoto4 ? 20 : bt.isLoto5 ? 250 : 999999)
+      minAmount: limitConfig.min_bet || 1,
+      maxAmount: limitConfig.max_bet || 1000
     };
   });
 
@@ -187,7 +187,7 @@ const VendeurNouvelleVente = () => {
       if (configRes?.data?.configuration) {
         const config = configRes.data.configuration;
         setMinBetAmount(config.min_bet_amount || 1);
-        setMaxBetAmount(config.max_bet_amount || 999999);
+        setMaxBetAmount(config.max_bet_amount || 1000);
       }
       
       if (profileRes.data) {

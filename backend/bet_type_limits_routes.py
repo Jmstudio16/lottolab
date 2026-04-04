@@ -41,51 +41,51 @@ def set_bet_type_limits_db(database):
 
 DEFAULT_LIMITS = {
     "BORLETTE": {
-        "min_bet": 5,
-        "max_bet": 5000,
+        "min_bet": 1,
+        "max_bet": 1000,
         "max_per_number": 10000,
         "enabled": True
     },
     "LOTO3": {
-        "min_bet": 5,
-        "max_bet": 3000,
+        "min_bet": 1,
+        "max_bet": 1000,
         "max_per_number": 6000,
         "enabled": True
     },
     "MARIAGE": {
-        "min_bet": 10,
-        "max_bet": 2000,
+        "min_bet": 1,
+        "max_bet": 1000,
         "max_per_number": 4000,
         "enabled": True
     },
     "L4O1": {
-        "min_bet": 5,
-        "max_bet": 20,
-        "max_per_number": 100,
+        "min_bet": 1,
+        "max_bet": 1000,
+        "max_per_number": 1000,
         "enabled": True
     },
     "L4O2": {
-        "min_bet": 5,
-        "max_bet": 20,
-        "max_per_number": 100,
+        "min_bet": 1,
+        "max_bet": 1000,
+        "max_per_number": 1000,
         "enabled": True
     },
     "L4O3": {
-        "min_bet": 5,
-        "max_bet": 20,
-        "max_per_number": 100,
+        "min_bet": 1,
+        "max_bet": 1000,
+        "max_per_number": 1000,
         "enabled": True
     },
     "L5O1": {
-        "min_bet": 20,
-        "max_bet": 250,
-        "max_per_number": 500,
+        "min_bet": 1,
+        "max_bet": 1000,
+        "max_per_number": 1000,
         "enabled": True
     },
     "L5O2": {
-        "min_bet": 20,
-        "max_bet": 250,
-        "max_per_number": 500,
+        "min_bet": 1,
+        "max_bet": 1000,
+        "max_per_number": 1000,
         "enabled": True
     }
 }
