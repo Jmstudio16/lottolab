@@ -380,8 +380,8 @@ async def sell_lottery_ticket(
     
     # Get company config
     config = await db.company_configurations.find_one({"company_id": company_id}, {"_id": 0})
-    # NO minimum limit - any amount is allowed
-    max_bet = config.get("max_bet_amount", 999999) if config else 999999  # High max default
+    # Limits: 1 HTG minimum, 1000 HTG maximum
+    max_bet = 1000  # Maximum 1000 HTG
     
     # Get company info for timezone
     company_info = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
@@ -403,11 +403,11 @@ async def sell_lottery_ticket(
         amount = float(play.get("amount", 0))
         bet_type = play.get("bet_type", "BORLETTE")
         
-        # NO minimum validation - only validate amount is positive
-        if amount <= 0:
-            raise HTTPException(status_code=400, detail="Montant doit être supérieur à 0")
+        # Validation: 1 HTG minimum, 1000 HTG maximum
+        if amount < 1:
+            raise HTTPException(status_code=400, detail="Mise minimum: 1 HTG")
         if amount > max_bet:
-            raise HTTPException(status_code=400, detail=f"Montant maximum: {max_bet}")
+            raise HTTPException(status_code=400, detail=f"Mise maximum: {max_bet} HTG")
         
         # Validate Loto4 max limit (default 20 HTG)
         if bet_type in ["LOTO4", "LOTO4_OPT1", "LOTO4_OPT2", "LOTO4_OPT3"]:
@@ -424,7 +424,6 @@ async def sell_lottery_ticket(
                     status_code=400, 
                     detail=f"Montant maximum pour Loto 5: {loto5_max_limit} HTG"
                 )
-            # NO minimum for Loto5 anymore
         
         validated_plays.append({
             "numbers": play.get("numbers"),
