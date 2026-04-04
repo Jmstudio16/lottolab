@@ -151,11 +151,8 @@ const LotoPamLotteryPlayPage = () => {
       if (!/^\d+$/.test(play.number)) {
         return 'Les numéros doivent contenir uniquement des chiffres';
       }
-      if (play.amount < 1) {
-        return 'Mise minimum: 1 HTG';
-      }
-      if (play.amount > 1000) {
-        return 'Mise maximum: 1000 HTG';
+      if (play.amount <= 0) {
+        return 'Montant invalide';
       }
     }
     return null;

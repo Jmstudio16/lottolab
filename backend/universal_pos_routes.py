@@ -380,20 +380,20 @@ async def sell_lottery_ticket(
     
     # Get company config
     config = await db.company_configurations.find_one({"company_id": company_id}, {"_id": 0})
-    # Limits: 1 HTG minimum, 1000 HTG maximum
-    max_bet = 1000  # Maximum 1000 HTG
+    # NO minimum - Maximum 100000 HTG
+    max_bet = 100000
     
     # Get company info for timezone
     company_info = await db.companies.find_one({"company_id": company_id}, {"_id": 0})
     
     # Get company-specific bet limits
     company_settings = await db.company_settings.find_one({"company_id": company_id}, {"_id": 0})
-    loto4_max_limit = 1000.0  # Default max for Loto 4
-    loto5_max_limit = 1000.0  # Default max for Loto 5
+    loto4_max_limit = 100000.0
+    loto5_max_limit = 100000.0
     
     if company_settings:
-        loto4_max_limit = company_settings.get("loto4_max_limit", 1000.0)
-        loto5_max_limit = company_settings.get("loto5_max_limit", 1000.0)
+        loto4_max_limit = company_settings.get("loto4_max_limit", 100000.0)
+        loto5_max_limit = company_settings.get("loto5_max_limit", 100000.0)
     
     # Validate plays
     total_amount = 0.0
@@ -403,13 +403,13 @@ async def sell_lottery_ticket(
         amount = float(play.get("amount", 0))
         bet_type = play.get("bet_type", "BORLETTE")
         
-        # Validation: 1 HTG minimum, 1000 HTG maximum
-        if amount < 1:
-            raise HTTPException(status_code=400, detail="Mise minimum: 1 HTG")
+        # Only check positive amount - NO minimum limit
+        if amount <= 0:
+            raise HTTPException(status_code=400, detail="Montant invalide")
         if amount > max_bet:
             raise HTTPException(status_code=400, detail=f"Mise maximum: {max_bet} HTG")
         
-        # Validate Loto4 max limit (default 20 HTG)
+        # Validate Loto4 max limit
         if bet_type in ["LOTO4", "LOTO4_OPT1", "LOTO4_OPT2", "LOTO4_OPT3"]:
             if amount > loto4_max_limit:
                 raise HTTPException(
@@ -417,7 +417,7 @@ async def sell_lottery_ticket(
                     detail=f"Montant maximum pour Loto 4: {loto4_max_limit} HTG"
                 )
         
-        # Validate Loto5 max limit (default 250 HTG)
+        # Validate Loto5 max limit
         if bet_type in ["LOTO5", "LOTO5_EXTRA1", "LOTO5_EXTRA2"]:
             if amount > loto5_max_limit:
                 raise HTTPException(

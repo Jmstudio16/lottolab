@@ -344,20 +344,16 @@ const VendeurNouvelleVente = () => {
 
     const amount = parseFloat(currentPlay.amount) || 0;
     
-    // Validate amount: 1 HTG minimum, 1000 HTG maximum
-    if (amount < 1) {
-      toast.error('Mise minimum: 1 HTG');
-      return;
-    }
-    if (amount > 1000) {
-      toast.error('Mise maximum: 1000 HTG');
+    // Only check positive amount - NO minimum limit
+    if (amount <= 0) {
+      toast.error('Montant invalide');
       return;
     }
     
     // Get bet type specific limits from company config
     const backendKey = BET_TYPE_MAP[currentPlay.betType] || currentPlay.betType;
     const typeLimit = betTypeLimits[backendKey] || {};
-    const typeMaxBet = typeLimit.max_bet || 1000;
+    const typeMaxBet = typeLimit.max_bet || 100000;
     
     // Validate max per bet type
     if (typeMaxBet && amount > typeMaxBet) {

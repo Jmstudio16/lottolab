@@ -17,64 +17,64 @@ const BET_TYPES = [
     name: 'Borlette', 
     description: '2 chiffres (00-99)',
     digits: 2,
-    defaultMax: 1000,
-    defaultMaxPerNumber: 10000
+    defaultMax: 100000,
+    defaultMaxPerNumber: 100000
   },
   { 
     id: 'LOTO3', 
     name: 'Loto 3', 
     description: '3 chiffres (000-999)',
     digits: 3,
-    defaultMax: 1000,
-    defaultMaxPerNumber: 6000
+    defaultMax: 100000,
+    defaultMaxPerNumber: 100000
   },
   { 
     id: 'MARIAGE', 
     name: 'Mariage', 
     description: '2x2 chiffres (XX*XX)',
     digits: 4,
-    defaultMax: 1000,
-    defaultMaxPerNumber: 4000
+    defaultMax: 100000,
+    defaultMaxPerNumber: 100000
   },
   { 
     id: 'L4O1', 
     name: 'Loto 4 - Option 1', 
     description: '4 chiffres - 1er lot',
     digits: 4,
-    defaultMax: 20,
-    defaultMaxPerNumber: 100
+    defaultMax: 100000,
+    defaultMaxPerNumber: 100000
   },
   { 
     id: 'L4O2', 
     name: 'Loto 4 - Option 2', 
     description: '4 chiffres - 2ème lot',
     digits: 4,
-    defaultMax: 20,
-    defaultMaxPerNumber: 100
+    defaultMax: 100000,
+    defaultMaxPerNumber: 100000
   },
   { 
     id: 'L4O3', 
     name: 'Loto 4 - Option 3', 
     description: '4 chiffres - 3ème lot',
     digits: 4,
-    defaultMax: 20,
-    defaultMaxPerNumber: 100
+    defaultMax: 100000,
+    defaultMaxPerNumber: 100000
   },
   { 
     id: 'L5O1', 
     name: 'Loto 5 - Extra 1', 
     description: '5 chiffres - Extra 1',
     digits: 5,
-    defaultMax: 250,
-    defaultMaxPerNumber: 500
+    defaultMax: 100000,
+    defaultMaxPerNumber: 100000
   },
   { 
     id: 'L5O2', 
     name: 'Loto 5 - Extra 2', 
     description: '5 chiffres - Extra 2',
     digits: 5,
-    defaultMax: 250,
-    defaultMaxPerNumber: 500
+    defaultMax: 100000,
+    defaultMaxPerNumber: 100000
   }
 ];
 

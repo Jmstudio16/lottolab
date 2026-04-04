@@ -153,13 +153,13 @@ export const CompanySettingsPage = () => {
               <Label className="text-slate-300">Maximum Ticket Amount</Label>
               <Input
                 type="number"
-                value={settings?.max_ticket_amount || 10000}
+                value={settings?.max_ticket_amount || 100000}
                 onChange={(e) => setSettings({...settings, max_ticket_amount: parseFloat(e.target.value)})}
                 min={1}
                 className="bg-slate-950 border-slate-700 text-white mt-1"
                 data-testid="settings-max-amount"
               />
-              <p className="text-slate-500 text-sm mt-1">Mise minimum: 1 HTG (fixe)</p>
+              <p className="text-slate-500 text-sm mt-1">Pas de limite minimum</p>
             </div>
 
             <div className="flex items-center justify-between py-3 border-t border-slate-800">
