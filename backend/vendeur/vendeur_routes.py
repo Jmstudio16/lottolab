@@ -502,23 +502,25 @@ async def sell_ticket(
             }
     
     if limits:
-        # Validation: 1 HTG minimum, max from config
+        # Validation: 1 HTG minimum (hardcoded), max from config
         max_per_num = limits.get("max_bet_per_number", 5000)
         max_total = limits.get("max_total_per_ticket", 50000)
+        max_bet = limits.get("max_bet", 1000)
         
         total_amount_check = sum(play.amount for play in sell_data.plays)
         
         for play in sell_data.plays:
-            # Minimum 1 HTG, Maximum 1000 HTG
+            # Minimum 1 HTG (hardcoded - cannot be changed)
             if play.amount < 1:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Mise minimum: 1 HTG. Numéro {play.numbers}: {play.amount} HTG"
                 )
-            if play.amount > 1000:
+            # Maximum from config or 1000 default
+            if play.amount > max_bet:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Mise maximum: 1000 HTG. Numéro {play.numbers}: {play.amount} HTG"
+                    detail=f"Mise maximum: {max_bet} HTG. Numéro {play.numbers}: {play.amount} HTG"
                 )
             if play.amount > max_per_num:
                 raise HTTPException(

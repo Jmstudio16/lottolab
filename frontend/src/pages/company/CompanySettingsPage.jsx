@@ -792,64 +792,6 @@ const CompanySettingsPage = () => {
           </div>
         </CardContent>
       </Card>
-
-      {/* Betting Limits Section */}
-      <Card className="bg-gray-800/50 border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-amber-400" />
-            Limites de Mise
-          </CardTitle>
-          <CardDescription>
-            Configurez les limites de mise pour vos vendeurs
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-4">
-            {/* Maximum Bet Amount - No minimum limit */}
-            <div className="space-y-2 max-w-md">
-              <Label htmlFor="max_bet_amount" className="text-gray-300 flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Montant Maximum de Mise (HTG)
-              </Label>
-              <Input
-                id="max_bet_amount"
-                name="max_bet_amount"
-                type="number"
-                min="1"
-                value={settings.max_bet_amount}
-                onChange={handleInputChange}
-                className="bg-gray-700 border-gray-600 text-white"
-                placeholder="999999"
-                data-testid="max-bet-input"
-              />
-              <p className="text-xs text-gray-500">Montant maximum par mise (laissez vide ou 999999 pour illimité)</p>
-              <p className="text-xs text-emerald-500 mt-1">✓ Pas de limite minimum - Vendeurs peuvent miser n'importe quel montant positif</p>
-            </div>
-          </div>
-
-          <div className="mt-6 flex justify-end">
-            <Button
-              onClick={handleSaveSettings}
-              disabled={saving}
-              className="bg-amber-600 hover:bg-amber-700"
-              data-testid="save-bet-limits-btn"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Enregistrement...
-                </>
-              ) : (
-                <>
-                  <Check className="h-4 w-4 mr-2" />
-                  Enregistrer les limites
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

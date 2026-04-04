@@ -17,8 +17,7 @@ const BET_TYPES = [
     name: 'Borlette', 
     description: '2 chiffres (00-99)',
     digits: 2,
-    defaultMin: 5,
-    defaultMax: 5000,
+    defaultMax: 1000,
     defaultMaxPerNumber: 10000
   },
   { 
@@ -26,8 +25,7 @@ const BET_TYPES = [
     name: 'Loto 3', 
     description: '3 chiffres (000-999)',
     digits: 3,
-    defaultMin: 5,
-    defaultMax: 3000,
+    defaultMax: 1000,
     defaultMaxPerNumber: 6000
   },
   { 
@@ -35,8 +33,7 @@ const BET_TYPES = [
     name: 'Mariage', 
     description: '2x2 chiffres (XX*XX)',
     digits: 4,
-    defaultMin: 10,
-    defaultMax: 2000,
+    defaultMax: 1000,
     defaultMaxPerNumber: 4000
   },
   { 
@@ -44,7 +41,6 @@ const BET_TYPES = [
     name: 'Loto 4 - Option 1', 
     description: '4 chiffres - 1er lot',
     digits: 4,
-    defaultMin: 5,
     defaultMax: 20,
     defaultMaxPerNumber: 100
   },
@@ -53,7 +49,6 @@ const BET_TYPES = [
     name: 'Loto 4 - Option 2', 
     description: '4 chiffres - 2ème lot',
     digits: 4,
-    defaultMin: 5,
     defaultMax: 20,
     defaultMaxPerNumber: 100
   },
@@ -62,7 +57,6 @@ const BET_TYPES = [
     name: 'Loto 4 - Option 3', 
     description: '4 chiffres - 3ème lot',
     digits: 4,
-    defaultMin: 5,
     defaultMax: 20,
     defaultMaxPerNumber: 100
   },
@@ -71,7 +65,6 @@ const BET_TYPES = [
     name: 'Loto 5 - Extra 1', 
     description: '5 chiffres - Extra 1',
     digits: 5,
-    defaultMin: 20,
     defaultMax: 250,
     defaultMaxPerNumber: 500
   },
@@ -80,7 +73,6 @@ const BET_TYPES = [
     name: 'Loto 5 - Extra 2', 
     description: '5 chiffres - Extra 2',
     digits: 5,
-    defaultMin: 20,
     defaultMax: 250,
     defaultMaxPerNumber: 500
   }
@@ -111,7 +103,6 @@ const CompanyBetLimitsPage = () => {
       BET_TYPES.forEach(bt => {
         initialLimits[bt.id] = existingLimits[bt.id] || {
           enabled: true,
-          min_bet: bt.defaultMin,
           max_bet: bt.defaultMax,
           max_per_number: bt.defaultMaxPerNumber
         };
@@ -125,7 +116,6 @@ const CompanyBetLimitsPage = () => {
       BET_TYPES.forEach(bt => {
         initialLimits[bt.id] = {
           enabled: true,
-          min_bet: bt.defaultMin,
           max_bet: bt.defaultMax,
           max_per_number: bt.defaultMaxPerNumber
         };
@@ -166,7 +156,6 @@ const CompanyBetLimitsPage = () => {
     BET_TYPES.forEach(bt => {
       defaultLimits[bt.id] = {
         enabled: true,
-        min_bet: bt.defaultMin,
         max_bet: bt.defaultMax,
         max_per_number: bt.defaultMaxPerNumber
       };
@@ -183,7 +172,7 @@ const CompanyBetLimitsPage = () => {
   return (
     <AdminLayout 
       title="Limites Types de Mise" 
-      subtitle="Configurez les limites min/max pour chaque type de mise"
+      subtitle="Configurez les limites maximum pour chaque type de mise"
     >
       <div className="space-y-6" data-testid="bet-limits-page">
         {/* Header Actions */}
