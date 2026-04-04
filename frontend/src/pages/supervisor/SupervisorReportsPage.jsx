@@ -5,7 +5,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   BarChart3, RefreshCw, Calendar, Filter, Download,
-  Users, Ticket, DollarSign, TrendingUp, Percent
+  Users, Ticket, DollarSign, TrendingUp, Percent, FileDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -157,6 +157,29 @@ export const SupervisorReportsPage = () => {
     fetchReport();
   };
 
+  const exportToPDF = () => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.append('date_from', dateFrom);
+    if (dateTo) params.append('date_to', dateTo);
+    
+    fetch(`${API_URL}/api/export/reports/financial/pdf?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `rapport_supervisor_${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        toast.success('PDF téléchargé avec succès!');
+      })
+      .catch(() => toast.error('Erreur lors du téléchargement du PDF'));
+  };
+
   return (
     <div className="space-y-6" data-testid="supervisor-reports-page">
       {/* Header */}
@@ -168,10 +191,16 @@ export const SupervisorReportsPage = () => {
           </h1>
           <p className="text-slate-400">Rapport détaillé avec commissions</p>
         </div>
-        <Button onClick={fetchReport} className="bg-emerald-600 hover:bg-emerald-700">
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Actualiser
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={exportToPDF} variant="outline" className="border-red-700 text-red-400 hover:bg-red-500/10" data-testid="export-pdf-btn">
+            <FileDown className="w-4 h-4 mr-2" />
+            PDF
+          </Button>
+          <Button onClick={fetchReport} className="bg-emerald-600 hover:bg-emerald-700">
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}

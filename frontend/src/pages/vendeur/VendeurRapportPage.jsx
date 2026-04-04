@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
   BarChart3, TrendingUp, Ticket, DollarSign, Calendar,
-  RefreshCw, Download, Filter, Trophy, Clock, CheckCircle
+  RefreshCw, Download, Filter, Trophy, Clock, CheckCircle, FileDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -60,6 +60,35 @@ const VendeurRapportPage = () => {
     fetchReport();
   };
 
+  const exportToPDF = () => {
+    const params = new URLSearchParams();
+    if (useCustomDate) {
+      params.append('date_from', startDate);
+      params.append('date_to', endDate);
+    } else if (dateFilter === 'today') {
+      const today = new Date().toISOString().split('T')[0];
+      params.append('date_from', today);
+      params.append('date_to', today);
+    }
+    
+    fetch(`${API_URL}/api/export/reports/sales/pdf?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `rapport_vendeur_${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        toast.success('PDF téléchargé avec succès!');
+      })
+      .catch(() => toast.error('Erreur lors du téléchargement du PDF'));
+  };
+
   const dateFilters = [
     { value: 'today', label: "Aujourd'hui" },
     { value: 'yesterday', label: 'Hier' },
@@ -84,6 +113,16 @@ const VendeurRapportPage = () => {
           <p className="text-slate-400 text-sm">Statistiques et performance de ventes</p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            onClick={exportToPDF}
+            variant="outline"
+            size="sm"
+            className="border-red-700 text-red-400 hover:bg-red-500/10"
+            data-testid="export-pdf-btn"
+          >
+            <FileDown className="w-4 h-4 mr-1" />
+            PDF
+          </Button>
           <Button 
             onClick={fetchReport} 
             variant="outline" 

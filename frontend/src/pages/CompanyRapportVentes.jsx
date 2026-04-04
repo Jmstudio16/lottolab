@@ -5,7 +5,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   FileText, Calendar, Download, RefreshCw, User,
-  Ticket, DollarSign, Percent, TrendingUp, Filter
+  Ticket, DollarSign, Percent, TrendingUp, Filter, FileDown
 } from 'lucide-react';
 import CompanyLayout from '@/components/CompanyLayout';
 import { Button } from '@/components/ui/button';
@@ -81,6 +81,30 @@ const CompanyRapportVentes = () => {
     toast.success('Téléchargement du fichier Excel en cours...');
   };
 
+  const exportToPDF = () => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.append('date_from', dateFrom);
+    if (dateTo) params.append('date_to', dateTo);
+    window.open(`${API_URL}/api/export/reports/sales/pdf?${params.toString()}`, '_blank', `Authorization=Bearer ${token}`);
+    // Use fetch with headers for proper auth
+    fetch(`${API_URL}/api/export/reports/sales/pdf?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `rapport_ventes_${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        toast.success('PDF téléchargé avec succès!');
+      })
+      .catch(() => toast.error('Erreur lors du téléchargement du PDF'));
+  };
+
   // Calculate B.Final (Balance Final) for an agent
   const calculateBFinal = (agent) => {
     const vente = agent.total_ventes || 0;
@@ -103,6 +127,15 @@ const CompanyRapportVentes = () => {
             <p className="text-slate-400 text-sm md:text-base">Rapport détaillé avec pourcentages agents et superviseurs</p>
           </div>
           <div className="flex gap-2">
+            <Button 
+              onClick={exportToPDF} 
+              variant="outline"
+              className="border-red-700 text-red-400 hover:bg-red-500/10"
+              data-testid="export-pdf-btn"
+            >
+              <FileDown className="w-4 h-4 mr-2" />
+              PDF
+            </Button>
             <Button 
               onClick={exportToExcel} 
               variant="outline"

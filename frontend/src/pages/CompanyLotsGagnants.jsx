@@ -4,7 +4,7 @@ import { useAuth } from '@/api/auth';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { 
-  Trophy, RefreshCw, Search, DollarSign, CheckCircle, Clock, Eye, Printer, Building2, Download, Check, X, Calendar, Filter
+  Trophy, RefreshCw, Search, DollarSign, CheckCircle, Clock, Eye, Printer, Building2, Download, Check, X, Calendar, Filter, FileDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -85,6 +85,38 @@ export const CompanyLotsGagnants = () => {
     toast.success('Téléchargement du fichier Excel en cours...');
   };
 
+  const exportToPDF = () => {
+    const params = new URLSearchParams();
+    if (dateFilter === 'today') {
+      const today = new Date().toISOString().split('T')[0];
+      params.append('date_from', today);
+      params.append('date_to', today);
+    } else if (dateFilter === 'custom') {
+      params.append('date_from', startDate);
+      params.append('date_to', endDate);
+    }
+    if (filterPaymentStatus !== 'all') {
+      params.append('payment_status', filterPaymentStatus);
+    }
+    
+    fetch(`${API_URL}/api/export/reports/winners/pdf?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `fiches_gagnantes_${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        toast.success('PDF téléchargé avec succès!');
+      })
+      .catch(() => toast.error('Erreur lors du téléchargement du PDF'));
+  };
+
   const updatePaymentStatus = async (ticketId, newStatus) => {
     setUpdatingPayment(ticketId);
     try {
@@ -123,6 +155,10 @@ export const CompanyLotsGagnants = () => {
           <p className="text-sm text-slate-400">Tous les tickets gagnants de votre entreprise</p>
         </div>
         <div className="flex gap-2">
+          <Button onClick={exportToPDF} variant="outline" className="border-red-700 text-red-400 hover:bg-red-500/10" data-testid="export-pdf-btn">
+            <FileDown className="w-4 h-4 mr-2" />
+            PDF
+          </Button>
           <Button onClick={exportToExcel} variant="outline" className="border-emerald-700 text-emerald-400 hover:bg-emerald-500/10" data-testid="export-excel-btn">
             <Download className="w-4 h-4 mr-2" />
             Excel

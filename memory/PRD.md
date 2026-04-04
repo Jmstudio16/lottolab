@@ -1,14 +1,43 @@
 # LOTTOLAB - Professional Lottery SaaS Platform
 
-## Version: 24.0.0 (Synchronisation Globale + Settlement Engine Complet)
-## Last Updated: 2026-04-03 03:25 UTC
-## Deployed: 2026-04-03 23:25 Haiti Time
+## Version: 25.0.0 (Export PDF Global + Sans Limite Minimum)
+## Last Updated: 2026-04-04 06:10 UTC
+## Deployed: 2026-04-04 01:10 Haiti Time
 
 ---
 
 ## 🚀 STATUT: PRODUCTION READY ✅
 
-### Nouvelles Modifications (v24.0.0):
+### Nouvelles Modifications (v25.0.0):
+
+#### 1. Export PDF Global ✅ (NOUVEAU)
+- **Endpoints créés**:
+  - `GET /api/export/reports/sales/pdf` - Rapport des ventes en PDF
+  - `GET /api/export/reports/winners/pdf` - Fiches gagnantes en PDF
+  - `GET /api/export/reports/financial/pdf` - Rapport financier en PDF
+  - `GET /api/export/reports/daily/pdf` - Rapport journalier (style SGL) en PDF
+- **Bibliothèque**: `reportlab` (Pure Python, pas de dépendances système)
+- **Pages mises à jour avec bouton PDF**:
+  - `/company/daily-reports` - Rapport Journalier
+  - `/company/rapport-ventes` - Rapport de Ventes
+  - `/company/lots-gagnants` - Fiches Gagnants
+  - `/supervisor/reports` - Rapport Superviseur
+  - `/vendeur/rapport` - Rapport Vendeur
+
+#### 2. Suppression Limite Minimum de Mise ✅ (CONFIRMÉ)
+- Le message "minimum 1 HTG" a été retiré
+- Aucune limite minimum - vendeurs peuvent miser de 1 à X HTG
+- Validation backend: `min_bet` ignoré dans `bet_type_limits_routes.py`
+- Frontend: UI de validation de minimum supprimée de `VendeurNouvelleVente.jsx`
+
+#### 3. Impression Thermique ✅ (VÉRIFIÉ)
+- Endpoint `/api/ticket/print/{ticket_id}?format=thermal` fonctionne
+- HTML formaté pour imprimantes 80mm
+- Logo, code QR, et informations complètes
+
+---
+
+### Modifications Précédentes (v24.0.0):
 
 #### 1. Page Historique Règlements Superviseur ✅ (NOUVEAU)
 - **Route**: `/supervisor/settlement-history`

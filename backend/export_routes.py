@@ -962,3 +962,405 @@ async def update_ticket_text_config(
         "message": "Configuration du ticket mise à jour",
         "modified": result.modified_count > 0
     }
+
+
+
+# ============================================================================
+# PDF REPORT EXPORTS - Sales, Winners, Financial
+# ============================================================================
+
+@export_router.get("/reports/sales/pdf")
+async def export_sales_report_pdf(
+    current_user: dict = Depends(get_company_user),
+    date_from: str = None,
+    date_to: str = None
+):
+    """
+    Export Sales Report to PDF format.
+    Columns: #, Agent, Date, Loterie, Numéros, Type, Montant, Statut
+    """
+    from pdf_service import create_sales_report_pdf
+    
+    company_id = current_user.get("company_id")
+    
+    # Build query
+    query = {}
+    if company_id and current_user.get("role") != "SUPER_ADMIN":
+        query["company_id"] = company_id
+    
+    if date_from:
+        query["created_at"] = {"$gte": date_from}
+    if date_to:
+        if "created_at" in query:
+            query["created_at"]["$lte"] = date_to + "T23:59:59"
+        else:
+            query["created_at"] = {"$lte": date_to + "T23:59:59"}
+    
+    # Fetch tickets
+    tickets = await db.lottery_transactions.find(query, {"_id": 0}).sort("created_at", -1).limit(1000).to_list(1000)
+    
+    # Get company name
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0, "name": 1})
+    company_name = company.get("name", "LOTTOLAB") if company else "LOTTOLAB"
+    
+    # Format data for PDF
+    sales_data = []
+    for ticket in tickets:
+        plays = ticket.get("plays", [])
+        numbers = ", ".join([p.get("numbers", "") for p in plays[:3]])
+        if len(plays) > 3:
+            numbers += "..."
+        
+        bet_types = ", ".join(set(p.get("bet_type", "") for p in plays))
+        
+        sales_data.append({
+            "agent_name": ticket.get("agent_name", "Agent"),
+            "created_at": ticket.get("created_at", ""),
+            "lottery_name": ticket.get("lottery_name", ""),
+            "numbers": numbers,
+            "bet_type": bet_types,
+            "amount": ticket.get("total_amount", 0),
+            "status": ticket.get("status", "VALIDATED")
+        })
+    
+    # Calculate totals
+    totals = {
+        "total_amount": sum(t.get("total_amount", 0) for t in tickets)
+    }
+    
+    # Generate period string
+    period = "Tout"
+    if date_from and date_to:
+        period = f"{date_from} au {date_to}"
+    elif date_from:
+        period = f"Depuis {date_from}"
+    elif date_to:
+        period = f"Jusqu'au {date_to}"
+    
+    # Generate PDF
+    pdf_buffer = create_sales_report_pdf(
+        sales_data=sales_data,
+        company_name=company_name,
+        period=period,
+        totals=totals
+    )
+    
+    filename = f"rapport_ventes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@export_router.get("/reports/winners/pdf")
+async def export_winners_report_pdf(
+    current_user: dict = Depends(get_company_user),
+    date_from: str = None,
+    date_to: str = None,
+    payment_status: str = None
+):
+    """
+    Export Winners Report to PDF format.
+    Columns: #, Ticket, Agent, Loterie, Numéros, Mise, Gain, Statut
+    """
+    from pdf_service import create_winners_report_pdf
+    
+    company_id = current_user.get("company_id")
+    
+    # Build query
+    query = {"status": "WINNER"}
+    if company_id and current_user.get("role") != "SUPER_ADMIN":
+        query["company_id"] = company_id
+    
+    if date_from:
+        query["created_at"] = {"$gte": date_from}
+    if date_to:
+        if "created_at" in query:
+            query["created_at"]["$lte"] = date_to + "T23:59:59"
+        else:
+            query["created_at"] = {"$lte": date_to + "T23:59:59"}
+    
+    if payment_status:
+        query["payment_status"] = payment_status
+    
+    # Fetch winning tickets
+    tickets = await db.lottery_transactions.find(query, {"_id": 0}).sort("created_at", -1).limit(1000).to_list(1000)
+    
+    # Get company name
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0, "name": 1})
+    company_name = company.get("name", "LOTTOLAB") if company else "LOTTOLAB"
+    
+    # Format data for PDF
+    winners_data = []
+    for ticket in tickets:
+        plays = ticket.get("plays", [])
+        winning_numbers = ", ".join([p.get("numbers", "") for p in plays if p.get("is_winner")])
+        if not winning_numbers:
+            winning_numbers = ", ".join([p.get("numbers", "") for p in plays[:2]])
+        
+        winners_data.append({
+            "ticket_id": ticket.get("ticket_code", ticket.get("ticket_id", "")),
+            "agent_name": ticket.get("agent_name", "Agent"),
+            "lottery_name": ticket.get("lottery_name", ""),
+            "winning_numbers": winning_numbers,
+            "bet_amount": ticket.get("total_amount", 0),
+            "payout_amount": ticket.get("winnings", 0) or ticket.get("win_amount", 0),
+            "is_paid": ticket.get("payment_status") == "PAID"
+        })
+    
+    # Calculate totals
+    totals = {
+        "total_payout": sum(t.get("winnings", 0) or t.get("win_amount", 0) for t in tickets)
+    }
+    
+    # Generate period string
+    period = "Tout"
+    if date_from and date_to:
+        period = f"{date_from} au {date_to}"
+    elif date_from:
+        period = f"Depuis {date_from}"
+    elif date_to:
+        period = f"Jusqu'au {date_to}"
+    
+    # Generate PDF
+    pdf_buffer = create_winners_report_pdf(
+        winners_data=winners_data,
+        company_name=company_name,
+        period=period,
+        totals=totals
+    )
+    
+    filename = f"fiches_gagnantes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@export_router.get("/reports/financial/pdf")
+async def export_financial_report_pdf(
+    current_user: dict = Depends(get_company_user),
+    date_from: str = None,
+    date_to: str = None
+):
+    """
+    Export Financial Report to PDF format.
+    Columns: #, Agent, Tickets, Ventes, Payé, %Agent, Profit/Perte, Balance
+    """
+    from pdf_service import create_financial_report_pdf
+    
+    company_id = current_user.get("company_id")
+    
+    # Build date query
+    date_query = {}
+    if date_from:
+        date_query["created_at"] = {"$gte": date_from}
+    if date_to:
+        if "created_at" in date_query:
+            date_query["created_at"]["$lte"] = date_to + "T23:59:59"
+        else:
+            date_query["created_at"] = {"$lte": date_to + "T23:59:59"}
+    
+    # Build main query
+    query = {}
+    if company_id and current_user.get("role") != "SUPER_ADMIN":
+        query["company_id"] = company_id
+    query.update(date_query)
+    
+    # Aggregation to get agent-level financials
+    pipeline = [
+        {"$match": query},
+        {"$group": {
+            "_id": "$agent_id",
+            "agent_name": {"$first": "$agent_name"},
+            "ticket_count": {"$sum": 1},
+            "total_sales": {"$sum": "$total_amount"},
+            "total_winnings": {"$sum": {"$ifNull": ["$winnings", 0]}},
+            "total_paid": {"$sum": {"$cond": [{"$eq": ["$payment_status", "PAID"]}, {"$ifNull": ["$winnings", 0]}, 0]}}
+        }},
+        {"$sort": {"total_sales": -1}}
+    ]
+    
+    agents_data = await db.lottery_transactions.aggregate(pipeline).to_list(500)
+    
+    # Get company name
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0, "name": 1})
+    company_name = company.get("name", "LOTTOLAB") if company else "LOTTOLAB"
+    
+    # Format data for PDF - get commission rates for each agent
+    report_data = []
+    for agent in agents_data:
+        agent_id = agent.get("_id")
+        if not agent_id:
+            continue
+        
+        # Get agent's commission rate
+        agent_doc = await db.users.find_one(
+            {"user_id": agent_id},
+            {"_id": 0, "commission_percent": 1, "commission_rate": 1}
+        )
+        commission_percent = 0
+        if agent_doc:
+            commission_percent = agent_doc.get("commission_percent") or agent_doc.get("commission_rate") or 0
+        
+        total_sales = agent.get("total_sales", 0)
+        total_paid = agent.get("total_paid", 0) or agent.get("total_winnings", 0)
+        commission_amount = total_sales * (commission_percent / 100)
+        profit = total_sales - total_paid - commission_amount
+        balance = total_sales - commission_amount
+        
+        agent_name = agent.get("agent_name")
+        if not agent_name:
+            agent_name = f"Agent {str(agent_id)[:8]}"
+        
+        report_data.append({
+            "agent_name": agent_name,
+            "ticket_count": agent.get("ticket_count", 0),
+            "total_sales": total_sales,
+            "total_paid": total_paid,
+            "commission_percent": commission_percent,
+            "profit": profit,
+            "balance": balance
+        })
+    
+    # Calculate totals
+    totals = {
+        "total_sales": sum(a.get("total_sales", 0) for a in report_data),
+        "total_paid": sum(a.get("total_paid", 0) for a in report_data),
+        "net_profit": sum(a.get("profit", 0) for a in report_data)
+    }
+    
+    # Generate period string
+    period = "Tout"
+    if date_from and date_to:
+        period = f"{date_from} au {date_to}"
+    elif date_from:
+        period = f"Depuis {date_from}"
+    elif date_to:
+        period = f"Jusqu'au {date_to}"
+    
+    # Generate PDF
+    pdf_buffer = create_financial_report_pdf(
+        report_data=report_data,
+        company_name=company_name,
+        period=period,
+        totals=totals
+    )
+    
+    filename = f"rapport_financier_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@export_router.get("/reports/daily/pdf")
+async def export_daily_report_pdf(
+    current_user: dict = Depends(get_company_user),
+    start_date: str = None,
+    end_date: str = None
+):
+    """
+    Export Daily Report (SGL-style) to PDF format.
+    Columns: No, Agent, Tfiche, Vente, A payé, %Agent, P/P, B.Final
+    """
+    from pdf_service import create_daily_report_pdf
+    
+    company_id = current_user.get("company_id")
+    
+    # Default to today if no dates provided
+    if not start_date:
+        start_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if not end_date:
+        end_date = start_date
+    
+    # Build date query
+    query = {
+        "created_at": {
+            "$gte": start_date,
+            "$lte": end_date + "T23:59:59"
+        }
+    }
+    if company_id and current_user.get("role") != "SUPER_ADMIN":
+        query["company_id"] = company_id
+    
+    # Aggregation to get agent-level data
+    pipeline = [
+        {"$match": query},
+        {"$group": {
+            "_id": "$agent_id",
+            "agent_name": {"$first": "$agent_name"},
+            "ticket_count": {"$sum": 1},
+            "sales": {"$sum": "$total_amount"},
+            "winnings": {"$sum": {"$ifNull": ["$winnings", 0]}},
+            "paid": {"$sum": {"$cond": [{"$eq": ["$payment_status", "PAID"]}, {"$ifNull": ["$winnings", 0]}, 0]}}
+        }},
+        {"$sort": {"sales": -1}}
+    ]
+    
+    agents_data = await db.lottery_transactions.aggregate(pipeline).to_list(500)
+    
+    # Get company name
+    company = await db.companies.find_one({"company_id": company_id}, {"_id": 0, "name": 1})
+    company_name = company.get("name", "LOTTOLAB") if company else "LOTTOLAB"
+    
+    # Format data for PDF
+    report_data = []
+    for agent in agents_data:
+        agent_id = agent.get("_id")
+        if not agent_id:
+            continue
+        
+        # Get agent's commission rate
+        agent_doc = await db.users.find_one(
+            {"user_id": agent_id},
+            {"_id": 0, "commission_percent": 1, "commission_rate": 1}
+        )
+        commission_percent = 0
+        if agent_doc:
+            commission_percent = agent_doc.get("commission_percent") or agent_doc.get("commission_rate") or 0
+        
+        sales = agent.get("sales", 0)
+        paid = agent.get("paid", 0) or agent.get("winnings", 0)
+        commission = sales * (commission_percent / 100)
+        profit_loss = sales - paid
+        final_balance = sales - commission
+        
+        agent_name = agent.get("agent_name")
+        if not agent_name:
+            agent_name = f"Agent {str(agent_id)[:8]}"
+        
+        report_data.append({
+            "agent_name": agent_name,
+            "ticket_count": agent.get("ticket_count", 0),
+            "sales": sales,
+            "paid": paid,
+            "commission_percent": commission_percent,
+            "profit_loss": profit_loss,
+            "final_balance": final_balance
+        })
+    
+    # Generate PDF
+    date_display = start_date
+    if start_date != end_date:
+        date_display = f"{start_date} - {end_date}"
+    
+    pdf_buffer = create_daily_report_pdf(
+        report_data=report_data,
+        company_name=company_name,
+        date=date_display
+    )
+    
+    filename = f"rapport_journalier_{start_date}_{end_date}.pdf"
+    
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )

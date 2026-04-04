@@ -5,7 +5,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   BarChart3, Calendar, RefreshCw, Download, FileText, Printer,
-  Users, DollarSign, TrendingUp, TrendingDown, Filter, Search
+  Users, DollarSign, TrendingUp, TrendingDown, Filter, Search, FileDown
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,6 +63,29 @@ export const CompanyDailyReportsPage = () => {
     toast.success('Export CSV généré');
   };
 
+  const exportToPDF = () => {
+    const params = new URLSearchParams();
+    params.append('start_date', startDate);
+    params.append('end_date', endDate);
+    
+    fetch(`${API_URL}/api/export/reports/daily/pdf?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `rapport_journalier_${startDate}_${endDate}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        toast.success('PDF téléchargé avec succès!');
+      })
+      .catch(() => toast.error('Erreur lors du téléchargement du PDF'));
+  };
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('fr-FR', {
       minimumFractionDigits: 2,
@@ -107,6 +130,10 @@ export const CompanyDailyReportsPage = () => {
               
               {/* Export Buttons */}
               <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="border-red-500/50 text-red-400 hover:bg-red-500/20" onClick={exportToPDF} data-testid="export-pdf-btn">
+                  <FileDown className="w-4 h-4 mr-1" />
+                  PDF
+                </Button>
                 <Button variant="outline" size="sm" className="border-green-500/50 text-green-400 hover:bg-green-500/20" onClick={exportToCSV}>
                   <FileText className="w-4 h-4 mr-1" />
                   EXCEL
