@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LOTTOLAB - Hors Ligne</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+    
+    .container {
+      text-align: center;
+      padding: 2rem;
+      max-width: 400px;
+    }
+    
+    .icon {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 2rem;
+      background: rgba(245, 158, 11, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .icon svg {
+      width: 60px;
+      height: 60px;
+      color: #f59e0b;
+    }
+    
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: #f59e0b;
+    }
+    
+    .subtitle {
+      font-size: 1.125rem;
+      color: #94a3b8;
+      margin-bottom: 2rem;
+    }
+    
+    .info {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid rgba(100, 116, 139, 0.3);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    
+    .info p {
+      color: #cbd5e1;
+      font-size: 0.875rem;
+      line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+    
+    .info p:last-child {
+      margin-bottom: 0;
+    }
+    
+    .features {
+      text-align: left;
+      margin-top: 1rem;
+    }
+    
+    .features li {
+      color: #10b981;
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .features li::before {
+      content: '✓';
+      font-weight: bold;
+    }
+    
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.875rem 1.5rem;
+      background: #f59e0b;
+      color: #0f172a;
+      font-weight: 600;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn:hover {
+      background: #d97706;
+      transform: translateY(-1px);
+    }
+    
+    .btn:active {
+      transform: translateY(0);
+    }
+    
+    .status {
+      margin-top: 2rem;
+      padding: 1rem;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 8px;
+      color: #f87171;
+      font-size: 0.875rem;
+    }
+    
+    .status.online {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .loading {
+      animation: pulse 2s infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414" />
+      </svg>
+    </div>
+    
+    <h1>Mode Hors Ligne</h1>
+    <p class="subtitle">Connexion Internet indisponible</p>
+    
+    <div class="info">
+      <p>
+        Votre appareil n'est pas connecté à Internet. 
+        Mais ne vous inquiétez pas, LOTTOLAB continue de fonctionner !
+      </p>
+      
+      <ul class="features">
+        <li>Vos tickets en attente seront synchronisés</li>
+        <li>L'impression fonctionne toujours</li>
+        <li>Les données sont sauvegardées localement</li>
+      </ul>
+    </div>
+    
+    <button class="btn" onclick="checkConnection()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      </svg>
+      Vérifier la connexion
+    </button>
+    
+    <div id="status" class="status">
+      <span class="loading">Vérification de la connexion...</span>
+    </div>
+  </div>
+  
+  <script>
+    function checkConnection() {
+      const statusEl = document.getElementById('status');
+      statusEl.innerHTML = '<span class="loading">Vérification...</span>';
+      statusEl.className = 'status';
+      
+      fetch('/api/health', { cache: 'no-store' })
+        .then(response => {
+          if (response.ok) {
+            statusEl.innerHTML = '✓ Connexion rétablie! Redirection...';
+            statusEl.className = 'status online';
+            setTimeout(() => {
+              window.location.href = '/';
+            }, 1500);
+          } else {
+            throw new Error('Server error');
+          }
+        })
+        .catch(() => {
+          statusEl.innerHTML = '✗ Toujours hors ligne. Réessayez plus tard.';
+          statusEl.className = 'status';
+        });
+    }
+    
+    // Auto-check on load
+    window.addEventListener('load', () => {
+      setTimeout(checkConnection, 1000);
+    });
+    
+    // Auto-check when online
+    window.addEventListener('online', () => {
+      checkConnection();
+    });
+  </script>
+</body>
+</html>

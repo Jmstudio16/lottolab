@@ -1,47 +1,97 @@
 /* eslint-disable no-restricted-globals */
 
 /**
- * LOTTOLAB Service Worker
- * =======================
- * PWA Service Worker for offline capabilities and caching.
+ * LOTTOLAB Service Worker - Version Professionnelle APK POS
+ * =========================================================
+ * PWA Service Worker avec cache API complet pour mode offline
+ * 
+ * Stratégies:
+ * - Static assets: Cache First
+ * - API critiques: Stale-While-Revalidate
+ * - API dynamiques: Network First with Cache Fallback
  */
 
-const CACHE_NAME = 'lottolab-v1';
-const STATIC_CACHE = 'lottolab-static-v1';
-const DYNAMIC_CACHE = 'lottolab-dynamic-v1';
+const CACHE_VERSION = 'v3';
+const STATIC_CACHE = `lottolab-static-${CACHE_VERSION}`;
+const DYNAMIC_CACHE = `lottolab-dynamic-${CACHE_VERSION}`;
+const API_CACHE = `lottolab-api-${CACHE_VERSION}`;
 
-// Static assets to cache immediately
+// Static assets to cache on install
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/logo-lottolab.png',
+  '/offline.html'
 ];
 
-// Install event - cache static assets
+// API endpoints to cache (critical for offline mode)
+const CACHEABLE_API_PATTERNS = [
+  '/api/sync/vendeur/open-lotteries',
+  '/api/company/vendor/bet-type-limits',
+  '/api/device/config',
+  '/api/vendeur/profile',
+  '/api/results',
+  '/api/global-schedules',
+  '/api/company/schedules'
+];
+
+// API endpoints that should never be cached
+const NO_CACHE_API_PATTERNS = [
+  '/api/auth/',
+  '/api/vendeur/sell',
+  '/api/vendeur/pay-winner',
+  '/api/upload',
+  '/api/export'
+];
+
+// Cache TTL settings (in milliseconds)
+const CACHE_TTL = {
+  lotteries: 5 * 60 * 1000,      // 5 minutes
+  config: 60 * 60 * 1000,        // 1 hour
+  results: 2 * 60 * 1000,        // 2 minutes
+  profile: 30 * 60 * 1000,       // 30 minutes
+  default: 10 * 60 * 1000        // 10 minutes
+};
+
+/**
+ * Install Event - Cache static assets
+ */
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing service worker...');
+  console.log('[SW] Installing LOTTOLAB Service Worker v3...');
+  
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
         console.log('[SW] Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
+        return cache.addAll(STATIC_ASSETS.map(url => {
+          return new Request(url, { cache: 'reload' });
+        })).catch(err => {
+          console.warn('[SW] Some static assets failed to cache:', err);
+        });
       })
       .then(() => self.skipWaiting())
   );
 });
 
-// Activate event - clean up old caches
+/**
+ * Activate Event - Clean old caches
+ */
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating service worker...');
+  console.log('[SW] Activating LOTTOLAB Service Worker v3...');
+  
   event.waitUntil(
     caches.keys()
       .then((keys) => {
         return Promise.all(
           keys
-            .filter((key) => key !== STATIC_CACHE && key !== DYNAMIC_CACHE)
+            .filter((key) => {
+              return key.startsWith('lottolab-') && 
+                     key !== STATIC_CACHE && 
+                     key !== DYNAMIC_CACHE && 
+                     key !== API_CACHE;
+            })
             .map((key) => {
-              console.log('[SW] Removing old cache:', key);
+              console.log('[SW] Deleting old cache:', key);
               return caches.delete(key);
             })
         );
@@ -50,169 +100,344 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - network first, then cache
+/**
+ * Check if URL is an API request
+ */
+function isApiRequest(url) {
+  return url.pathname.startsWith('/api/');
+}
+
+/**
+ * Check if API should be cached
+ */
+function shouldCacheApi(url) {
+  const pathname = url.pathname;
+  
+  // Never cache these
+  if (NO_CACHE_API_PATTERNS.some(pattern => pathname.includes(pattern))) {
+    return false;
+  }
+  
+  // Always cache these
+  if (CACHEABLE_API_PATTERNS.some(pattern => pathname.includes(pattern))) {
+    return true;
+  }
+  
+  // Default: cache GET requests only
+  return false;
+}
+
+/**
+ * Get cache TTL for an API endpoint
+ */
+function getCacheTTL(url) {
+  const pathname = url.pathname;
+  
+  if (pathname.includes('lotteries') || pathname.includes('schedules')) {
+    return CACHE_TTL.lotteries;
+  }
+  if (pathname.includes('config') || pathname.includes('bet-type-limits')) {
+    return CACHE_TTL.config;
+  }
+  if (pathname.includes('results')) {
+    return CACHE_TTL.results;
+  }
+  if (pathname.includes('profile')) {
+    return CACHE_TTL.profile;
+  }
+  
+  return CACHE_TTL.default;
+}
+
+/**
+ * Check if cached response is still valid
+ */
+function isCacheValid(response, ttl) {
+  if (!response) return false;
+  
+  const cachedTime = response.headers.get('sw-cached-time');
+  if (!cachedTime) return true; // No timestamp, assume valid
+  
+  const age = Date.now() - parseInt(cachedTime);
+  return age < ttl;
+}
+
+/**
+ * Add timestamp to response before caching
+ */
+function addCacheTimestamp(response) {
+  const headers = new Headers(response.headers);
+  headers.set('sw-cached-time', Date.now().toString());
+  
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: headers
+  });
+}
+
+/**
+ * Fetch Event Handler
+ */
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
   // Skip non-GET requests
-  if (request.method !== 'GET') return;
+  if (request.method !== 'GET') {
+    return;
+  }
 
   // Skip WebSocket requests
-  if (url.protocol === 'wss:' || url.protocol === 'ws:') return;
-
-  // Skip API requests (let them fail naturally for real-time data)
-  if (url.pathname.startsWith('/api/')) {
+  if (url.protocol === 'wss:' || url.protocol === 'ws:') {
     return;
   }
 
-  // For navigation requests, try network first
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // Clone response for cache
-          const responseClone = response.clone();
-          caches.open(DYNAMIC_CACHE).then((cache) => {
-            cache.put(request, responseClone);
-          });
-          return response;
-        })
-        .catch(() => {
-          // Fallback to cache
-          return caches.match(request).then((cached) => {
-            return cached || caches.match('/index.html');
-          });
-        })
-    );
+  // Skip chrome-extension and other protocols
+  if (!url.protocol.startsWith('http')) {
     return;
   }
 
-  // For static assets, cache first
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) {
-        // Return cached but also fetch in background
-        fetch(request).then((response) => {
-          caches.open(DYNAMIC_CACHE).then((cache) => {
-            cache.put(request, response);
-          });
-        }).catch(() => {});
-        return cached;
-      }
-
-      // Not in cache, fetch from network
-      return fetch(request)
-        .then((response) => {
-          // Cache the response
-          const responseClone = response.clone();
-          caches.open(DYNAMIC_CACHE).then((cache) => {
-            cache.put(request, responseClone);
-          });
-          return response;
-        })
-        .catch((error) => {
-          console.log('[SW] Fetch failed:', error);
-          // Return offline fallback if available
-          return caches.match('/index.html');
-        });
-    })
-  );
-});
-
-// Push notification event
-self.addEventListener('push', (event) => {
-  console.log('[SW] Push received');
-  
-  let data = { title: 'LOTTOLAB', body: 'Nouvelle notification' };
-  
-  if (event.data) {
-    try {
-      data = event.data.json();
-    } catch (e) {
-      data.body = event.data.text();
+  // Handle API requests
+  if (isApiRequest(url)) {
+    if (shouldCacheApi(url)) {
+      event.respondWith(handleApiRequest(request, url));
     }
+    // Let non-cacheable API requests pass through
+    return;
   }
 
-  const options = {
-    body: data.body,
-    icon: '/logo-lottolab.png',
-    badge: '/logo-lottolab.png',
-    vibrate: [100, 50, 100],
-    data: data,
-    actions: data.actions || [
-      { action: 'open', title: 'Ouvrir' },
-      { action: 'close', title: 'Fermer' }
-    ]
-  };
+  // Handle navigation requests (HTML pages)
+  if (request.mode === 'navigate') {
+    event.respondWith(handleNavigationRequest(request));
+    return;
+  }
 
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
+  // Handle static assets
+  event.respondWith(handleStaticRequest(request));
 });
 
-// Notification click event
-self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification clicked');
-  event.notification.close();
-
-  if (event.action === 'close') return;
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        // Focus existing window if available
-        for (const client of clientList) {
-          if (client.url.includes(self.location.origin) && 'focus' in client) {
-            return client.focus();
-          }
-        }
-        // Open new window
-        if (clients.openWindow) {
-          const url = event.notification.data?.url || '/';
-          return clients.openWindow(url);
-        }
-      })
-  );
-});
-
-// Background sync event (for offline ticket creation)
-self.addEventListener('sync', (event) => {
-  console.log('[SW] Background sync:', event.tag);
+/**
+ * Handle API requests with Stale-While-Revalidate strategy
+ */
+async function handleApiRequest(request, url) {
+  const cache = await caches.open(API_CACHE);
+  const ttl = getCacheTTL(url);
   
+  // Try to get from cache first
+  const cachedResponse = await cache.match(request);
+  
+  // If we have a valid cached response
+  if (cachedResponse && isCacheValid(cachedResponse, ttl)) {
+    // Return cached response immediately
+    // But also update cache in background (stale-while-revalidate)
+    const fetchPromise = fetch(request)
+      .then((networkResponse) => {
+        if (networkResponse.ok) {
+          const responseToCache = addCacheTimestamp(networkResponse.clone());
+          cache.put(request, responseToCache);
+        }
+        return networkResponse;
+      })
+      .catch(() => null);
+    
+    // Don't wait for the update
+    event.waitUntil && event.waitUntil(fetchPromise);
+    
+    console.log('[SW] Serving from cache (stale-while-revalidate):', url.pathname);
+    return cachedResponse;
+  }
+  
+  // No valid cache, try network
+  try {
+    const networkResponse = await fetch(request);
+    
+    if (networkResponse.ok) {
+      // Cache the new response
+      const responseToCache = addCacheTimestamp(networkResponse.clone());
+      await cache.put(request, responseToCache);
+      console.log('[SW] Cached API response:', url.pathname);
+    }
+    
+    return networkResponse;
+  } catch (error) {
+    // Network failed, return stale cache if available
+    if (cachedResponse) {
+      console.log('[SW] Network failed, serving stale cache:', url.pathname);
+      return cachedResponse;
+    }
+    
+    // No cache, return offline error
+    console.error('[SW] API request failed with no cache:', url.pathname);
+    return new Response(
+      JSON.stringify({ 
+        error: 'offline', 
+        message: 'Vous êtes hors ligne',
+        cached: false 
+      }), 
+      { 
+        status: 503, 
+        headers: { 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+}
+
+/**
+ * Handle navigation requests
+ */
+async function handleNavigationRequest(request) {
+  try {
+    // Try network first
+    const networkResponse = await fetch(request);
+    
+    // Cache the response
+    const cache = await caches.open(DYNAMIC_CACHE);
+    cache.put(request, networkResponse.clone());
+    
+    return networkResponse;
+  } catch (error) {
+    // Try cache
+    const cachedResponse = await caches.match(request);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+    
+    // Try index.html for SPA routing
+    const indexResponse = await caches.match('/index.html');
+    if (indexResponse) {
+      return indexResponse;
+    }
+    
+    // Return offline page
+    const offlineResponse = await caches.match('/offline.html');
+    if (offlineResponse) {
+      return offlineResponse;
+    }
+    
+    // Last resort: return error
+    return new Response('Vous êtes hors ligne', { status: 503 });
+  }
+}
+
+/**
+ * Handle static asset requests
+ */
+async function handleStaticRequest(request) {
+  // Try cache first for static assets
+  const cachedResponse = await caches.match(request);
+  
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+  
+  // Try network
+  try {
+    const networkResponse = await fetch(request);
+    
+    // Cache successful responses
+    if (networkResponse.ok) {
+      const cache = await caches.open(DYNAMIC_CACHE);
+      cache.put(request, networkResponse.clone());
+    }
+    
+    return networkResponse;
+  } catch (error) {
+    // Return placeholder for images
+    if (request.destination === 'image') {
+      return new Response('', { status: 404 });
+    }
+    
+    throw error;
+  }
+}
+
+/**
+ * Message handler for communication with main thread
+ */
+self.addEventListener('message', (event) => {
+  const { type, payload } = event.data || {};
+  
+  switch (type) {
+    case 'SKIP_WAITING':
+      self.skipWaiting();
+      break;
+      
+    case 'CLEAR_CACHE':
+      caches.keys().then(keys => {
+        keys.forEach(key => caches.delete(key));
+      });
+      break;
+      
+    case 'CACHE_API':
+      if (payload && payload.url) {
+        caches.open(API_CACHE).then(cache => {
+          fetch(payload.url).then(response => {
+            if (response.ok) {
+              cache.put(payload.url, addCacheTimestamp(response));
+            }
+          });
+        });
+      }
+      break;
+      
+    case 'GET_CACHE_STATS':
+      Promise.all([
+        caches.open(STATIC_CACHE).then(c => c.keys()),
+        caches.open(DYNAMIC_CACHE).then(c => c.keys()),
+        caches.open(API_CACHE).then(c => c.keys())
+      ]).then(([staticKeys, dynamicKeys, apiKeys]) => {
+        event.ports[0].postMessage({
+          static: staticKeys.length,
+          dynamic: dynamicKeys.length,
+          api: apiKeys.length
+        });
+      });
+      break;
+      
+    default:
+      console.log('[SW] Unknown message type:', type);
+  }
+});
+
+/**
+ * Background sync for pending tickets
+ */
+self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-tickets') {
+    console.log('[SW] Background sync triggered for tickets');
     event.waitUntil(syncPendingTickets());
   }
 });
 
-// Function to sync pending tickets when back online
+/**
+ * Sync pending tickets (called by background sync)
+ */
 async function syncPendingTickets() {
-  try {
-    const cache = await caches.open(DYNAMIC_CACHE);
-    const pendingTickets = await cache.match('pending-tickets');
-    
-    if (!pendingTickets) return;
-    
-    const tickets = await pendingTickets.json();
-    
-    for (const ticket of tickets) {
-      try {
-        await fetch('/api/tickets', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(ticket)
-        });
-      } catch (err) {
-        console.error('[SW] Failed to sync ticket:', err);
-      }
-    }
-    
-    // Clear pending tickets
-    await cache.delete('pending-tickets');
-    
-  } catch (error) {
-    console.error('[SW] Sync failed:', error);
-  }
+  // This will be handled by the SyncQueueManager in the main thread
+  // Just notify all clients
+  const clients = await self.clients.matchAll();
+  clients.forEach(client => {
+    client.postMessage({ type: 'SYNC_REQUESTED' });
+  });
 }
 
-console.log('[SW] Service Worker loaded');
+/**
+ * Push notification handler (for future use)
+ */
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  
+  const data = event.data.json();
+  
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'LOTTOLAB', {
+      body: data.body || '',
+      icon: '/assets/logos/icon-192.png',
+      badge: '/assets/logos/badge-72.png',
+      data: data.data
+    })
+  );
+});
+
+console.log('[SW] LOTTOLAB Service Worker v3 loaded');
