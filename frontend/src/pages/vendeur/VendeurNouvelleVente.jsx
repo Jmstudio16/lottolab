@@ -6,14 +6,15 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { 
   ShoppingCart, Search, Clock, CheckCircle, XCircle, AlertTriangle,
-  Plus, Trash2, Printer, RefreshCw, DollarSign, Ticket, Timer, Flag, Bluetooth
+  Plus, Trash2, Printer, RefreshCw, DollarSign, Ticket, Timer, Flag, Bluetooth, CloudOff
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import TicketPrintModal from '@/components/TicketPrintModal';
 import PrinterManager from '@/components/PrinterManager';
 import NetworkIndicator from '@/components/NetworkIndicator';
-import { syncService } from '@/services/syncService';
+import { offlineDB } from '@/services/offlineDB';
+import { syncManager } from '@/services/offlineSyncManager';
 import bluetoothPrinter from '@/utils/bluetoothPrinter';
 
 // Countdown Timer Component
@@ -58,7 +59,7 @@ const CountdownTimer = ({ seconds, onExpire }) => {
 };
 
 const VendeurNouvelleVente = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -93,13 +94,13 @@ const VendeurNouvelleVente = () => {
 
   const headers = { Authorization: `Bearer ${token}` };
   
-  // Listen for printer and network status
+  // Listen for printer and network status - Using new offline system
   useEffect(() => {
     const unsubPrinter = bluetoothPrinter.addListener((state) => {
       setPrinterConnected(state.isConnected);
     });
     
-    const unsubSync = syncService.addListener((status) => {
+    const unsubSync = syncManager.addListener((status) => {
       setIsOfflineMode(!status.isOnline);
     });
     
@@ -177,28 +178,28 @@ const VendeurNouvelleVente = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch ONLY OPEN lotteries with cache support
+  // Fetch ONLY OPEN lotteries with IndexedDB cache support
   const fetchLotteries = useCallback(async () => {
     if (!token) return;
     
     try {
       setLoading(true);
       
-      // Try to use cached data first if offline
+      // Try to use IndexedDB cached data first if offline
       if (!navigator.onLine) {
-        const cachedLotteries = syncService.getCachedLotteries();
-        const cachedLimits = syncService.getCachedBetLimits();
-        const cachedConfig = syncService.getCachedConfig();
+        const cachedResult = await offlineDB.getCachedLotteries();
+        const cachedLimits = await offlineDB.getCachedBetLimits();
+        const cachedConfig = await offlineDB.getVendorConfig();
         
-        if (cachedLotteries) {
-          setLotteries(cachedLotteries);
-          if (cachedLimits) setBetTypeLimits(cachedLimits);
+        if (cachedResult.data && cachedResult.data.length > 0) {
+          setLotteries(cachedResult.data);
+          if (cachedLimits.data) setBetTypeLimits(cachedLimits.data);
           if (cachedConfig) {
-            setSuccursaleName(cachedConfig.succursaleName || '');
-            setCompanyName(cachedConfig.companyName || '');
+            setSuccursaleName(cachedConfig.succursale?.name || cachedConfig.succursaleName || '');
+            setCompanyName(cachedConfig.company?.name || cachedConfig.companyName || '');
           }
           setLoading(false);
-          toast.info('Mode hors ligne - Données du cache');
+          toast.info('Mode hors ligne - Données du cache IndexedDB');
           return;
         }
       }
@@ -214,13 +215,13 @@ const VendeurNouvelleVente = () => {
       setLotteries(openLotteries);
       setServerTimezone(lotteriesRes.data.timezone || 'America/Port-au-Prince');
       
-      // Cache the data for offline use
-      syncService.cacheLotteries(openLotteries);
+      // Cache the data in IndexedDB for offline use
+      await offlineDB.cacheLotteries(openLotteries);
       
       // Set company-specific bet type limits
       if (limitsRes.data?.limits) {
         setBetTypeLimits(limitsRes.data.limits);
-        syncService.cacheBetLimits(limitsRes.data.limits);
+        await offlineDB.cacheBetLimits(limitsRes.data.limits);
       }
       
       // If selected lottery is no longer open, deselect it
@@ -243,8 +244,10 @@ const VendeurNouvelleVente = () => {
       if (profileRes.data) {
         setSuccursaleName(profileRes.data?.succursale?.name || '');
         setCompanyName(profileRes.data?.company?.name || '');
-        // Cache config
-        syncService.cacheConfig({
+        // Cache config in IndexedDB
+        await offlineDB.cacheVendorConfig({
+          succursale: profileRes.data?.succursale,
+          company: profileRes.data?.company,
           succursaleName: profileRes.data?.succursale?.name || '',
           companyName: profileRes.data?.company?.name || ''
         });
@@ -252,15 +255,19 @@ const VendeurNouvelleVente = () => {
     } catch (error) {
       console.error('[VendeurVente] Error fetching lotteries:', error);
       
-      // Try to use cache on error
-      const cachedLotteries = syncService.getCachedLotteries();
-      if (cachedLotteries && cachedLotteries.length > 0) {
-        setLotteries(cachedLotteries);
-        const cachedLimits = syncService.getCachedBetLimits();
-        if (cachedLimits) setBetTypeLimits(cachedLimits);
-        toast.warning('Utilisation des données en cache');
-        setLoading(false);
-        return;
+      // Try to use IndexedDB cache on error
+      try {
+        const cachedResult = await offlineDB.getCachedLotteries();
+        if (cachedResult.data && cachedResult.data.length > 0) {
+          setLotteries(cachedResult.data);
+          const cachedLimits = await offlineDB.getCachedBetLimits();
+          if (cachedLimits.data) setBetTypeLimits(cachedLimits.data);
+          toast.warning('Utilisation des données IndexedDB en cache');
+          setLoading(false);
+          return;
+        }
+      } catch (cacheError) {
+        console.error('[VendeurVente] Cache error:', cacheError);
       }
       
       // Display actual error message instead of generic one
@@ -273,7 +280,7 @@ const VendeurNouvelleVente = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, selectedLottery, t]);
+  }, [token, selectedLottery, t, headers]);
 
   // WebSocket connection for real-time updates
   useEffect(() => {
@@ -498,7 +505,7 @@ const VendeurNouvelleVente = () => {
       return;
     }
 
-    // Final check - is lottery still open?
+    // Final check - is lottery still open? (Only block if online and lottery closed)
     const stillOpen = lotteries.find(l => l.lottery_id === selectedLottery?.lottery_id);
     if (!stillOpen && navigator.onLine) {
       toast.error('ERREUR: La loterie vient de fermer! Vente annulée.');
@@ -513,6 +520,7 @@ const VendeurNouvelleVente = () => {
       
       const payload = {
         lottery_id: cart[0].lottery_id,
+        lottery_name: selectedLottery.lottery_name,
         draw_date: today,
         draw_name: drawName,
         draw_time: selectedLottery.draw_time || '',
@@ -520,31 +528,41 @@ const VendeurNouvelleVente = () => {
           numbers: item.numbers,
           bet_type: item.bet_type,
           amount: item.amount
-        }))
+        })),
+        total_amount: totalAmount
       };
 
       let ticketData;
       
-      // Check if we should use offline mode
-      if (!navigator.onLine || syncService.shouldUseOfflineMode()) {
-        // OFFLINE MODE - Save locally and print
-        const offlineTicket = syncService.addPendingTicket(payload);
-        
+      // Use syncManager for ticket creation (handles online/offline automatically)
+      const result = await syncManager.createTicket(payload);
+      
+      if (result.offline) {
+        // OFFLINE MODE - Ticket saved to IndexedDB
         ticketData = {
-          ticket_id: offlineTicket.id,
-          ticket_code: offlineTicket.id.toUpperCase(),
+          ticket_id: result.offline_id,
+          ticket_code: result.offline_id,
           total_amount: totalAmount,
           status: 'EN ATTENTE DE SYNC',
           plays: cart,
           created_at: new Date().toISOString(),
-          offline: true
+          offline: true,
+          offline_id: result.offline_id
         };
         
-        toast.warning('Mode hors ligne - Ticket sauvegardé localement');
+        toast.warning('Mode hors ligne - Ticket sauvegardé dans IndexedDB');
       } else {
-        // ONLINE MODE - Send to server
-        const res = await axios.post(`${API_URL}/api/lottery/sell`, payload, { headers });
-        ticketData = res.data;
+        // ONLINE MODE - Ticket synced to server
+        ticketData = {
+          ticket_id: result.ticket_id,
+          ticket_code: result.ticket_id,
+          total_amount: totalAmount,
+          status: 'VALIDÉ',
+          plays: cart,
+          created_at: new Date().toISOString(),
+          offline: false,
+          offline_id: result.offline_id
+        };
       }
       
       setTicketResult(ticketData);
@@ -567,8 +585,14 @@ const VendeurNouvelleVente = () => {
             })),
             totalAmount: totalAmount,
             status: ticketData.offline ? 'EN ATTENTE' : 'VALIDÉ',
-            footerMessage: ticketData.offline ? 'Sync en attente...' : 'Merci et bonne chance!'
+            footerMessage: ticketData.offline ? 'Sync automatique au retour connexion' : 'Merci et bonne chance!'
           });
+          
+          // Mark ticket as printed in IndexedDB
+          if (ticketData.offline_id) {
+            await offlineDB.markTicketPrinted(ticketData.offline_id);
+          }
+          
           toast.success('🖨️ Ticket imprimé automatiquement!');
         } catch (printError) {
           console.error('Auto print error:', printError);
@@ -577,34 +601,42 @@ const VendeurNouvelleVente = () => {
       }
       
       setCart([]);
-      toast.success(ticketData.offline ? 'Ticket sauvegardé!' : 'Vente validée avec succès!');
+      toast.success(ticketData.offline ? 'Ticket sauvegardé hors ligne!' : 'Vente validée avec succès!');
     } catch (error) {
-      // If network error, try offline mode
-      if (!navigator.onLine || error.code === 'ERR_NETWORK') {
-        const offlineTicket = syncService.addPendingTicket({
+      console.error('[submitSale] Error:', error);
+      
+      // Fallback: If all else fails, try to save offline
+      try {
+        const fallbackTicket = await offlineDB.savePendingTicket({
           lottery_id: cart[0].lottery_id,
+          lottery_name: selectedLottery?.lottery_name,
           draw_date: new Date().toISOString().split('T')[0],
+          draw_name: selectedLottery?.draw_name || 'Midi',
           plays: cart.map(item => ({
             numbers: item.numbers,
             bet_type: item.bet_type,
             amount: item.amount
-          }))
+          })),
+          total_amount: totalAmount
         });
         
         setTicketResult({
-          ticket_id: offlineTicket.id,
-          ticket_code: offlineTicket.id.toUpperCase(),
+          ticket_id: fallbackTicket.offline_id,
+          ticket_code: fallbackTicket.offline_id,
           total_amount: totalAmount,
-          status: 'HORS LIGNE',
-          offline: true
+          status: 'HORS LIGNE (FALLBACK)',
+          offline: true,
+          offline_id: fallbackTicket.offline_id
         });
         setShowPrintModal(true);
         setCart([]);
-        toast.warning('Connexion perdue - Ticket sauvegardé hors ligne');
+        toast.warning('Erreur réseau - Ticket sauvegardé en local');
         return;
+      } catch (fallbackError) {
+        console.error('[submitSale] Fallback error:', fallbackError);
       }
       
-      toast.error(error.response?.data?.detail || 'Erreur lors de la vente');
+      toast.error(error.response?.data?.detail || error.message || 'Erreur lors de la vente');
     } finally {
       setSubmitting(false);
     }

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/api/auth';
 import { ProtectedRoute } from '@/api/ProtectedRoute';
 import { LogoProvider } from '@/contexts/LogoContext';
+import { OfflineProvider } from '@/contexts/OfflineContext';
 import { LotoPamAuthProvider } from '@/context/LotoPamAuthContext';
 import { WebSocketProvider } from '@/context/WebSocketContext';
 import { Toaster } from 'sonner';
@@ -211,22 +212,23 @@ const LotoPamApp = () => {
 const SaaSApp = () => {
   return (
     <AuthProvider>
-      <LogoProvider>
-        <LotoPamAuthProvider>
-          <WebSocketProvider>
-            <BrowserRouter>
-              <div className="App">
-                <Toaster 
-                  position="top-right" 
-                  theme="dark"
-                  toastOptions={{
-                    style: {
-                      background: '#1e293b',
-                      border: '1px solid #334155',
-                      color: '#f1f5f9',
-                    },
-                    className: 'font-sans',
-                    duration: 3000,
+      <OfflineProvider>
+        <LogoProvider>
+          <LotoPamAuthProvider>
+            <WebSocketProvider>
+              <BrowserRouter>
+                <div className="App">
+                  <Toaster 
+                    position="top-right" 
+                    theme="dark"
+                    toastOptions={{
+                      style: {
+                        background: '#1e293b',
+                        border: '1px solid #334155',
+                        color: '#f1f5f9',
+                      },
+                      className: 'font-sans',
+                      duration: 3000,
                   }}
                 />
                 
@@ -794,6 +796,7 @@ const SaaSApp = () => {
           </WebSocketProvider>
         </LotoPamAuthProvider>
       </LogoProvider>
+      </OfflineProvider>
     </AuthProvider>
   );
 };

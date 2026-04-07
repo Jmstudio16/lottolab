@@ -1,48 +1,101 @@
-# LOTTOLAB - Professional Lottery SaaS Platform
+# LOTTOLAB PRO - Professional Lottery SaaS Platform
 
-## Version: 26.0.0 (LOTTOLAB PRO - Bluetooth + Offline Mode)
-## Last Updated: 2026-04-07 21:10 UTC
-## Deployed: 2026-04-07 17:10 Haiti Time
+## Version: 27.0.0 (LOTTOLAB PRO - Full Offline-First Architecture)
+## Last Updated: 2026-04-07 21:50 UTC
+## Deployed: 2026-04-07 17:50 Haiti Time
 
 ---
 
 ## 🚀 STATUT: PRODUCTION READY ✅
 
-### Nouvelles Fonctionnalités (v26.0.0):
+### Nouvelles Fonctionnalités (v27.0.0):
 
-#### 1. Module Imprimante Bluetooth ✅ (NOUVEAU)
-- **Web Bluetooth API** intégré pour connexion aux imprimantes thermiques
-- Support **58mm et 80mm** (ESC/POS standard)
-- Composant `PrinterManager.jsx` avec:
-  - Scan Bluetooth devices
-  - Sauvegarde imprimante en localStorage
-  - Test d'impression
-  - Choix largeur papier (58/80mm)
-- Fichiers créés:
-  - `/app/frontend/src/utils/escpos.js` - Commandes ESC/POS
-  - `/app/frontend/src/utils/bluetoothPrinter.js` - Service Bluetooth
-  - `/app/frontend/src/components/PrinterManager.jsx` - UI
+#### 1. Architecture Offline-First Complète ✅ (NOUVEAU)
+- **IndexedDB** remplace localStorage pour toutes les données critiques:
+  - Session utilisateur (7 jours de validité)
+  - Tickets en attente de synchronisation
+  - Cache des loteries et configurations
+  - Limites de paris par type
+  - Configuration imprimante
+- **Fichiers créés/modifiés**:
+  - `/app/frontend/src/services/offlineDB.js` - Service IndexedDB complet
+  - `/app/frontend/src/services/offlineSyncManager.js` - Gestionnaire de sync robuste
+  - `/app/frontend/src/contexts/OfflineContext.jsx` - Provider global
+  - `/app/frontend/src/api/auth.js` - Authentification avec session persistante
 
-#### 2. Mode Offline / Internet Faible ✅ (NOUVEAU)
-- **Cache local intelligent** (loteries, config, limites)
-- **Tickets hors ligne** - Création et sauvegarde locale
-- **Synchronisation automatique** quand internet revient
-- **Indicateur réseau** (En ligne/Lent/Hors ligne)
-- Fichiers créés:
-  - `/app/frontend/src/services/syncService.js` - Gestion sync
-  - `/app/frontend/src/components/NetworkIndicator.jsx` - UI statut
+#### 2. Sync Queue Manager Robuste ✅ (NOUVEAU)
+- **Retry automatique** avec délais exponentiels (3s, 10s, 30s, 1m, 2m)
+- **Maximum 5 tentatives** avant échec définitif
+- **Synchronisation toutes les 30 secondes** quand en ligne
+- **Background Sync** via Service Worker
+- **Détection de duplicates** pour éviter les doubles ventes
+- **États de ticket**: pending → syncing → synced | failed
 
-#### 3. Optimisation Performance ✅
-- **GZip compression** activé sur le backend
-- **Lazy loading** des données
-- **Cache mémoire** pour réponses rapides
-- Vente de ticket en < 2 secondes
+#### 3. Login Offline & Session Persistante ✅ (NOUVEAU)
+- Vendeur reste connecté même après redémarrage APK
+- Tokens stockés dans IndexedDB (7 jours)
+- Revalidation automatique au retour de connexion
+- Pas de déconnexion si internet coupe
 
-#### 4. Impression Automatique ✅
-- Après validation ticket → impression Bluetooth auto
-- Fallback vers modal HTML si pas de Bluetooth
+#### 4. Page Vendeur Nouvelle Vente 100% Offline ✅ (AMÉLIORÉ)
+- Création de ticket sans internet
+- Stockage immédiat dans IndexedDB
+- Ajout automatique à la Sync Queue
+- Impression locale via Bluetooth (sans serveur)
+- Aucune dépendance API pendant la vente
 
-### Modifications Précédentes (v25.0.0):
+#### 5. Imprimante Bluetooth Améliorée ✅ (AMÉLIORÉ)
+- Support **Bridge Natif Android** (Capacitor/Cordova)
+- Détection automatique: Web Bluetooth ou Native
+- **Auto-reconnexion** (3 tentatives)
+- Configuration sauvegardée dans IndexedDB
+- Compatibilité 58mm et 80mm
+- Bouton test impression fonctionnel
+
+#### 6. Indicateurs de Statut Temps Réel ✅ (NOUVEAU)
+- `NetworkIndicator.jsx` - Réseau (online/offline/lent)
+- `StatusBar.jsx` - Combiné réseau + sync + imprimante
+- Compteur de tickets en attente de sync
+- Dernière synchronisation affichée
+
+### Structure des Fichiers Offline
+
+```
+/app/frontend/src/
+├── services/
+│   ├── offlineDB.js          # IndexedDB manager (sessions, tickets, cache)
+│   ├── offlineSyncManager.js # Sync queue avec retry logic
+│   └── [syncService.js]      # Ancien service (déprécié, gardé pour compat)
+├── contexts/
+│   └── OfflineContext.jsx    # Provider global offline state
+├── components/
+│   ├── NetworkIndicator.jsx  # Indicateur réseau
+│   └── StatusBar.jsx         # Barre de statut combinée
+├── utils/
+│   ├── escpos.js             # Commandes ESC/POS
+│   └── bluetoothPrinter.js   # Service Bluetooth (Web + Native)
+└── public/
+    └── service-worker.js     # Cache API + offline fallback
+```
+
+### Schéma IndexedDB (lottolab_pro)
+
+| Store | Usage |
+|-------|-------|
+| `session` | Token et user (key: current_session) |
+| `tickets_pending` | Tickets créés offline (à sync) |
+| `tickets_synced` | Tickets synchronisés (historique) |
+| `tickets_failed` | Tickets échoués (max retries) |
+| `lotteries` | Cache des loteries ouvertes |
+| `results` | Cache des résultats |
+| `config` | Configuration company/succursale |
+| `bet_limits` | Limites par type de jeu |
+| `sync_log` | Journal de synchronisation |
+| `printer` | Configuration imprimante |
+
+---
+
+### Modifications Précédentes (v26.0.0):
 
 #### 1. Page Historique Règlements Superviseur ✅ (NOUVEAU)
 - **Route**: `/supervisor/settlement-history`

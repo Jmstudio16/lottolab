@@ -1,272 +1,249 @@
 /**
- * LOTTOLAB Status Bar Component
- * =============================
- * Barre de statut complète montrant:
- * - État réseau (Online/Faible/Offline)
- * - État imprimante (Connectée/Non connectée)
- * - Tickets en attente de sync
- * - Dernière synchronisation
+ * LOTTOLAB PRO - Status Bar Component
+ * ====================================
+ * Displays network, sync, and printer status
+ * Compact header bar for POS interface
  */
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Wifi, WifiOff, Bluetooth, BluetoothOff, 
-  Cloud, CloudOff, RefreshCw, AlertTriangle,
-  CheckCircle, XCircle, Printer, Signal
-} from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { networkManager } from '../services/networkManager';
-import { syncQueueManager } from '../services/syncQueueManager';
-import bluetoothPrinter from '../utils/bluetoothPrinter';
-import { cn } from '../lib/utils';
+import { Wifi, WifiOff, Cloud, CloudOff, Printer, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
+import { useOffline } from '../contexts/OfflineContext';
+import { Button } from './ui/button';
 
-const StatusBar = ({ showDetails = false, className }) => {
-  const [networkStatus, setNetworkStatus] = useState({
-    isOnline: navigator.onLine,
-    quality: 'unknown'
-  });
-  const [syncStatus, setSyncStatus] = useState({
-    pendingCount: 0,
-    isProcessing: false
-  });
-  const [printerStatus, setPrinterStatus] = useState({
-    isConnected: false,
-    name: null
-  });
-  const [isExpanded, setIsExpanded] = useState(false);
+const StatusBar = ({ showDetails = true }) => {
+  const {
+    isOnline,
+    networkQuality,
+    isSyncing,
+    pendingCount,
+    lastSync,
+    printerConnected,
+    printerName,
+    forceSync
+  } = useOffline();
+  
+  const [showSyncDetails, setShowSyncDetails] = useState(false);
 
-  useEffect(() => {
-    // Network status listener
-    const unsubNetwork = networkManager.addListener((status) => {
-      setNetworkStatus(status);
-    });
-
-    // Sync status listener
-    const unsubSync = syncQueueManager.addListener((status) => {
-      setSyncStatus(status);
-    });
-
-    // Printer status listener
-    const unsubPrinter = bluetoothPrinter.addListener((status) => {
-      setPrinterStatus({
-        isConnected: status.isConnected,
-        name: status.printerName
-      });
-    });
-
-    // Initial states
-    setPrinterStatus({
-      isConnected: bluetoothPrinter.isConnected,
-      name: bluetoothPrinter.printerName
-    });
-
-    return () => {
-      unsubNetwork();
-      unsubSync();
-      unsubPrinter();
-    };
-  }, []);
-
-  const getNetworkIcon = () => {
-    if (!networkStatus.isOnline) return <WifiOff className="w-4 h-4" />;
-    if (networkStatus.quality === 'slow') return <Signal className="w-4 h-4" />;
-    if (networkStatus.quality === 'medium') return <Signal className="w-4 h-4" />;
-    return <Wifi className="w-4 h-4" />;
-  };
-
-  const getNetworkColor = () => {
-    if (!networkStatus.isOnline) return 'text-red-400 bg-red-500/10 border-red-500/30';
-    if (networkStatus.quality === 'slow') return 'text-red-400 bg-red-500/10 border-red-500/30';
-    if (networkStatus.quality === 'medium') return 'text-amber-400 bg-amber-500/10 border-amber-500/30';
-    return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30';
-  };
-
-  const getNetworkLabel = () => {
-    if (!networkStatus.isOnline) return 'Hors ligne';
-    if (networkStatus.quality === 'slow') return 'Lent';
-    if (networkStatus.quality === 'medium') return 'Moyen';
-    if (networkStatus.quality === 'good') return 'En ligne';
-    return 'Vérification...';
-  };
-
-  const handleForceSync = async () => {
-    try {
-      await syncQueueManager.forcSync();
-    } catch (error) {
-      console.error('Force sync failed:', error);
+  // Get network icon and color
+  const getNetworkStatus = () => {
+    if (!isOnline) {
+      return {
+        icon: WifiOff,
+        color: 'text-red-400',
+        bgColor: 'bg-red-500/20',
+        label: 'Hors ligne'
+      };
+    }
+    
+    switch (networkQuality) {
+      case 'good':
+        return {
+          icon: Wifi,
+          color: 'text-emerald-400',
+          bgColor: 'bg-emerald-500/20',
+          label: 'En ligne'
+        };
+      case 'medium':
+        return {
+          icon: Wifi,
+          color: 'text-amber-400',
+          bgColor: 'bg-amber-500/20',
+          label: 'Moyen'
+        };
+      case 'slow':
+        return {
+          icon: Wifi,
+          color: 'text-red-400',
+          bgColor: 'bg-red-500/20',
+          label: 'Lent'
+        };
+      default:
+        return {
+          icon: Wifi,
+          color: 'text-slate-400',
+          bgColor: 'bg-slate-500/20',
+          label: 'En ligne'
+        };
     }
   };
 
-  // Compact version
-  if (!showDetails) {
-    return (
-      <div 
-        className={cn(
-          'flex items-center gap-2',
-          className
-        )}
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        {/* Network Status */}
-        <div className={cn(
-          'flex items-center gap-1.5 px-2 py-1 rounded-full border text-xs font-medium cursor-pointer',
-          getNetworkColor()
-        )}>
-          {syncStatus.isProcessing ? (
-            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            getNetworkIcon()
-          )}
-          <span className="hidden sm:inline">{getNetworkLabel()}</span>
-        </div>
+  // Get sync status
+  const getSyncStatus = () => {
+    if (isSyncing) {
+      return {
+        icon: RefreshCw,
+        color: 'text-blue-400',
+        bgColor: 'bg-blue-500/20',
+        label: 'Sync...',
+        animate: true
+      };
+    }
+    
+    if (pendingCount > 0) {
+      return {
+        icon: CloudOff,
+        color: 'text-amber-400',
+        bgColor: 'bg-amber-500/20',
+        label: `${pendingCount} en attente`
+      };
+    }
+    
+    return {
+      icon: Cloud,
+      color: 'text-emerald-400',
+      bgColor: 'bg-emerald-500/20',
+      label: 'Synchronisé'
+    };
+  };
 
-        {/* Pending Count */}
-        {syncStatus.pendingCount > 0 && (
-          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-medium">
-            <Cloud className="w-3.5 h-3.5" />
-            <span>{syncStatus.pendingCount}</span>
-          </div>
-        )}
+  // Get printer status
+  const getPrinterStatus = () => {
+    if (printerConnected) {
+      return {
+        icon: Printer,
+        color: 'text-emerald-400',
+        bgColor: 'bg-emerald-500/20',
+        label: printerName || 'Connecté'
+      };
+    }
+    
+    return {
+      icon: Printer,
+      color: 'text-slate-500',
+      bgColor: 'bg-slate-500/20',
+      label: 'Non connecté'
+    };
+  };
 
-        {/* Printer Status */}
-        <div className={cn(
-          'flex items-center gap-1.5 px-2 py-1 rounded-full border text-xs font-medium',
-          printerStatus.isConnected 
-            ? 'text-blue-400 bg-blue-500/10 border-blue-500/30'
-            : 'text-slate-400 bg-slate-500/10 border-slate-500/30'
-        )}>
-          {printerStatus.isConnected ? (
-            <Bluetooth className="w-3.5 h-3.5" />
-          ) : (
-            <BluetoothOff className="w-3.5 h-3.5" />
-          )}
-          <span className="hidden sm:inline">
-            {printerStatus.isConnected ? 'Imprimante' : 'Non connecté'}
-          </span>
-        </div>
-      </div>
-    );
-  }
+  const network = getNetworkStatus();
+  const sync = getSyncStatus();
+  const printer = getPrinterStatus();
 
-  // Detailed version
+  // Handle force sync
+  const handleForceSync = async () => {
+    if (isOnline && !isSyncing) {
+      await forceSync();
+    }
+  };
+
+  // Format last sync time
+  const formatLastSync = () => {
+    if (!lastSync) return 'Jamais';
+    
+    const date = new Date(lastSync);
+    const now = new Date();
+    const diff = Math.floor((now - date) / 1000);
+    
+    if (diff < 60) return 'À l\'instant';
+    if (diff < 3600) return `Il y a ${Math.floor(diff / 60)} min`;
+    if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)} h`;
+    
+    return date.toLocaleDateString('fr-FR');
+  };
+
   return (
-    <div className={cn(
-      'bg-slate-900/95 border border-slate-700 rounded-xl p-4 space-y-4',
-      className
-    )}>
-      <h3 className="text-white font-semibold text-sm flex items-center gap-2">
-        <Signal className="w-4 h-4 text-emerald-400" />
-        État du Système
-      </h3>
-
+    <div className="flex items-center gap-2 sm:gap-3">
       {/* Network Status */}
-      <div className={cn(
-        'flex items-center justify-between p-3 rounded-lg border',
-        getNetworkColor()
-      )}>
-        <div className="flex items-center gap-3">
-          {getNetworkIcon()}
-          <div>
-            <p className="font-medium text-sm">{getNetworkLabel()}</p>
-            {networkStatus.lastPingTime && (
-              <p className="text-xs opacity-70">
-                Latence: {networkStatus.lastPingTime}ms
-              </p>
-            )}
-          </div>
-        </div>
-        {networkStatus.isOnline ? (
-          <CheckCircle className="w-5 h-5" />
-        ) : (
-          <XCircle className="w-5 h-5" />
+      <div 
+        className={`flex items-center gap-1.5 px-2 py-1 rounded-lg ${network.bgColor} cursor-pointer`}
+        title={`Réseau: ${network.label}`}
+      >
+        <network.icon className={`w-4 h-4 ${network.color}`} />
+        {showDetails && (
+          <span className={`text-xs font-medium ${network.color} hidden sm:inline`}>
+            {network.label}
+          </span>
         )}
       </div>
 
       {/* Sync Status */}
-      <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800 border border-slate-700">
-        <div className="flex items-center gap-3">
-          {syncStatus.isProcessing ? (
-            <RefreshCw className="w-5 h-5 text-blue-400 animate-spin" />
-          ) : syncStatus.pendingCount > 0 ? (
-            <CloudOff className="w-5 h-5 text-amber-400" />
-          ) : (
-            <Cloud className="w-5 h-5 text-emerald-400" />
-          )}
-          <div>
-            <p className="font-medium text-sm text-white">
-              {syncStatus.isProcessing 
-                ? 'Synchronisation...' 
-                : syncStatus.pendingCount > 0 
-                  ? `${syncStatus.pendingCount} en attente`
-                  : 'Synchronisé'}
-            </p>
-            {syncStatus.lastSync && (
-              <p className="text-xs text-slate-500">
-                Dernière sync: {new Date(syncStatus.lastSync).toLocaleTimeString('fr-FR')}
-              </p>
-            )}
-          </div>
-        </div>
-        {syncStatus.pendingCount > 0 && networkStatus.isOnline && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={handleForceSync}
-            disabled={syncStatus.isProcessing}
-            className="text-blue-400 hover:text-blue-300"
-          >
-            <RefreshCw className={cn(
-              'w-4 h-4',
-              syncStatus.isProcessing && 'animate-spin'
-            )} />
-          </Button>
+      <div 
+        className={`flex items-center gap-1.5 px-2 py-1 rounded-lg ${sync.bgColor} cursor-pointer`}
+        onClick={() => setShowSyncDetails(!showSyncDetails)}
+        title={`Sync: ${sync.label}`}
+      >
+        <sync.icon className={`w-4 h-4 ${sync.color} ${sync.animate ? 'animate-spin' : ''}`} />
+        {showDetails && (
+          <span className={`text-xs font-medium ${sync.color} hidden sm:inline`}>
+            {sync.label}
+          </span>
         )}
       </div>
 
       {/* Printer Status */}
-      <div className={cn(
-        'flex items-center justify-between p-3 rounded-lg border',
-        printerStatus.isConnected 
-          ? 'bg-blue-500/10 border-blue-500/30'
-          : 'bg-slate-800 border-slate-700'
-      )}>
-        <div className="flex items-center gap-3">
-          {printerStatus.isConnected ? (
-            <Printer className="w-5 h-5 text-blue-400" />
-          ) : (
-            <BluetoothOff className="w-5 h-5 text-slate-500" />
-          )}
-          <div>
-            <p className={cn(
-              'font-medium text-sm',
-              printerStatus.isConnected ? 'text-blue-400' : 'text-slate-400'
-            )}>
-              {printerStatus.isConnected 
-                ? printerStatus.name || 'Imprimante connectée'
-                : 'Imprimante non connectée'}
-            </p>
-            {printerStatus.isConnected && (
-              <p className="text-xs text-slate-500">Prêt à imprimer</p>
-            )}
-          </div>
-        </div>
-        {printerStatus.isConnected ? (
-          <CheckCircle className="w-5 h-5 text-blue-400" />
-        ) : (
-          <XCircle className="w-5 h-5 text-slate-500" />
+      <div 
+        className={`flex items-center gap-1.5 px-2 py-1 rounded-lg ${printer.bgColor}`}
+        title={`Imprimante: ${printer.label}`}
+      >
+        <printer.icon className={`w-4 h-4 ${printer.color}`} />
+        {showDetails && (
+          <span className={`text-xs font-medium ${printer.color} hidden sm:inline truncate max-w-[80px]`}>
+            {printerConnected ? '✓' : '—'}
+          </span>
         )}
       </div>
 
-      {/* Warning for offline */}
-      {!networkStatus.isOnline && (
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400">
-          <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-          <div className="text-sm">
-            <p className="font-medium">Mode Hors Ligne Actif</p>
-            <p className="text-xs text-amber-400/70 mt-1">
-              Les tickets seront synchronisés automatiquement quand la connexion sera rétablie.
-            </p>
+      {/* Sync Details Popover */}
+      {showSyncDetails && (
+        <div className="absolute top-12 right-4 z-50 bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-xl min-w-[250px]">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-white font-semibold">État de synchronisation</h4>
+            <button 
+              onClick={() => setShowSyncDetails(false)}
+              className="text-slate-400 hover:text-white"
+            >
+              ×
+            </button>
           </div>
+          
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-slate-400">Tickets en attente</span>
+              <span className={pendingCount > 0 ? 'text-amber-400 font-semibold' : 'text-emerald-400'}>
+                {pendingCount}
+              </span>
+            </div>
+            
+            <div className="flex justify-between">
+              <span className="text-slate-400">Dernière sync</span>
+              <span className="text-white">{formatLastSync()}</span>
+            </div>
+            
+            <div className="flex justify-between">
+              <span className="text-slate-400">Réseau</span>
+              <span className={network.color}>{network.label}</span>
+            </div>
+          </div>
+          
+          {pendingCount > 0 && isOnline && (
+            <Button
+              onClick={handleForceSync}
+              disabled={isSyncing}
+              className="w-full mt-3 bg-blue-600 hover:bg-blue-700"
+              size="sm"
+            >
+              {isSyncing ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Synchronisation...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Synchroniser maintenant
+                </>
+              )}
+            </Button>
+          )}
+          
+          {!isOnline && (
+            <div className="mt-3 p-2 bg-amber-500/20 rounded-lg flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-400" />
+              <span className="text-xs text-amber-400">
+                Les tickets seront synchronisés au retour de la connexion
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>

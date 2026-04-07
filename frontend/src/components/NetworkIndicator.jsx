@@ -1,28 +1,43 @@
 /**
  * Network Status Indicator Component
  * Shows current network status and pending sync items
+ * Uses OfflineContext for state management
  */
 
 import React, { useState, useEffect } from 'react';
 import { Wifi, WifiOff, Cloud, CloudOff, RefreshCw, AlertTriangle } from 'lucide-react';
-import { syncService } from '../services/syncService';
 import { cn } from '../lib/utils';
+import { syncManager } from '../services/offlineSyncManager';
 
 const NetworkIndicator = ({ className, showDetails = false }) => {
   const [status, setStatus] = useState({
     isOnline: navigator.onLine,
     isSyncing: false,
-    pendingCount: 0,
+    pendingTickets: 0,
     networkQuality: 'unknown'
   });
 
   useEffect(() => {
-    // Get initial status
-    setStatus(syncService.getStatus());
+    // Listen for sync manager changes
+    const unsubscribe = syncManager.addListener((newStatus) => {
+      setStatus({
+        isOnline: newStatus.isOnline,
+        isSyncing: newStatus.isSyncing,
+        pendingCount: newStatus.pendingTickets || 0,
+        networkQuality: newStatus.isOnline ? 'good' : 'offline',
+        lastSync: newStatus.lastSync
+      });
+    });
     
-    // Listen for changes
-    const unsubscribe = syncService.addListener((newStatus) => {
-      setStatus(newStatus);
+    // Initial status
+    syncManager.getFullStatus().then(s => {
+      setStatus({
+        isOnline: s.isOnline,
+        isSyncing: s.isSyncing,
+        pendingCount: s.pendingTickets || 0,
+        networkQuality: s.isOnline ? 'good' : 'offline',
+        lastSync: s.lastSync
+      });
     });
     
     return () => unsubscribe();
