@@ -6,11 +6,15 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { 
   ShoppingCart, Search, Clock, CheckCircle, XCircle, AlertTriangle,
-  Plus, Trash2, Printer, RefreshCw, DollarSign, Ticket, Timer, Flag
+  Plus, Trash2, Printer, RefreshCw, DollarSign, Ticket, Timer, Flag, Bluetooth
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import TicketPrintModal from '@/components/TicketPrintModal';
+import PrinterManager from '@/components/PrinterManager';
+import NetworkIndicator from '@/components/NetworkIndicator';
+import { syncService } from '@/services/syncService';
+import bluetoothPrinter from '@/utils/bluetoothPrinter';
 
 // Countdown Timer Component
 const CountdownTimer = ({ seconds, onExpire }) => {
@@ -79,12 +83,35 @@ const VendeurNouvelleVente = () => {
   const [wsConnected, setWsConnected] = useState(false);
   const [serverTimezone, setServerTimezone] = useState('America/Port-au-Prince');
   const [betTypeLimits, setBetTypeLimits] = useState({});  // Company-specific bet type limits
+  const [showPrinterModal, setShowPrinterModal] = useState(false);
+  const [printerConnected, setPrinterConnected] = useState(false);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
   
   const saleFormRef = useRef(null);
   const wsRef = useRef(null);
   const refreshTimerRef = useRef(null);
 
   const headers = { Authorization: `Bearer ${token}` };
+  
+  // Listen for printer and network status
+  useEffect(() => {
+    const unsubPrinter = bluetoothPrinter.addListener((state) => {
+      setPrinterConnected(state.isConnected);
+    });
+    
+    const unsubSync = syncService.addListener((status) => {
+      setIsOfflineMode(!status.isOnline);
+    });
+    
+    // Check initial state
+    setPrinterConnected(bluetoothPrinter.isConnected);
+    setIsOfflineMode(!navigator.onLine);
+    
+    return () => {
+      unsubPrinter();
+      unsubSync();
+    };
+  }, []);
 
   // Map frontend bet types to backend keys
   const BET_TYPE_MAP = {
@@ -150,12 +177,31 @@ const VendeurNouvelleVente = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch ONLY OPEN lotteries
+  // Fetch ONLY OPEN lotteries with cache support
   const fetchLotteries = useCallback(async () => {
     if (!token) return;
     
     try {
       setLoading(true);
+      
+      // Try to use cached data first if offline
+      if (!navigator.onLine) {
+        const cachedLotteries = syncService.getCachedLotteries();
+        const cachedLimits = syncService.getCachedBetLimits();
+        const cachedConfig = syncService.getCachedConfig();
+        
+        if (cachedLotteries) {
+          setLotteries(cachedLotteries);
+          if (cachedLimits) setBetTypeLimits(cachedLimits);
+          if (cachedConfig) {
+            setSuccursaleName(cachedConfig.succursaleName || '');
+            setCompanyName(cachedConfig.companyName || '');
+          }
+          setLoading(false);
+          toast.info('Mode hors ligne - Données du cache');
+          return;
+        }
+      }
       
       // Use the new endpoint that only returns open lotteries + bet type limits
       const [lotteriesRes, profileRes, limitsRes] = await Promise.all([
@@ -168,9 +214,13 @@ const VendeurNouvelleVente = () => {
       setLotteries(openLotteries);
       setServerTimezone(lotteriesRes.data.timezone || 'America/Port-au-Prince');
       
+      // Cache the data for offline use
+      syncService.cacheLotteries(openLotteries);
+      
       // Set company-specific bet type limits
       if (limitsRes.data?.limits) {
         setBetTypeLimits(limitsRes.data.limits);
+        syncService.cacheBetLimits(limitsRes.data.limits);
       }
       
       // If selected lottery is no longer open, deselect it
@@ -187,16 +237,31 @@ const VendeurNouvelleVente = () => {
       if (configRes?.data?.configuration) {
         const config = configRes.data.configuration;
         setMinBetAmount(config.min_bet_amount || 1);
-        setMaxBetAmount(config.max_bet_amount || 1000);
+        setMaxBetAmount(config.max_bet_amount || 100000);
       }
       
       if (profileRes.data) {
         setSuccursaleName(profileRes.data?.succursale?.name || '');
         setCompanyName(profileRes.data?.company?.name || '');
+        // Cache config
+        syncService.cacheConfig({
+          succursaleName: profileRes.data?.succursale?.name || '',
+          companyName: profileRes.data?.company?.name || ''
+        });
       }
     } catch (error) {
       console.error('[VendeurVente] Error fetching lotteries:', error);
-      console.error('[VendeurVente] Response:', error.response?.data);
+      
+      // Try to use cache on error
+      const cachedLotteries = syncService.getCachedLotteries();
+      if (cachedLotteries && cachedLotteries.length > 0) {
+        setLotteries(cachedLotteries);
+        const cachedLimits = syncService.getCachedBetLimits();
+        if (cachedLimits) setBetTypeLimits(cachedLimits);
+        toast.warning('Utilisation des données en cache');
+        setLoading(false);
+        return;
+      }
       
       // Display actual error message instead of generic one
       const errorDetail = error.response?.data?.detail || error.message || t('vendeur.loadingError');
@@ -435,7 +500,7 @@ const VendeurNouvelleVente = () => {
 
     // Final check - is lottery still open?
     const stillOpen = lotteries.find(l => l.lottery_id === selectedLottery?.lottery_id);
-    if (!stillOpen) {
+    if (!stillOpen && navigator.onLine) {
       toast.error('ERREUR: La loterie vient de fermer! Vente annulée.');
       setSelectedLottery(null);
       return;
@@ -458,13 +523,87 @@ const VendeurNouvelleVente = () => {
         }))
       };
 
-      const res = await axios.post(`${API_URL}/api/lottery/sell`, payload, { headers });
+      let ticketData;
       
-      setTicketResult(res.data);
+      // Check if we should use offline mode
+      if (!navigator.onLine || syncService.shouldUseOfflineMode()) {
+        // OFFLINE MODE - Save locally and print
+        const offlineTicket = syncService.addPendingTicket(payload);
+        
+        ticketData = {
+          ticket_id: offlineTicket.id,
+          ticket_code: offlineTicket.id.toUpperCase(),
+          total_amount: totalAmount,
+          status: 'EN ATTENTE DE SYNC',
+          plays: cart,
+          created_at: new Date().toISOString(),
+          offline: true
+        };
+        
+        toast.warning('Mode hors ligne - Ticket sauvegardé localement');
+      } else {
+        // ONLINE MODE - Send to server
+        const res = await axios.post(`${API_URL}/api/lottery/sell`, payload, { headers });
+        ticketData = res.data;
+      }
+      
+      setTicketResult(ticketData);
       setShowPrintModal(true);
+      
+      // AUTO PRINT via Bluetooth if connected
+      if (printerConnected) {
+        try {
+          await bluetoothPrinter.printTicket({
+            companyName: companyName || 'LOTTOLAB',
+            branchName: succursaleName || '',
+            ticketId: ticketData.ticket_code || ticketData.ticket_id,
+            dateTime: new Date().toLocaleString('fr-FR'),
+            vendorName: user?.name || 'Agent',
+            lotteryName: selectedLottery?.lottery_name || '',
+            plays: cart.map(item => ({
+              numbers: item.numbers,
+              betType: item.bet_type,
+              amount: item.amount
+            })),
+            totalAmount: totalAmount,
+            status: ticketData.offline ? 'EN ATTENTE' : 'VALIDÉ',
+            footerMessage: ticketData.offline ? 'Sync en attente...' : 'Merci et bonne chance!'
+          });
+          toast.success('🖨️ Ticket imprimé automatiquement!');
+        } catch (printError) {
+          console.error('Auto print error:', printError);
+          toast.info('Utilisez le bouton Imprimer pour réessayer');
+        }
+      }
+      
       setCart([]);
-      toast.success('Vente validée avec succès!');
+      toast.success(ticketData.offline ? 'Ticket sauvegardé!' : 'Vente validée avec succès!');
     } catch (error) {
+      // If network error, try offline mode
+      if (!navigator.onLine || error.code === 'ERR_NETWORK') {
+        const offlineTicket = syncService.addPendingTicket({
+          lottery_id: cart[0].lottery_id,
+          draw_date: new Date().toISOString().split('T')[0],
+          plays: cart.map(item => ({
+            numbers: item.numbers,
+            bet_type: item.bet_type,
+            amount: item.amount
+          }))
+        });
+        
+        setTicketResult({
+          ticket_id: offlineTicket.id,
+          ticket_code: offlineTicket.id.toUpperCase(),
+          total_amount: totalAmount,
+          status: 'HORS LIGNE',
+          offline: true
+        });
+        setShowPrintModal(true);
+        setCart([]);
+        toast.warning('Connexion perdue - Ticket sauvegardé hors ligne');
+        return;
+      }
+      
       toast.error(error.response?.data?.detail || 'Erreur lors de la vente');
     } finally {
       setSubmitting(false);
@@ -542,6 +681,24 @@ const VendeurNouvelleVente = () => {
           )}
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
+          {/* Network Status Indicator */}
+          <NetworkIndicator />
+          
+          {/* Printer Status/Connect Button */}
+          <Button 
+            onClick={() => setShowPrinterModal(true)} 
+            variant="outline" 
+            size="sm" 
+            className={`border-slate-700 ${printerConnected ? 'text-emerald-400 border-emerald-500/50' : ''}`}
+            data-testid="printer-btn"
+          >
+            {printerConnected ? (
+              <Bluetooth className="w-4 h-4" />
+            ) : (
+              <Printer className="w-4 h-4" />
+            )}
+          </Button>
+          
           <div className="flex items-center gap-2 px-3 py-2 bg-slate-800 rounded-xl border border-slate-700">
             <Clock className="w-4 h-4 text-emerald-400" />
             <span className="text-white font-mono text-sm sm:text-lg">
@@ -881,6 +1038,33 @@ const VendeurNouvelleVente = () => {
           )}
         </div>
       </div>
+      
+      {/* Printer Manager Modal */}
+      {showPrinterModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="max-w-md w-full">
+            <PrinterManager onClose={() => setShowPrinterModal(false)} />
+            <Button 
+              onClick={() => setShowPrinterModal(false)} 
+              variant="outline" 
+              className="w-full mt-2 border-slate-700"
+            >
+              Fermer
+            </Button>
+          </div>
+        </div>
+      )}
+      
+      {/* Offline Mode Banner */}
+      {isOfflineMode && (
+        <div className="fixed bottom-20 lg:bottom-4 left-4 right-4 lg:left-auto lg:right-4 lg:w-80 bg-amber-500/20 border border-amber-500/50 rounded-xl p-3 text-amber-400 text-sm flex items-center gap-2 z-40">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+          <div>
+            <p className="font-semibold">Mode Hors Ligne</p>
+            <p className="text-xs text-amber-400/70">Les tickets seront synchronisés automatiquement</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

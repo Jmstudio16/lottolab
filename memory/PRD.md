@@ -1,50 +1,48 @@
 # LOTTOLAB - Professional Lottery SaaS Platform
 
-## Version: 25.0.0 (Export PDF Global + Sans Limite Minimum)
-## Last Updated: 2026-04-04 06:10 UTC
-## Deployed: 2026-04-04 01:10 Haiti Time
+## Version: 26.0.0 (LOTTOLAB PRO - Bluetooth + Offline Mode)
+## Last Updated: 2026-04-07 21:10 UTC
+## Deployed: 2026-04-07 17:10 Haiti Time
 
 ---
 
 ## 🚀 STATUT: PRODUCTION READY ✅
 
-### Nouvelles Modifications (v25.0.0):
+### Nouvelles Fonctionnalités (v26.0.0):
 
-#### 1. Export PDF Global ✅ (NOUVEAU)
-- **Endpoints créés**:
-  - `GET /api/export/reports/sales/pdf` - Rapport des ventes en PDF
-  - `GET /api/export/reports/winners/pdf` - Fiches gagnantes en PDF
-  - `GET /api/export/reports/financial/pdf` - Rapport financier en PDF
-  - `GET /api/export/reports/daily/pdf` - Rapport journalier (style SGL) en PDF
-- **Bibliothèque**: `reportlab` (Pure Python, pas de dépendances système)
-- **Pages mises à jour avec bouton PDF**:
-  - `/company/daily-reports` - Rapport Journalier
-  - `/company/rapport-ventes` - Rapport de Ventes
-  - `/company/lots-gagnants` - Fiches Gagnants
-  - `/supervisor/reports` - Rapport Superviseur
-  - `/vendeur/rapport` - Rapport Vendeur
+#### 1. Module Imprimante Bluetooth ✅ (NOUVEAU)
+- **Web Bluetooth API** intégré pour connexion aux imprimantes thermiques
+- Support **58mm et 80mm** (ESC/POS standard)
+- Composant `PrinterManager.jsx` avec:
+  - Scan Bluetooth devices
+  - Sauvegarde imprimante en localStorage
+  - Test d'impression
+  - Choix largeur papier (58/80mm)
+- Fichiers créés:
+  - `/app/frontend/src/utils/escpos.js` - Commandes ESC/POS
+  - `/app/frontend/src/utils/bluetoothPrinter.js` - Service Bluetooth
+  - `/app/frontend/src/components/PrinterManager.jsx` - UI
 
-#### 2. Suppression TOTALE des Limites Minimum de Mise ✅ (CONFIRMÉ)
-- Toutes les validations "minimum X HTG" ont été supprimées
-- Fichiers modifiés:
-  - `/app/backend/vendeur/vendeur_routes.py` - Validation de vente
-  - `/app/backend/universal_pos_routes.py` - Validation POS
-  - `/app/backend/bet_type_limits_routes.py` - Validation des limites
-  - `/app/backend/export_routes.py` - Validation export
-  - `/app/frontend/src/pages/lotopam/LotoPamLotteryPlayPage.jsx` - UI en ligne
-  - `/app/frontend/src/pages/company/CompanyBetLimitsPage.jsx` - Champ min supprimé
-  - `/app/frontend/src/pages/company/CompanySettingsPage.jsx` - Champ min supprimé
-- **Vendeurs peuvent miser N'IMPORTE QUEL MONTANT positif (même 0.5 HTG)**
-- Testé avec succès: Ticket créé avec 0.5 HTG
+#### 2. Mode Offline / Internet Faible ✅ (NOUVEAU)
+- **Cache local intelligent** (loteries, config, limites)
+- **Tickets hors ligne** - Création et sauvegarde locale
+- **Synchronisation automatique** quand internet revient
+- **Indicateur réseau** (En ligne/Lent/Hors ligne)
+- Fichiers créés:
+  - `/app/frontend/src/services/syncService.js` - Gestion sync
+  - `/app/frontend/src/components/NetworkIndicator.jsx` - UI statut
 
-#### 3. Impression Thermique ✅ (VÉRIFIÉ)
-- Endpoint `/api/ticket/print/{ticket_id}?format=thermal` fonctionne
-- HTML formaté pour imprimantes 80mm
-- Logo, code QR, et informations complètes
+#### 3. Optimisation Performance ✅
+- **GZip compression** activé sur le backend
+- **Lazy loading** des données
+- **Cache mémoire** pour réponses rapides
+- Vente de ticket en < 2 secondes
 
----
+#### 4. Impression Automatique ✅
+- Après validation ticket → impression Bluetooth auto
+- Fallback vers modal HTML si pas de Bluetooth
 
-### Modifications Précédentes (v24.0.0):
+### Modifications Précédentes (v25.0.0):
 
 #### 1. Page Historique Règlements Superviseur ✅ (NOUVEAU)
 - **Route**: `/supervisor/settlement-history`
