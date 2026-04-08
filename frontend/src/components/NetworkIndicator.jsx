@@ -1,10 +1,10 @@
 /**
  * Network Status Indicator Component
  * Shows current network status and pending sync items
- * Uses OfflineContext for state management
+ * Uses syncManager for state management
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Wifi, WifiOff, Cloud, CloudOff, RefreshCw, AlertTriangle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { syncManager } from '../services/offlineSyncManager';
@@ -13,34 +13,48 @@ const NetworkIndicator = ({ className, showDetails = false }) => {
   const [status, setStatus] = useState({
     isOnline: navigator.onLine,
     isSyncing: false,
-    pendingTickets: 0,
-    networkQuality: 'unknown'
+    pendingCount: 0,
+    networkQuality: navigator.onLine ? 'good' : 'offline'
   });
+  
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
+    
     // Listen for sync manager changes
     const unsubscribe = syncManager.addListener((newStatus) => {
+      if (!mountedRef.current) return;
+      
       setStatus({
-        isOnline: newStatus.isOnline,
-        isSyncing: newStatus.isSyncing,
-        pendingCount: newStatus.pendingTickets || 0,
+        isOnline: newStatus.isOnline ?? navigator.onLine,
+        isSyncing: newStatus.isSyncing ?? false,
+        pendingCount: newStatus.pendingTickets ?? 0,
         networkQuality: newStatus.isOnline ? 'good' : 'offline',
         lastSync: newStatus.lastSync
       });
     });
     
-    // Initial status
-    syncManager.getFullStatus().then(s => {
-      setStatus({
-        isOnline: s.isOnline,
-        isSyncing: s.isSyncing,
-        pendingCount: s.pendingTickets || 0,
-        networkQuality: s.isOnline ? 'good' : 'offline',
-        lastSync: s.lastSync
-      });
-    });
+    // Also listen to native online/offline events as backup
+    const handleOnline = () => {
+      if (!mountedRef.current) return;
+      setStatus(prev => ({ ...prev, isOnline: true, networkQuality: 'good' }));
+    };
     
-    return () => unsubscribe();
+    const handleOffline = () => {
+      if (!mountedRef.current) return;
+      setStatus(prev => ({ ...prev, isOnline: false, networkQuality: 'offline' }));
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      mountedRef.current = false;
+      unsubscribe();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
   const getStatusColor = () => {

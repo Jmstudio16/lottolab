@@ -178,9 +178,23 @@ const VendeurNouvelleVente = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Debounce flag for fetchLotteries
+  const lastFetchRef = useRef(0);
+  const fetchingRef = useRef(false);
+
   // Fetch ONLY OPEN lotteries with IndexedDB cache support
-  const fetchLotteries = useCallback(async () => {
+  const fetchLotteries = useCallback(async (forceRefresh = false) => {
     if (!token) return;
+    
+    // Prevent rapid successive calls (debounce 3 seconds unless forced)
+    const now = Date.now();
+    if (!forceRefresh && (fetchingRef.current || now - lastFetchRef.current < 3000)) {
+      console.log('[VendeurVente] Skipping fetch - too soon or already fetching');
+      return;
+    }
+    
+    fetchingRef.current = true;
+    lastFetchRef.current = now;
     
     try {
       setLoading(true);
@@ -199,6 +213,7 @@ const VendeurNouvelleVente = () => {
             setCompanyName(cachedConfig.company?.name || cachedConfig.companyName || '');
           }
           setLoading(false);
+          fetchingRef.current = false;
           toast.info('Mode hors ligne - Données du cache IndexedDB');
           return;
         }
@@ -264,6 +279,7 @@ const VendeurNouvelleVente = () => {
           if (cachedLimits.data) setBetTypeLimits(cachedLimits.data);
           toast.warning('Utilisation des données IndexedDB en cache');
           setLoading(false);
+          fetchingRef.current = false;
           return;
         }
       } catch (cacheError) {
@@ -279,54 +295,83 @@ const VendeurNouvelleVente = () => {
       console.log('[VendeurVente] Debug - API URL:', API_URL);
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
   }, [token, selectedLottery, t, headers]);
 
+  // WebSocket connection reference for reconnection control
+  const wsReconnectAttemptsRef = useRef(0);
+  const wsReconnectTimerRef = useRef(null);
+  const maxWsReconnectAttempts = 3;
+
   // WebSocket connection for real-time updates
   useEffect(() => {
-    if (!token) return;
+    if (!token || !navigator.onLine) return;
     
-    const wsUrl = `${API_URL.replace('http', 'ws')}/api/ws?token=${token}`;
-    
-    try {
-      wsRef.current = new WebSocket(wsUrl);
-      
-      wsRef.current.onopen = () => {
-        console.log('[VendeurVente] WebSocket connected');
-        setWsConnected(true);
-      };
-      
-      wsRef.current.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          // Handle lottery status changes
-          if (['LOTTERY_STATUS_CHANGE', 'LOTTERY_TOGGLED', 'SCHEDULE_CHANGE', 'SYNC_REQUIRED'].includes(data.type)) {
-            console.log('[VendeurVente] Received sync event:', data.type);
-            fetchLotteries();
-          }
-          
-          // Handle result publication
-          if (data.type === 'RESULT_PUBLISHED') {
-            toast.info(`Nouveau résultat: ${data.data?.lottery_name} - ${data.data?.winning_numbers}`);
-          }
-        } catch (err) {
-          console.error('WS message error:', err);
-        }
-      };
-      
-      wsRef.current.onerror = () => {
-        setWsConnected(false);
-      };
-      
-      wsRef.current.onclose = () => {
-        setWsConnected(false);
-      };
-    } catch (err) {
-      console.warn('WebSocket not available');
+    // Clean up any existing reconnect timer
+    if (wsReconnectTimerRef.current) {
+      clearTimeout(wsReconnectTimerRef.current);
+      wsReconnectTimerRef.current = null;
     }
     
+    const connectWs = () => {
+      const wsUrl = `${API_URL.replace('http', 'ws')}/api/ws?token=${token}`;
+      
+      try {
+        wsRef.current = new WebSocket(wsUrl);
+        
+        wsRef.current.onopen = () => {
+          console.log('[VendeurVente] WebSocket connected');
+          setWsConnected(true);
+          wsReconnectAttemptsRef.current = 0; // Reset on success
+        };
+        
+        wsRef.current.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            
+            // Handle lottery status changes
+            if (['LOTTERY_STATUS_CHANGE', 'LOTTERY_TOGGLED', 'SCHEDULE_CHANGE', 'SYNC_REQUIRED'].includes(data.type)) {
+              console.log('[VendeurVente] Received sync event:', data.type);
+              fetchLotteries(true); // Force refresh
+            }
+            
+            // Handle result publication
+            if (data.type === 'RESULT_PUBLISHED') {
+              toast.info(`Nouveau résultat: ${data.data?.lottery_name} - ${data.data?.winning_numbers}`);
+            }
+          } catch (err) {
+            console.error('WS message error:', err);
+          }
+        };
+        
+        wsRef.current.onerror = () => {
+          setWsConnected(false);
+        };
+        
+        wsRef.current.onclose = () => {
+          setWsConnected(false);
+          
+          // Attempt reconnection with exponential backoff (max 3 attempts)
+          if (wsReconnectAttemptsRef.current < maxWsReconnectAttempts && navigator.onLine) {
+            wsReconnectAttemptsRef.current++;
+            const delay = Math.min(5000 * Math.pow(2, wsReconnectAttemptsRef.current - 1), 30000);
+            console.log(`[VendeurVente] WS reconnect attempt ${wsReconnectAttemptsRef.current} in ${delay}ms`);
+            
+            wsReconnectTimerRef.current = setTimeout(connectWs, delay);
+          }
+        };
+      } catch (err) {
+        console.warn('WebSocket not available');
+      }
+    };
+    
+    connectWs();
+    
     return () => {
+      if (wsReconnectTimerRef.current) {
+        clearTimeout(wsReconnectTimerRef.current);
+      }
       if (wsRef.current) {
         wsRef.current.close();
       }

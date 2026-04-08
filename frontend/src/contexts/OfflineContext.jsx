@@ -10,7 +10,7 @@
  * - Cached data access
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { offlineDB } from '../services/offlineDB';
 import { syncManager } from '../services/offlineSyncManager';
 import { API_URL } from '../config/api';
@@ -20,7 +20,7 @@ const OfflineContext = createContext(null);
 export const OfflineProvider = ({ children }) => {
   // Network state
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [networkQuality, setNetworkQuality] = useState('unknown'); // good, medium, slow, offline
+  const [networkQuality, setNetworkQuality] = useState(navigator.onLine ? 'good' : 'offline');
   
   // Sync state
   const [isSyncing, setIsSyncing] = useState(false);
@@ -33,23 +33,37 @@ export const OfflineProvider = ({ children }) => {
   
   // DB ready state
   const [isDBReady, setIsDBReady] = useState(false);
+  
+  // Mount ref
+  const mountedRef = useRef(true);
 
   // Initialize OfflineDB
   useEffect(() => {
+    mountedRef.current = true;
+    
     offlineDB.init().then(() => {
+      if (!mountedRef.current) return;
       setIsDBReady(true);
       console.log('[OfflineContext] IndexedDB ready');
     }).catch(err => {
       console.error('[OfflineContext] IndexedDB init error:', err);
     });
+    
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   // Configure sync manager
   useEffect(() => {
     const getToken = async () => {
-      const token = await offlineDB.getToken();
-      if (token) return token;
-      // Fallback to localStorage during migration
+      try {
+        const token = await offlineDB.getToken();
+        if (token) return token;
+      } catch (e) {
+        console.warn('[OfflineContext] Token from IndexedDB failed:', e);
+      }
+      // Fallback to localStorage
       return localStorage.getItem('token');
     };
     
@@ -58,10 +72,7 @@ export const OfflineProvider = ({ children }) => {
       getToken
     });
     
-    // Start sync loop if online
-    if (navigator.onLine) {
-      syncManager.startSyncLoop();
-    }
+    console.log('[OfflineContext] SyncManager configured with API:', API_URL);
     
     return () => {
       syncManager.stopSyncLoop();
@@ -71,23 +82,29 @@ export const OfflineProvider = ({ children }) => {
   // Listen for sync manager updates
   useEffect(() => {
     const unsubscribe = syncManager.addListener((status) => {
-      setIsOnline(status.isOnline);
-      setIsSyncing(status.isSyncing);
-      setPendingCount(status.pendingTickets || 0);
+      if (!mountedRef.current) return;
+      
+      setIsOnline(status.isOnline ?? navigator.onLine);
+      setIsSyncing(status.isSyncing ?? false);
+      setPendingCount(status.pendingTickets ?? 0);
       setLastSync(status.lastSync);
       
       // Update network quality
       if (!status.isOnline) {
         setNetworkQuality('offline');
+      } else {
+        setNetworkQuality('good');
       }
     });
     
     return unsubscribe;
   }, []);
 
-  // Monitor network quality
+  // Monitor network quality with native events
   useEffect(() => {
     const checkQuality = () => {
+      if (!mountedRef.current) return;
+      
       if (!navigator.onLine) {
         setNetworkQuality('offline');
         setIsOnline(false);
@@ -108,7 +125,7 @@ export const OfflineProvider = ({ children }) => {
           setNetworkQuality('slow');
         }
       } else {
-        setNetworkQuality('unknown');
+        setNetworkQuality('good');
       }
     };
     

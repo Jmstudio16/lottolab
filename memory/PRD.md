@@ -1,12 +1,29 @@
 # LOTTOLAB PRO - Professional Lottery SaaS Platform
 
-## Version: 27.0.0 (LOTTOLAB PRO - Full Offline-First Architecture)
-## Last Updated: 2026-04-07 21:50 UTC
-## Deployed: 2026-04-07 17:50 Haiti Time
+## Version: 27.1.0 (LOTTOLAB PRO - Offline-First Architecture Stabilized)
+## Last Updated: 2026-04-08 23:50 UTC
+## Deployed: 2026-04-08 19:50 Haiti Time
 
 ---
 
 ## 🚀 STATUT: PRODUCTION READY ✅
+
+### Corrections v27.1.0 (Stabilisation Offline):
+
+#### 1. Stabilisation du système de détection réseau ✅
+- **SyncManager initialisé correctement** - Attente d'IndexedDB avant notifications
+- **NetworkIndicator robuste** - Utilise `mountedRef` pour éviter les memory leaks
+- **OfflineContext amélioré** - Gestion propre des événements online/offline
+- **Debounce `fetchLotteries`** - Protection contre les appels trop fréquents (3s)
+
+#### 2. WebSocket reconnexion contrôlée ✅
+- Maximum **3 tentatives** de reconnexion avec backoff exponentiel
+- Pas de reconnexion quand hors ligne
+- Nettoyage propre des timers à la destruction du composant
+
+#### 3. Compatibilité anciens imports ✅
+- `syncService.js` transformé en wrapper vers le nouveau `offlineSyncManager`
+- Migration transparente pour les composants existants
 
 ### Nouvelles Fonctionnalités (v27.0.0):
 

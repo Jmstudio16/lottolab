@@ -35,12 +35,14 @@ class OfflineSyncManager {
     this.syncTimer = null;
     this.apiUrl = null;
     this.getToken = null;
+    this.isInitialized = false;
+    this.initPromise = null;
     
     // Bind methods
     this.handleOnline = this.handleOnline.bind(this);
     this.handleOffline = this.handleOffline.bind(this);
     
-    // Listen for network changes
+    // Listen for network changes immediately
     window.addEventListener('online', this.handleOnline);
     window.addEventListener('offline', this.handleOffline);
     
@@ -52,6 +54,47 @@ class OfflineSyncManager {
         }
       });
     }
+    
+    // Initialize
+    this.init();
+  }
+
+  /**
+   * Initialize the sync manager (wait for IndexedDB)
+   */
+  async init() {
+    if (this.initPromise) return this.initPromise;
+    
+    this.initPromise = (async () => {
+      try {
+        await offlineDB.ensureReady();
+        this.isInitialized = true;
+        console.log('[SyncManager] Initialized and ready');
+        
+        // Notify listeners of initial state
+        await this.notifyListeners();
+        
+        // Start sync loop if online
+        if (this.isOnline) {
+          this.startSyncLoop();
+        }
+      } catch (error) {
+        console.error('[SyncManager] Init error:', error);
+        this.isInitialized = false;
+      }
+    })();
+    
+    return this.initPromise;
+  }
+
+  /**
+   * Wait for initialization
+   */
+  async ensureReady() {
+    if (!this.isInitialized) {
+      await this.init();
+    }
+    return this.isInitialized;
   }
 
   /**
@@ -68,8 +111,11 @@ class OfflineSyncManager {
    */
   addListener(callback) {
     this.listeners.add(callback);
-    // Send current status immediately
-    callback(this.getStatus());
+    // Send current status immediately (async)
+    this.getFullStatus().then(status => callback(status)).catch(() => {
+      // If failed, send basic status
+      callback(this.getStatus());
+    });
     return () => this.listeners.delete(callback);
   }
 
@@ -77,7 +123,14 @@ class OfflineSyncManager {
    * Notify all listeners
    */
   async notifyListeners() {
-    const status = await this.getFullStatus();
+    let status;
+    try {
+      status = await this.getFullStatus();
+    } catch (error) {
+      console.warn('[SyncManager] Could not get full status:', error);
+      status = this.getStatus();
+    }
+    
     this.listeners.forEach(cb => {
       try {
         cb(status);
@@ -88,28 +141,44 @@ class OfflineSyncManager {
   }
 
   /**
-   * Get current status
+   * Get current status (sync, no async)
    */
   getStatus() {
     return {
       isOnline: this.isOnline,
       isSyncing: this.isSyncing,
-      status: this.status
+      status: this.status,
+      isInitialized: this.isInitialized,
+      pendingTickets: 0 // Default, will be updated async
     };
   }
 
   /**
-   * Get full status with stats
+   * Get full status with stats (async)
    */
   async getFullStatus() {
-    const stats = await offlineDB.getStats();
-    return {
-      ...this.getStatus(),
-      pendingTickets: stats.pendingTickets,
-      syncedTickets: stats.syncedTickets,
-      failedTickets: stats.failedTickets,
-      lastSync: localStorage.getItem('lottolab_last_sync')
-    };
+    // Ensure we're initialized
+    if (!this.isInitialized) {
+      try {
+        await this.ensureReady();
+      } catch (e) {
+        return this.getStatus();
+      }
+    }
+    
+    try {
+      const stats = await offlineDB.getStats();
+      return {
+        ...this.getStatus(),
+        pendingTickets: stats.pendingTickets || 0,
+        syncedTickets: stats.syncedTickets || 0,
+        failedTickets: stats.failedTickets || 0,
+        lastSync: localStorage.getItem('lottolab_last_sync')
+      };
+    } catch (error) {
+      console.warn('[SyncManager] Stats error:', error);
+      return this.getStatus();
+    }
   }
 
   /**
