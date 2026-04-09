@@ -181,15 +181,15 @@ const VendeurNouvelleVente = () => {
   // Debounce flag for fetchLotteries
   const lastFetchRef = useRef(0);
   const fetchingRef = useRef(false);
+  const initialLoadDoneRef = useRef(false);
 
-  // Fetch ONLY OPEN lotteries with IndexedDB cache support
+  // Fetch ONLY OPEN lotteries - Optimized for speed on POS devices
   const fetchLotteries = useCallback(async (forceRefresh = false) => {
     if (!token) return;
     
-    // Prevent rapid successive calls (debounce 3 seconds unless forced)
+    // Prevent rapid successive calls (debounce 2 seconds unless forced)
     const now = Date.now();
-    if (!forceRefresh && (fetchingRef.current || now - lastFetchRef.current < 3000)) {
-      console.log('[VendeurVente] Skipping fetch - too soon or already fetching');
+    if (!forceRefresh && (fetchingRef.current || now - lastFetchRef.current < 2000)) {
       return;
     }
     
@@ -197,107 +197,116 @@ const VendeurNouvelleVente = () => {
     lastFetchRef.current = now;
     
     try {
-      setLoading(true);
+      // Show loading only on first load
+      if (!initialLoadDoneRef.current) {
+        setLoading(true);
+      }
       
-      // Try to use IndexedDB cached data first if offline
-      if (!navigator.onLine) {
+      // STRATEGY: Try API with short timeout, fallback to cache silently
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
+      
+      try {
+        const [lotteriesRes, profileRes, limitsRes] = await Promise.all([
+          axios.get(`${API_URL}/api/sync/vendeur/open-lotteries`, { 
+            headers, 
+            signal: controller.signal,
+            timeout: 6000 
+          }),
+          axios.get(`${API_URL}/api/vendeur/profile`, { 
+            headers, 
+            signal: controller.signal,
+            timeout: 6000 
+          }).catch(() => ({ data: null })),
+          axios.get(`${API_URL}/api/company/vendor/bet-type-limits`, { 
+            headers, 
+            signal: controller.signal,
+            timeout: 6000 
+          }).catch(() => ({ data: { limits: {} } }))
+        ]);
+        
+        clearTimeout(timeoutId);
+        
+        const openLotteries = lotteriesRes.data.lotteries || [];
+        setLotteries(openLotteries);
+        setServerTimezone(lotteriesRes.data.timezone || 'America/Port-au-Prince');
+        initialLoadDoneRef.current = true;
+        
+        // Cache in background (don't block)
+        offlineDB.cacheLotteries(openLotteries).catch(() => {});
+        
+        if (limitsRes.data?.limits) {
+          setBetTypeLimits(limitsRes.data.limits);
+          offlineDB.cacheBetLimits(limitsRes.data.limits).catch(() => {});
+        }
+        
+        // Check if selected lottery is still open
+        if (selectedLottery) {
+          const stillOpen = openLotteries.find(l => l.lottery_id === selectedLottery.lottery_id);
+          if (!stillOpen) {
+            toast.error('La loterie sélectionnée vient de fermer!');
+            setSelectedLottery(null);
+          }
+        }
+        
+        // Get config in background
+        axios.get(`${API_URL}/api/device/config`, { headers, timeout: 5000 })
+          .then(configRes => {
+            if (configRes?.data?.configuration) {
+              setMinBetAmount(configRes.data.configuration.min_bet_amount || 1);
+              setMaxBetAmount(configRes.data.configuration.max_bet_amount || 100000);
+            }
+          }).catch(() => {});
+        
+        if (profileRes.data) {
+          setSuccursaleName(profileRes.data?.succursale?.name || '');
+          setCompanyName(profileRes.data?.company?.name || '');
+          offlineDB.cacheVendorConfig({
+            succursale: profileRes.data?.succursale,
+            company: profileRes.data?.company
+          }).catch(() => {});
+        }
+        
+      } catch (apiError) {
+        clearTimeout(timeoutId);
+        
+        // API failed - use cache silently
         const cachedResult = await offlineDB.getCachedLotteries();
-        const cachedLimits = await offlineDB.getCachedBetLimits();
-        const cachedConfig = await offlineDB.getVendorConfig();
         
         if (cachedResult.data && cachedResult.data.length > 0) {
           setLotteries(cachedResult.data);
+          initialLoadDoneRef.current = true;
+          
+          const cachedLimits = await offlineDB.getCachedBetLimits();
+          const cachedConfig = await offlineDB.getVendorConfig();
+          
           if (cachedLimits.data) setBetTypeLimits(cachedLimits.data);
           if (cachedConfig) {
             setSuccursaleName(cachedConfig.succursale?.name || cachedConfig.succursaleName || '');
             setCompanyName(cachedConfig.company?.name || cachedConfig.companyName || '');
           }
-          setLoading(false);
-          fetchingRef.current = false;
-          toast.info('Mode hors ligne - Données du cache IndexedDB');
-          return;
+          
+          // Only show toast on first load failure
+          if (!initialLoadDoneRef.current) {
+            if (!navigator.onLine) {
+              toast.info('Mode hors ligne');
+            } else {
+              toast.warning('Données du cache');
+            }
+          }
+        } else {
+          // No cache - show error only on first load
+          if (!initialLoadDoneRef.current) {
+            toast.error('Erreur de chargement');
+          }
         }
       }
       
-      // Use the new endpoint that only returns open lotteries + bet type limits
-      const [lotteriesRes, profileRes, limitsRes] = await Promise.all([
-        axios.get(`${API_URL}/api/sync/vendeur/open-lotteries`, { headers }),
-        axios.get(`${API_URL}/api/vendeur/profile`, { headers }).catch(() => ({ data: null })),
-        axios.get(`${API_URL}/api/company/vendor/bet-type-limits`, { headers }).catch(() => ({ data: { limits: {} } }))
-      ]);
-      
-      const openLotteries = lotteriesRes.data.lotteries || [];
-      setLotteries(openLotteries);
-      setServerTimezone(lotteriesRes.data.timezone || 'America/Port-au-Prince');
-      
-      // Cache the data in IndexedDB for offline use
-      await offlineDB.cacheLotteries(openLotteries);
-      
-      // Set company-specific bet type limits
-      if (limitsRes.data?.limits) {
-        setBetTypeLimits(limitsRes.data.limits);
-        await offlineDB.cacheBetLimits(limitsRes.data.limits);
-      }
-      
-      // If selected lottery is no longer open, deselect it
-      if (selectedLottery) {
-        const stillOpen = openLotteries.find(l => l.lottery_id === selectedLottery.lottery_id);
-        if (!stillOpen) {
-          toast.error('La loterie sélectionnée vient de fermer!');
-          setSelectedLottery(null);
-        }
-      }
-      
-      // Get company configuration from device/config for bet limits
-      const configRes = await axios.get(`${API_URL}/api/device/config`, { headers }).catch(() => null);
-      if (configRes?.data?.configuration) {
-        const config = configRes.data.configuration;
-        setMinBetAmount(config.min_bet_amount || 1);
-        setMaxBetAmount(config.max_bet_amount || 100000);
-      }
-      
-      if (profileRes.data) {
-        setSuccursaleName(profileRes.data?.succursale?.name || '');
-        setCompanyName(profileRes.data?.company?.name || '');
-        // Cache config in IndexedDB
-        await offlineDB.cacheVendorConfig({
-          succursale: profileRes.data?.succursale,
-          company: profileRes.data?.company,
-          succursaleName: profileRes.data?.succursale?.name || '',
-          companyName: profileRes.data?.company?.name || ''
-        });
-      }
-    } catch (error) {
-      console.error('[VendeurVente] Error fetching lotteries:', error);
-      
-      // Try to use IndexedDB cache on error
-      try {
-        const cachedResult = await offlineDB.getCachedLotteries();
-        if (cachedResult.data && cachedResult.data.length > 0) {
-          setLotteries(cachedResult.data);
-          const cachedLimits = await offlineDB.getCachedBetLimits();
-          if (cachedLimits.data) setBetTypeLimits(cachedLimits.data);
-          toast.warning('Utilisation des données IndexedDB en cache');
-          setLoading(false);
-          fetchingRef.current = false;
-          return;
-        }
-      } catch (cacheError) {
-        console.error('[VendeurVente] Cache error:', cacheError);
-      }
-      
-      // Display actual error message instead of generic one
-      const errorDetail = error.response?.data?.detail || error.message || t('vendeur.loadingError');
-      toast.error(`Erreur: ${errorDetail}`);
-      
-      // Log debug info
-      console.log('[VendeurVente] Debug - Token exists:', !!token);
-      console.log('[VendeurVente] Debug - API URL:', API_URL);
     } finally {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, [token, selectedLottery, t, headers]);
+  }, [token, selectedLottery, headers]);
 
   // WebSocket connection reference for reconnection control
   const wsReconnectAttemptsRef = useRef(0);

@@ -1,13 +1,11 @@
 /**
  * Network Status Indicator Component
- * Shows current network status and pending sync items
- * Uses syncManager for state management
+ * Shows current network status - Optimized for POS devices
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Wifi, WifiOff, Cloud, CloudOff, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, AlertTriangle } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { syncManager } from '../services/offlineSyncManager';
 
 const NetworkIndicator = ({ className, showDetails = false }) => {
   const [status, setStatus] = useState({
@@ -22,20 +20,7 @@ const NetworkIndicator = ({ className, showDetails = false }) => {
   useEffect(() => {
     mountedRef.current = true;
     
-    // Listen for sync manager changes
-    const unsubscribe = syncManager.addListener((newStatus) => {
-      if (!mountedRef.current) return;
-      
-      setStatus({
-        isOnline: newStatus.isOnline ?? navigator.onLine,
-        isSyncing: newStatus.isSyncing ?? false,
-        pendingCount: newStatus.pendingTickets ?? 0,
-        networkQuality: newStatus.isOnline ? 'good' : 'offline',
-        lastSync: newStatus.lastSync
-      });
-    });
-    
-    // Also listen to native online/offline events as backup
+    // Direct network event listeners (fast, no dependencies)
     const handleOnline = () => {
       if (!mountedRef.current) return;
       setStatus(prev => ({ ...prev, isOnline: true, networkQuality: 'good' }));
@@ -49,11 +34,29 @@ const NetworkIndicator = ({ className, showDetails = false }) => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     
+    // Check network quality periodically (every 10 seconds)
+    const checkQuality = () => {
+      if (!mountedRef.current) return;
+      
+      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (connection && navigator.onLine) {
+        const effectiveType = connection.effectiveType;
+        let quality = 'good';
+        if (effectiveType === '2g' || effectiveType === 'slow-2g') quality = 'slow';
+        else if (effectiveType === '3g') quality = 'medium';
+        
+        setStatus(prev => ({ ...prev, networkQuality: quality }));
+      }
+    };
+    
+    checkQuality();
+    const qualityInterval = setInterval(checkQuality, 10000);
+    
     return () => {
       mountedRef.current = false;
-      unsubscribe();
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      clearInterval(qualityInterval);
     };
   }, []);
 
