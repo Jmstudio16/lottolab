@@ -342,6 +342,21 @@ class BluetoothPrinterService {
   }
 
   /**
+   * Get saved printer info (sync method for backwards compatibility)
+   */
+  getSavedPrinter() {
+    // Return cached info if available
+    if (this.printerName) {
+      return {
+        name: this.printerName,
+        paperWidth: this.paperWidth,
+        useNativeBridge: this.useNativeBridge
+      };
+    }
+    return null;
+  }
+
+  /**
    * Set paper width (58mm or 80mm)
    */
   setPaperWidth(width) {

@@ -674,15 +674,43 @@ const VendeurNouvelleVente = () => {
           total_amount: totalAmount
         });
         
-        setTicketResult({
+        const fallbackTicketData = {
           ticket_id: fallbackTicket.offline_id,
           ticket_code: fallbackTicket.offline_id,
           total_amount: totalAmount,
-          status: 'HORS LIGNE (FALLBACK)',
+          status: 'HORS LIGNE',
           offline: true,
           offline_id: fallbackTicket.offline_id
-        });
+        };
+        
+        setTicketResult(fallbackTicketData);
         setShowPrintModal(true);
+        
+        // AUTO PRINT even in fallback mode
+        if (printerConnected) {
+          try {
+            await bluetoothPrinter.printTicket({
+              companyName: companyName || 'LOTTOLAB',
+              branchName: succursaleName || '',
+              ticketId: fallbackTicket.offline_id,
+              dateTime: new Date().toLocaleString('fr-FR'),
+              vendorName: user?.name || 'Agent',
+              lotteryName: selectedLottery?.lottery_name || '',
+              plays: cart.map(item => ({
+                numbers: item.numbers,
+                betType: item.bet_type,
+                amount: item.amount
+              })),
+              totalAmount: totalAmount,
+              status: 'HORS LIGNE',
+              footerMessage: 'Sync automatique au retour connexion'
+            });
+            toast.success('🖨️ Ticket imprimé!');
+          } catch (printErr) {
+            console.error('Fallback print error:', printErr);
+          }
+        }
+        
         setCart([]);
         toast.warning('Erreur réseau - Ticket sauvegardé en local');
         return;
