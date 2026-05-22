@@ -1,12 +1,7 @@
 /**
- * LOTTOLAB PRO - Advanced Bluetooth Printer Manager
- * ==================================================
- * Full Bluetooth printer management with:
- * - Auto-connection on app start
- * - Device scanning with list
- * - Connection persistence
- * - Native Android bridge support
- * - 58mm and 80mm paper support
+ * LOTTOLAB PRO - Ultimate Printer Manager
+ * ========================================
+ * Complete Bluetooth printer management for POS devices
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -14,86 +9,45 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/
 import { Button } from './ui/button';
 import { 
   Printer, Bluetooth, BluetoothOff, BluetoothSearching,
-  Check, X, RefreshCw, Settings2, TestTube, Wifi, 
-  ChevronRight, Smartphone, Radio
+  Check, X, RefreshCw, Settings2, TestTube, 
+  ChevronRight, Smartphone, Radio, Loader2, Wifi, WifiOff
 } from 'lucide-react';
 import { toast } from 'sonner';
 import bluetoothPrinter from '../utils/bluetoothPrinter';
-import { offlineDB } from '../services/offlineDB';
 
 const PrinterManager = ({ onClose, compact = false, autoConnect = false }) => {
-  const [isSupported, setIsSupported] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [state, setState] = useState({
+    isConnected: false,
+    isConnecting: false,
+    printerName: null,
+    paperWidth: 80,
+    useNativeBridge: false,
+    isPrinting: false
+  });
   const [isScanning, setIsScanning] = useState(false);
-  const [isPrinting, setIsPrinting] = useState(false);
-  const [printerName, setPrinterName] = useState(null);
-  const [paperWidth, setPaperWidth] = useState(80);
-  const [savedPrinter, setSavedPrinter] = useState(null);
-  const [useNativeBridge, setUseNativeBridge] = useState(false);
   const [availableDevices, setAvailableDevices] = useState([]);
   const [showDeviceList, setShowDeviceList] = useState(false);
 
-  // Initialize on mount
+  // Subscribe to printer state changes
   useEffect(() => {
-    const init = async () => {
-      // Check support
-      setIsSupported(bluetoothPrinter.isSupported());
-      setUseNativeBridge(bluetoothPrinter.useNativeBridge);
-      
-      // Get saved printer config from IndexedDB
-      try {
-        const config = await offlineDB.getPrinterConfig();
-        if (config) {
-          setSavedPrinter(config);
-          setPaperWidth(config.paperWidth || 80);
-          
-          // Auto-connect if enabled and saved printer exists
-          if (autoConnect && config.name) {
-            tryAutoConnect();
-          }
-        }
-      } catch (e) {
-        console.warn('[PrinterManager] Could not load saved config:', e);
-      }
-      
-      // Listen for connection changes
-      const unsubscribe = bluetoothPrinter.addListener((state) => {
-        setIsConnected(state.isConnected);
-        setPrinterName(state.printerName);
-        setPaperWidth(state.paperWidth || 80);
-        setUseNativeBridge(state.useNativeBridge);
+    const unsubscribe = bluetoothPrinter.addListener((newState) => {
+      setState({
+        isConnected: newState.isConnected,
+        isConnecting: newState.isConnecting,
+        printerName: newState.printerName,
+        paperWidth: newState.paperWidth || 80,
+        useNativeBridge: newState.useNativeBridge,
+        isPrinting: newState.isPrinting
       });
-      
-      // Check current state
-      setIsConnected(bluetoothPrinter.isConnected);
-      setPrinterName(bluetoothPrinter.printerName);
-      
-      return () => unsubscribe();
-    };
+    });
     
-    init();
-  }, [autoConnect]);
+    return () => unsubscribe();
+  }, []);
 
-  // Try to auto-connect to saved printer
-  const tryAutoConnect = useCallback(async () => {
-    if (isConnected || isConnecting) return;
-    
-    setIsConnecting(true);
-    try {
-      await bluetoothPrinter.connect();
-      toast.success('Imprimante connectée automatiquement');
-    } catch (error) {
-      console.log('[PrinterManager] Auto-connect failed (normal if no saved device)');
-    } finally {
-      setIsConnecting(false);
-    }
-  }, [isConnected, isConnecting]);
-
-  // Scan for available devices (Native only)
+  // Scan for devices (native mode only)
   const handleScan = async () => {
-    if (!useNativeBridge) {
-      // Web Bluetooth uses the browser's device picker
+    if (!state.useNativeBridge) {
+      // Web Bluetooth - just connect directly (browser shows picker)
       handleConnect();
       return;
     }
@@ -103,14 +57,11 @@ const PrinterManager = ({ onClose, compact = false, autoConnect = false }) => {
     setAvailableDevices([]);
     
     try {
-      // For native bridge, scan for devices
-      if (bluetoothPrinter.nativeBridge?.scan) {
-        const devices = await bluetoothPrinter.nativeBridge.scan();
-        setAvailableDevices(devices || []);
-        
-        if (devices.length === 0) {
-          toast.info('Aucune imprimante trouvée. Vérifiez que l\'imprimante est allumée.');
-        }
+      const devices = await bluetoothPrinter.scanDevices();
+      setAvailableDevices(devices);
+      
+      if (devices.length === 0) {
+        toast.info('Aucune imprimante trouvée');
       }
     } catch (error) {
       console.error('[PrinterManager] Scan error:', error);
@@ -120,36 +71,19 @@ const PrinterManager = ({ onClose, compact = false, autoConnect = false }) => {
     }
   };
 
-  // Connect to printer (Web Bluetooth or Native)
+  // Connect to printer
   const handleConnect = async (deviceAddress = null) => {
-    setIsConnecting(true);
     try {
-      let result;
-      
-      if (deviceAddress && useNativeBridge) {
-        // Connect to specific device (native)
-        result = await bluetoothPrinter.nativeBridge.connect(deviceAddress);
-        bluetoothPrinter.isConnected = true;
-        bluetoothPrinter.printerName = availableDevices.find(d => d.address === deviceAddress)?.name || 'Imprimante';
-        bluetoothPrinter.notifyListeners();
-      } else {
-        // Use standard connect (shows browser picker for Web Bluetooth)
-        result = await bluetoothPrinter.connect();
-      }
-      
-      toast.success(`Connecté à ${result?.printerName || printerName || 'Imprimante'}`);
+      const result = await bluetoothPrinter.connect(deviceAddress);
+      toast.success(`Connecté: ${result.printerName}`);
       setShowDeviceList(false);
     } catch (error) {
-      console.error('[PrinterManager] Connection error:', error);
-      if (error.name === 'NotFoundError') {
-        toast.error('Aucune imprimante sélectionnée');
-      } else if (error.message?.includes('User cancelled')) {
+      console.error('[PrinterManager] Connect error:', error);
+      if (error.name === 'NotFoundError' || error.message?.includes('cancelled')) {
         toast.info('Connexion annulée');
       } else {
-        toast.error(`Erreur: ${error.message}`);
+        toast.error(error.message || 'Erreur de connexion');
       }
-    } finally {
-      setIsConnecting(false);
     }
   };
 
@@ -157,170 +91,161 @@ const PrinterManager = ({ onClose, compact = false, autoConnect = false }) => {
   const handleDisconnect = async () => {
     await bluetoothPrinter.disconnect();
     setAvailableDevices([]);
-    toast.info('Imprimante déconnectée');
+    toast.info('Déconnecté');
   };
 
   // Test print
   const handleTestPrint = async () => {
-    setIsPrinting(true);
     try {
       await bluetoothPrinter.printTest();
       toast.success('Test d\'impression envoyé!');
     } catch (error) {
       console.error('[PrinterManager] Print error:', error);
-      toast.error(`Erreur d'impression: ${error.message}`);
-    } finally {
-      setIsPrinting(false);
+      toast.error(`Erreur: ${error.message}`);
     }
   };
 
   // Change paper width
-  const handlePaperWidthChange = (width) => {
-    setPaperWidth(width);
+  const handlePaperWidth = (width) => {
     bluetoothPrinter.setPaperWidth(width);
-    toast.success(`Largeur papier: ${width}mm`);
+    toast.success(`Papier: ${width}mm`);
   };
 
   // Compact version for toolbar
   if (compact) {
     return (
       <div className="flex items-center gap-2">
-        {isConnected ? (
+        {state.isConnected ? (
           <>
             <div 
-              className="flex items-center gap-1 text-emerald-400 text-sm cursor-pointer hover:text-emerald-300"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-500/20 cursor-pointer hover:bg-emerald-500/30"
               onClick={handleTestPrint}
-              title={`Imprimante: ${printerName}`}
+              title={`Imprimante: ${state.printerName}`}
             >
-              <Bluetooth className="w-4 h-4" />
-              <span className="hidden sm:inline max-w-[100px] truncate">{printerName}</span>
+              <Bluetooth className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs text-emerald-400 hidden sm:inline max-w-[80px] truncate">
+                {state.printerName}
+              </span>
+              {state.isPrinting && <Loader2 className="w-3 h-3 text-emerald-400 animate-spin" />}
             </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleTestPrint}
-              disabled={isPrinting}
-              className="text-slate-400 hover:text-white p-1"
-              title="Test d'impression"
-            >
-              <Printer className={`w-4 h-4 ${isPrinting ? 'animate-pulse' : ''}`} />
-            </Button>
           </>
+        ) : state.isConnecting ? (
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-blue-500/20">
+            <BluetoothSearching className="w-4 h-4 text-blue-400 animate-pulse" />
+            <span className="text-xs text-blue-400 hidden sm:inline">Connexion...</span>
+          </div>
         ) : (
           <Button
             size="sm"
-            variant="outline"
+            variant="ghost"
             onClick={handleConnect}
-            disabled={isConnecting || !isSupported}
-            className="border-amber-500/50 text-amber-400 hover:bg-amber-500/10"
-            title="Connecter une imprimante"
+            className="text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 px-2"
+            title="Connecter imprimante"
           >
-            {isConnecting ? (
-              <BluetoothSearching className="w-4 h-4 animate-pulse" />
-            ) : (
-              <BluetoothOff className="w-4 h-4" />
-            )}
-            <span className="ml-1 hidden sm:inline">
-              {isConnecting ? 'Recherche...' : 'Imprimante'}
-            </span>
+            <BluetoothOff className="w-4 h-4" />
+            <span className="ml-1 text-xs hidden sm:inline">Imprimante</span>
           </Button>
         )}
       </div>
     );
   }
 
+  // Full panel version
   return (
     <Card className="bg-slate-900/95 border-slate-700">
-      <CardHeader>
-        <CardTitle className="text-white flex items-center gap-2">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-white flex items-center gap-2 text-lg">
           <Printer className="w-5 h-5 text-blue-400" />
           Imprimante Bluetooth
-          {useNativeBridge && (
-            <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded">
-              Mode Natif
+          {state.useNativeBridge && (
+            <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">
+              NATIF
             </span>
           )}
         </CardTitle>
-        <CardDescription>
-          Connectez une imprimante thermique pour les tickets
+        <CardDescription className="text-slate-500 text-sm">
+          Connectez une imprimante thermique 58mm ou 80mm
         </CardDescription>
       </CardHeader>
+      
       <CardContent className="space-y-4">
-        {/* Support Check */}
-        {!isSupported && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-400 text-sm">
-            <X className="w-4 h-4 inline mr-2" />
-            Bluetooth non supporté. Utilisez Chrome/Edge sur Android ou installez l'APK LOTTOLAB PRO.
-          </div>
-        )}
-
         {/* Connection Status */}
-        <div className={`flex items-center justify-between p-4 rounded-lg ${
-          isConnected 
+        <div className={`flex items-center justify-between p-4 rounded-xl transition-all ${
+          state.isConnected 
             ? 'bg-emerald-500/10 border border-emerald-500/30' 
-            : 'bg-slate-800 border border-slate-700'
+            : state.isConnecting
+              ? 'bg-blue-500/10 border border-blue-500/30'
+              : 'bg-slate-800/50 border border-slate-700'
         }`}>
           <div className="flex items-center gap-3">
-            {isConnected ? (
-              <div className="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center">
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+              state.isConnected 
+                ? 'bg-emerald-500/20' 
+                : state.isConnecting
+                  ? 'bg-blue-500/20'
+                  : 'bg-slate-700'
+            }`}>
+              {state.isConnecting ? (
+                <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
+              ) : state.isConnected ? (
                 <Bluetooth className="w-6 h-6 text-emerald-400" />
-              </div>
-            ) : (
-              <div className="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center">
+              ) : (
                 <BluetoothOff className="w-6 h-6 text-slate-500" />
-              </div>
-            )}
+              )}
+            </div>
             <div>
-              <p className={`font-semibold ${isConnected ? 'text-emerald-400' : 'text-slate-400'}`}>
-                {isConnected ? printerName : 'Non connecté'}
+              <p className={`font-semibold ${
+                state.isConnected ? 'text-emerald-400' : 
+                state.isConnecting ? 'text-blue-400' : 'text-slate-400'
+              }`}>
+                {state.isConnecting ? 'Connexion en cours...' :
+                 state.isConnected ? state.printerName : 'Non connecté'}
               </p>
               <p className="text-xs text-slate-500">
-                {isConnected 
-                  ? `Papier: ${paperWidth}mm` 
-                  : savedPrinter?.name 
-                    ? `Dernière: ${savedPrinter.name}` 
-                    : 'Cliquez pour connecter'}
+                {state.isConnected 
+                  ? `Papier: ${state.paperWidth}mm • Prêt` 
+                  : 'Cliquez pour connecter'}
               </p>
             </div>
           </div>
           
-          {isConnected && (
+          {state.isConnected && (
             <Check className="w-6 h-6 text-emerald-400" />
           )}
         </div>
 
-        {/* Device List (for Native mode) */}
-        {showDeviceList && useNativeBridge && (
-          <div className="bg-slate-800/50 rounded-lg border border-slate-700 max-h-48 overflow-y-auto">
+        {/* Device List (Native Mode) */}
+        {showDeviceList && state.useNativeBridge && (
+          <div className="bg-slate-800/50 rounded-xl border border-slate-700 max-h-48 overflow-y-auto">
             {isScanning ? (
-              <div className="flex items-center justify-center p-4 text-slate-400">
-                <RefreshCw className="w-5 h-5 animate-spin mr-2" />
-                Recherche en cours...
+              <div className="flex items-center justify-center p-6 text-slate-400">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Recherche d'imprimantes...
               </div>
             ) : availableDevices.length > 0 ? (
               <div className="divide-y divide-slate-700">
-                {availableDevices.map((device, index) => (
+                {availableDevices.map((device, idx) => (
                   <button
-                    key={device.address || index}
+                    key={device.address || idx}
                     onClick={() => handleConnect(device.address)}
-                    disabled={isConnecting}
+                    disabled={state.isConnecting}
                     className="w-full flex items-center justify-between p-3 hover:bg-slate-700/50 transition-colors text-left"
                   >
                     <div className="flex items-center gap-3">
                       <Smartphone className="w-5 h-5 text-blue-400" />
                       <div>
-                        <p className="text-white font-medium">{device.name || 'Imprimante'}</p>
+                        <p className="text-white font-medium text-sm">{device.name}</p>
                         <p className="text-xs text-slate-500">{device.address}</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-500" />
+                    <ChevronRight className="w-4 h-4 text-slate-500" />
                   </button>
                 ))}
               </div>
             ) : (
-              <div className="text-center p-4 text-slate-500">
-                <Radio className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>Aucune imprimante trouvée</p>
+              <div className="text-center p-6 text-slate-500">
+                <Radio className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Aucune imprimante trouvée</p>
                 <p className="text-xs mt-1">Vérifiez que l'imprimante est allumée</p>
               </div>
             )}
@@ -329,60 +254,49 @@ const PrinterManager = ({ onClose, compact = false, autoConnect = false }) => {
 
         {/* Action Buttons */}
         <div className="flex gap-2">
-          {isConnected ? (
+          {state.isConnected ? (
             <>
               <Button
                 onClick={handleDisconnect}
                 variant="outline"
-                className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/10"
+                className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/10 hover:text-red-300"
               >
                 <X className="w-4 h-4 mr-2" />
                 Déconnecter
               </Button>
               <Button
                 onClick={handleTestPrint}
-                disabled={isPrinting}
+                disabled={state.isPrinting}
                 className="flex-1 bg-blue-600 hover:bg-blue-700"
               >
-                <TestTube className={`w-4 h-4 mr-2 ${isPrinting ? 'animate-spin' : ''}`} />
-                {isPrinting ? 'Impression...' : 'Test'}
+                {state.isPrinting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <TestTube className="w-4 h-4 mr-2" />
+                )}
+                {state.isPrinting ? 'Impression...' : 'Test'}
               </Button>
             </>
           ) : (
-            <>
-              {useNativeBridge ? (
-                <Button
-                  onClick={handleScan}
-                  disabled={isScanning || !isSupported}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700"
-                >
-                  {isScanning ? (
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <BluetoothSearching className="w-4 h-4 mr-2" />
-                  )}
-                  {isScanning ? 'Recherche...' : 'Rechercher'}
-                </Button>
+            <Button
+              onClick={state.useNativeBridge ? handleScan : handleConnect}
+              disabled={state.isConnecting || isScanning}
+              className="w-full bg-blue-600 hover:bg-blue-700"
+            >
+              {state.isConnecting || isScanning ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
-                <Button
-                  onClick={() => handleConnect()}
-                  disabled={isConnecting || !isSupported}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
-                >
-                  {isConnecting ? (
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Bluetooth className="w-4 h-4 mr-2" />
-                  )}
-                  {isConnecting ? 'Connexion...' : 'Connecter Imprimante'}
-                </Button>
+                <Bluetooth className="w-4 h-4 mr-2" />
               )}
-            </>
+              {state.isConnecting ? 'Connexion...' : 
+               isScanning ? 'Recherche...' : 
+               state.useNativeBridge ? 'Rechercher' : 'Connecter'}
+            </Button>
           )}
         </div>
 
         {/* Paper Width Settings */}
-        {isConnected && (
+        {state.isConnected && (
           <div className="pt-3 border-t border-slate-700">
             <p className="text-sm text-slate-400 mb-2 flex items-center gap-2">
               <Settings2 className="w-4 h-4" />
@@ -390,57 +304,31 @@ const PrinterManager = ({ onClose, compact = false, autoConnect = false }) => {
             </p>
             <div className="flex gap-2">
               <Button
-                onClick={() => handlePaperWidthChange(58)}
-                variant={paperWidth === 58 ? 'default' : 'outline'}
+                onClick={() => handlePaperWidth(58)}
+                variant={state.paperWidth === 58 ? 'default' : 'outline'}
                 size="sm"
-                className={`flex-1 ${paperWidth === 58 ? 'bg-blue-600' : 'border-slate-700'}`}
+                className={`flex-1 ${state.paperWidth === 58 ? 'bg-blue-600' : 'border-slate-600 hover:bg-slate-700'}`}
               >
-                58mm (Petit)
+                58mm
               </Button>
               <Button
-                onClick={() => handlePaperWidthChange(80)}
-                variant={paperWidth === 80 ? 'default' : 'outline'}
+                onClick={() => handlePaperWidth(80)}
+                variant={state.paperWidth === 80 ? 'default' : 'outline'}
                 size="sm"
-                className={`flex-1 ${paperWidth === 80 ? 'bg-blue-600' : 'border-slate-700'}`}
+                className={`flex-1 ${state.paperWidth === 80 ? 'bg-blue-600' : 'border-slate-600 hover:bg-slate-700'}`}
               >
-                80mm (Standard)
+                80mm
               </Button>
             </div>
-          </div>
-        )}
-
-        {/* Auto-connect info */}
-        {savedPrinter && !isConnected && (
-          <div className="flex items-center justify-between bg-slate-800/50 rounded-lg p-3">
-            <div className="text-sm">
-              <p className="text-slate-400">Dernière imprimante</p>
-              <p className="text-white font-medium">{savedPrinter.name}</p>
-            </div>
-            <Button
-              onClick={tryAutoConnect}
-              disabled={isConnecting}
-              variant="outline"
-              size="sm"
-              className="border-slate-600"
-            >
-              {isConnecting ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
-              ) : (
-                'Reconnecter'
-              )}
-            </Button>
           </div>
         )}
 
         {/* Tips */}
-        <div className="bg-slate-800/50 rounded-lg p-3 text-xs text-slate-500">
+        <div className="bg-slate-800/30 rounded-lg p-3 text-xs text-slate-500">
           <p className="font-medium text-slate-400 mb-1">💡 Conseils:</p>
-          <ul className="space-y-1">
-            <li>• Activez le Bluetooth sur votre appareil</li>
+          <ul className="space-y-0.5">
+            <li>• Activez le Bluetooth sur l'appareil</li>
             <li>• Allumez l'imprimante avant de connecter</li>
-            {!useNativeBridge && (
-              <li>• Utilisez Chrome ou Edge pour le Bluetooth Web</li>
-            )}
             <li>• L'impression est automatique après chaque vente</li>
           </ul>
         </div>
@@ -450,7 +338,7 @@ const PrinterManager = ({ onClose, compact = false, autoConnect = false }) => {
           <Button
             onClick={onClose}
             variant="outline"
-            className="w-full border-slate-700 text-slate-400 hover:text-white"
+            className="w-full border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800"
           >
             Fermer
           </Button>

@@ -1,0 +1,44 @@
+{
+  "appId": "com.lottolab.pro",
+  "appName": "LOTTOLAB PRO",
+  "webDir": "build",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true,
+    "allowNavigation": ["*"]
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#0f172a",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": true,
+      "spinnerColor": "#3b82f6"
+    },
+    "StatusBar": {
+      "style": "Dark",
+      "backgroundColor": "#0f172a"
+    },
+    "Keyboard": {
+      "resize": "body",
+      "style": "dark"
+    }
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false,
+    "backgroundColor": "#0f172a",
+    "buildOptions": {
+      "keystorePath": "release-key.keystore",
+      "keystoreAlias": "lottolab"
+    }
+  },
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#0f172a"
+  }
+}

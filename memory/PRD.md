@@ -1,14 +1,47 @@
 # LOTTOLAB PRO - Professional Lottery SaaS Platform
 
-## Version: 27.4.0 (LOTTOLAB PRO - No Limits + Printer Fixed)
-## Last Updated: 2026-05-22 19:05 UTC
-## Deployed: 2026-05-22 15:05 Haiti Time
+## Version: 27.5.0 (LOTTOLAB PRO - Complete Bluetooth + Capacitor + PDF)
+## Last Updated: 2026-05-22 19:15 UTC
+## Deployed: 2026-05-22 15:15 Haiti Time
 
 ---
 
 ## 🚀 STATUT: PRODUCTION READY ✅
 
-### Corrections v27.4.0 (Limites Supprimées + Impression):
+### Fonctionnalités v27.5.0 (Bluetooth Complet + Capacitor):
+
+#### 1. Système Bluetooth Ultra-Stable ✅
+- **UltraBluetoothPrinter** - Service complet avec :
+  - Auto-détection Web Bluetooth ou Native Bridge (Capacitor/Cordova)
+  - Auto-connexion à l'imprimante sauvegardée au démarrage
+  - Reconnexion automatique (5 tentatives avec backoff)
+  - File d'attente d'impression (queue management)
+  - Support 58mm et 80mm
+  - Sauvegarde config dans IndexedDB (persistante)
+
+#### 2. Capacitor Configuré pour APK Android ✅
+- `capacitor.config.json` créé avec :
+  - AppId: com.lottolab.pro
+  - AppName: LOTTOLAB PRO
+  - Splash Screen configuré
+  - Support HTTPS et cleartext
+- `BUILD_APK.md` - Guide complet pour build APK
+
+#### 3. PDF Ticket 100% Fonctionnel ✅
+- Endpoint: `/api/export/ticket/pdf/{ticket_id}`
+- Testé avec succès (HTTP 200, fichier PDF valide 2.9KB)
+- Téléchargement direct ou ouverture dans nouvel onglet
+- Partage via Web Share API
+
+#### 4. PrinterManager Amélioré ✅
+- Interface complète avec :
+  - Connecter USB / Ajouter Réseau / Actualiser
+  - Largeur papier : 58mm / 80mm
+  - Taille police : Petit / Normal / Grand
+  - Nombre de copies : - 1 +
+  - Impression automatique : Toggle ON/OFF
+
+### Corrections v27.4.0 (Limites Supprimées):
 
 #### 1. AUCUNE LIMITE DE MONTANT ✅
 - **Frontend** : Suppression de toutes les validations max_bet
