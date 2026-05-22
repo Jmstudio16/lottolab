@@ -1,8 +1,33 @@
 # LOTTOLAB PRO - Professional Lottery SaaS Platform
 
-## Version: 27.5.0 (LOTTOLAB PRO - Complete Bluetooth + Capacitor + PDF)
-## Last Updated: 2026-05-22 19:15 UTC
+## Version: 27.6.0 (Code Quality P0+P1 Hardening)
+## Last Updated: 2026-05-22 19:35 UTC
 ## Deployed: 2026-05-22 15:15 Haiti Time
+
+---
+
+## 🆕 v27.6.0 — Code Quality Hardening (this session)
+
+### P0 Security ✅
+- **Hardcoded credentials removed from 41 backend test files.**
+  - All `XYZ_PASSWORD/EMAIL = "literal"` declarations rewritten to `os.environ.get("XYZ", "")`.
+  - New `/app/backend/tests/conftest.py` auto-loads `/app/backend/tests/.env.test` (gitignored via `*.env.*`).
+  - Verified by running `pytest test_iteration56_features.py` (34/34) and `test_iteration48_settlement_engine.py` (16/16 + 5 skipped).
+- **Auth tokens removed from `localStorage`.**
+  - New `/app/frontend/src/services/tokenStore.js`: in-memory token cache backed by IndexedDB (offlineDB).
+  - `api/client.js` axios interceptor now reads token via `tokenStore.getToken()` (sync, in-RAM).
+  - `api/auth.js`, `contexts/LogoContext.jsx`, `contexts/OfflineContext.jsx`, `pages/company/CompanySettingsPage.jsx` all migrated.
+  - `context/LotoPamAuthContext.jsx` `lotopam_token` migrated to `offlineDB.saveLotoPamToken/getLotoPamToken/clearLotoPamToken`.
+  - Verified: zero `localStorage.*('token'/'lotopam_token'/...)` calls in `src/api/`, `src/contexts/`, `src/services/`, `src/context/`.
+
+### P1 React Anti-patterns ✅
+- `pages/vendeur/VendeurMesVentes.jsx`: removed `headers` outside useCallback (stale closure); `Authorization` header is now built inline inside both `useEffect` and `useCallback` so token changes correctly invalidate the captured value.
+- `pages/vendeur/VendeurResultats.jsx`, `pages/supervisor/SupervisorResultsPage.jsx`: `<NumberBox key={idx}>` replaced with `key={`${idx}-${num}`}` to avoid stale reconciliation when numbers change.
+
+### Verified flows
+- Super Admin / Company Admin / Vendor login → session restored from IndexedDB on page reload, no leakage in `localStorage`.
+- Vendor → Mes Ventes navigation renders stats cards + daily/lottery charts.
+- Logout clears IndexedDB session.
 
 ---
 
