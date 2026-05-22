@@ -1,0 +1,73 @@
+{
+  "summary": "Iteration 57 — End-to-end test of the new SaaS Billing module for Super Admin (/api/super/billing/* + /super/billing UI). 100% backend pass (16/16) + UI fully verified including config dialog, invoice generation, tab switching, PDF download endpoint and 403 auth check.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Super Dashboard + Super Billing tables",
+        "issues": [
+          "React hydration warnings in console: '<span> cannot be a child of <tbody>' and '<tr> cannot be a child of <span>'. Cause: Emergent's ve-dynamic <span style={display:contents}> wrapper inserted around <tr> rows breaks HTML table semantics. Cosmetic dev-only console noise (UI renders correctly) but should be tracked — applies to SuperDashboardPage and SuperBillingPage CompaniesTable / InvoicesTable.",
+          "Some companies show empty/placeholder slugs ('kp[k[', 'jm') — seed data noise, not a blocker."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_super_billing.py",
+    "/app/test_reports/pytest/iteration57_billing.xml"
+  ],
+  "action_items": [
+    "(Optional / cosmetic) Investigate ve-dynamic <span> wrapper breaking <tbody>/<tr> structure to silence React hydration warnings on Super pages.",
+    "Backend & frontend SaaS Billing module are production-ready — no functional fixes required."
+  ],
+  "critical_code_review_comments": [
+    "billing_routes.py is well-structured (525 lines, single-responsibility). Auth dependency `get_super_admin` correctly enforces role check.",
+    "DEFAULT_CONFIG is sane; `_compute_amount` handles all 4 billing modes (fixed_per_agent / tiered / percentage / custom) with proper fallback.",
+    "`generate_invoices` is idempotent (skips existing unless force=true) and uses upsert semantics — good pattern.",
+    "PDF generation uses reportlab and produces a valid %PDF document with all counter rows, billing details, and amount due. Content-Type correctly set to application/pdf.",
+    "Frontend SuperBillingPage.jsx (553 lines) — slightly large but readable; subcomponents (StatCard, CompaniesTable, InvoicesTable, ConfigDialog) are co-located which is fine.",
+    "All interactive elements carry data-testid (configure-{id}, mark-paid-{id}, pdf-{id}, tab-companies, tab-invoices, billing-generate-btn, etc.) — excellent testability.",
+    "UI is entirely in French as required (Facturation Compagnies, Compagnies actives, Agents en ligne, Factures en attente/payées, En attente, Payée, Configurer, Générer Factures, etc.).",
+    "Minor: `openConfig` does not reset `setConfigForm(null)` before async fetch — if user re-opens a different company while previous request is in flight there could be a flash of stale data. Low priority."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "super_admin": {"email": "jefferson@jmstudio.com", "password": "JMStudio@2026!"},
+    "company_admin": {"email": "admin@lotopam.com", "password": "LotoPAM2026!"}
+  },
+  "seed_data_creation": "Updated LOTO PAM Test billing config: rate_per_agent=750 HTG, counting_method=active (via PUT /api/super/billing/company/{id}/config). Generated 4 invoices for period 2026-04 (one per active company). Test artifact prefix: TEST_billing_config in config notes; payment_method=TEST_cash on one paid invoice (reverted to pending).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend pytest file /app/backend/tests/test_super_billing.py covers 16 cases across 5 endpoint groups (summary, companies, config, invoices, authZ). All passing in ~12s. UI verified: 4 stat cards render, sidebar 'Facturation Compagnies' link present, companies table renders 4 ACTIVE companies with all 4 counter columns (Actifs/En ligne/Mensuels/Vendeurs), Configure dialog opens with mode + counting + rate inputs, save persists and reflects in table immediately, Générer Factures created 4 invoices showing 'En attente' badge, both PDF download and 'Payée' buttons available. Auth 403 for COMPANY_ADMIN confirmed at API level. Hydration warnings about <span>/<tbody>/<tr> are environment artifacts (ve-dynamic wrapper), not a code bug.",
+  "endpoints_verified": [
+    "GET  /api/super/billing/summary — 200 OK, returns active_companies/online_agents_now/invoices buckets",
+    "GET  /api/super/billing/companies?month=YYYY-MM — 200 OK, includes 4 counters + projected_amount per company",
+    "GET  /api/super/billing/company/{id}/config — 200 OK with defaults",
+    "PUT  /api/super/billing/company/{id}/config — 200 OK, persisted (verified via re-GET and listing)",
+    "POST /api/super/billing/generate-invoices?month=YYYY-MM[&force=true] — 200 OK, returns created/updated/skipped_existing",
+    "GET  /api/super/billing/invoices?month=YYYY-MM — 200 OK",
+    "GET  /api/super/billing/invoices/{id} — 200 OK / 404 on missing",
+    "PUT  /api/super/billing/invoices/{id}/status — 200 OK with body validation (pattern enforced)",
+    "GET  /api/super/billing/invoices/{id}/pdf — 200 OK, content-type=application/pdf, valid %PDF magic bytes, >500 bytes",
+    "AuthZ: COMPANY_ADMIN token receives 403 on summary, /companies, /generate-invoices; missing/invalid token returns 401"
+  ],
+  "ui_flows_verified": [
+    "Login as Super Admin -> /super/dashboard -> navigate /super/billing -> page loads with data-testid='super-billing-page'",
+    "4 summary cards render with French labels (Compagnies actives, Agents en ligne, Factures en attente, Factures payées)",
+    "Sidebar 'Facturation Compagnies' link with Receipt icon visible",
+    "Companies tab renders table with 4 active companies and all 4 counter columns",
+    "Click Configurer -> dialog opens -> change rate to 750, counting to 'Tous agents ACTIFS' -> Enregistrer -> toast success -> table refreshes and LOTO PAM Test now shows 5,250 HTG (7 agents × 750)",
+    "Switch to Factures tab — initially empty state with helpful message",
+    "Click Générer Factures -> 4 invoices created in 2026-04 -> Factures tab now shows 4 rows with periode/compagnie/agents/montant/statut 'En attente' badge + Download PDF + Payée buttons",
+    "Month input present and changes trigger reload"
+  ]
+}

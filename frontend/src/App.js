@@ -101,6 +101,7 @@ import VendeurConfigImprimante from '@/pages/vendeur/VendeurConfigImprimante';
 import SuperAdminResultsPage from '@/pages/super_admin/SuperAdminResultsPage';
 import SuperAdminDrawTimesPage from '@/pages/super_admin/SuperAdminDrawTimesPage';
 import SuperAdminLimitsPage from '@/pages/super_admin/SuperAdminLimitsPage';
+import SuperBillingPage from '@/pages/super_admin/SuperBillingPage';
 import SecurityDashboardPage from '@/pages/admin/SecurityDashboardPage';
 import FinancialDashboardPage from '@/pages/admin/FinancialDashboardPage';
 import FichesJoueesPage from '@/pages/FichesJoueesPage';
@@ -415,6 +416,14 @@ const SaaSApp = () => {
                   element={
                     <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
                       <SuperAdminLimitsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/super/billing"
+                  element={
+                    <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                      <SuperBillingPage />
                     </ProtectedRoute>
                   }
                 />

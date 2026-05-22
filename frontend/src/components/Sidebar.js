@@ -33,7 +33,8 @@ import {
   Shield,
   AlertTriangle,
   Calculator,
-  Bell
+  Bell,
+  Receipt
 } from 'lucide-react';
 import { useAuth } from '@/api/auth';
 import Logo from './Logo';
@@ -57,6 +58,7 @@ const getSuperAdminMenu = (t) => [
   { path: '/super/publish-results', label: t('nav.publishResults', 'Publier Résultats'), icon: Trophy },
   { path: '/super/scheduled-results', label: t('nav.scheduledResults', 'Résultats Programmés'), icon: Zap },
   { path: '/super/companies', label: t('nav.companies', 'Entreprises SaaS'), icon: Building2 },
+  { path: '/super/billing', label: 'Facturation Compagnies', icon: Receipt },
   { path: '/super/users', label: t('nav.users', 'Users Management'), icon: Users },
   { path: '/super/plans', label: t('nav.plans', 'Plans & Licences'), icon: Package },
   { path: '/super/activity-logs', label: t('nav.activityLogs'), icon: Activity },

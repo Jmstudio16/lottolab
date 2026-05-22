@@ -24,6 +24,7 @@ from utils import generate_id, generate_ticket_code, generate_verification_code,
 from activity_logger import log_activity
 from rate_limiter import limiter, RATE_LIMITS
 from super_admin_routes import super_admin_router, set_db
+from billing_routes import billing_router, set_db as set_billing_db
 from super_admin_global_routes import super_admin_global_router, set_super_admin_global_db, set_ticket_processor
 from company_routes import company_router, set_company_db
 from company_operational_routes import company_operational_router, set_company_operational_db
@@ -1165,6 +1166,7 @@ set_sync_service_db(db)
 set_profile_db(db)
 set_bet_type_limits_db(db)
 set_daily_report_db(db)
+set_billing_db(db)
 
 # Initialize staff endpoints with dependency
 create_staff_endpoints(get_current_user)
@@ -1174,6 +1176,7 @@ set_ticket_processor(process_result_for_all_tickets)
 
 # Include all routers
 app.include_router(super_admin_router)
+app.include_router(billing_router)
 app.include_router(super_admin_global_router)
 app.include_router(company_router)
 app.include_router(company_operational_router)
