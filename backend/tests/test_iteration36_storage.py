@@ -17,12 +17,12 @@ import io
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8001').rstrip('/')
 
 # Test credentials
-COMPANY_ADMIN_EMAIL = "jm@gmail.com"
-COMPANY_ADMIN_PASSWORD = "Test123456!"
-VENDEUR_EMAIL = "vendeur@lotopam.com"
-VENDEUR_PASSWORD = "Test123456!"
-SUPER_ADMIN_EMAIL = "jefferson@jmstudio.com"
-SUPER_ADMIN_PASSWORD = "JMStudio@2026!"
+COMPANY_ADMIN_EMAIL = os.environ.get("COMPANY_ADMIN_EMAIL", "")
+COMPANY_ADMIN_PASSWORD = os.environ.get("COMPANY_ADMIN_PASSWORD", "")
+VENDEUR_EMAIL = os.environ.get("VENDEUR_EMAIL", "")
+VENDEUR_PASSWORD = os.environ.get("VENDEUR_PASSWORD", "")
+SUPER_ADMIN_EMAIL = os.environ.get("SUPER_ADMIN_EMAIL", "")
+SUPER_ADMIN_PASSWORD = os.environ.get("SUPER_ADMIN_PASSWORD", "")
 TEST_TICKET_ID = "tkt_1774408423431na86nx"
 
 

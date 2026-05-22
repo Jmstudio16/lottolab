@@ -14,10 +14,8 @@ from datetime import datetime, timedelta
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://seller-commission-ui.preview.emergentagent.com').rstrip('/')
 
 # Test credentials from iteration 52
-VENDEUR_EMAIL = "vendeur@lotopam.com"
-VENDEUR_PASSWORD = "vendor123"
-
-
+VENDEUR_EMAIL = os.environ.get("VENDEUR_EMAIL", "")
+VENDEUR_PASSWORD = os.environ.get("VENDEUR_PASSWORD", "")
 class TestVendeurAuthentication:
     """Test vendeur login and token retrieval"""
     

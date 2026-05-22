@@ -9,9 +9,8 @@ import os
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://seller-commission-ui.preview.emergentagent.com')
 
 # Test credentials
-AGENT_EMAIL = "agent001@lotopam.com"
-AGENT_PASSWORD = "Agent123!"
-
+AGENT_EMAIL = os.environ.get("AGENT_EMAIL", "")
+AGENT_PASSWORD = os.environ.get("AGENT_PASSWORD", "")
 class TestAgentAuthentication:
     """Test universal agent authentication endpoint"""
     

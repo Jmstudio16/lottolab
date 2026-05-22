@@ -16,10 +16,8 @@ import os
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8001')
 
 # Test credentials
-TEST_EMAIL = "test@admin.com"
-TEST_PASSWORD = "test123"
-
-
+TEST_EMAIL = os.environ.get("TEST_EMAIL", "")
+TEST_PASSWORD = os.environ.get("TEST_PASSWORD", "")
 class TestHealthCheck:
     """Basic health check"""
     

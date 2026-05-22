@@ -14,14 +14,12 @@ import uuid
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
-COMPANY_ADMIN_EMAIL = "admin@lotopam.com"
-COMPANY_ADMIN_PASSWORD = "Admin123!"
-VENDEUR_EMAIL = "agent.marie@lotopam.com"
-VENDEUR_PASSWORD = "Agent123!"
-SUPERVISOR_EMAIL = "supervisor@lotopam.com"
-SUPERVISOR_PASSWORD = "Supervisor123!"
-
-
+COMPANY_ADMIN_EMAIL = os.environ.get("COMPANY_ADMIN_EMAIL", "")
+COMPANY_ADMIN_PASSWORD = os.environ.get("COMPANY_ADMIN_PASSWORD", "")
+VENDEUR_EMAIL = os.environ.get("VENDEUR_EMAIL", "")
+VENDEUR_PASSWORD = os.environ.get("VENDEUR_PASSWORD", "")
+SUPERVISOR_EMAIL = os.environ.get("SUPERVISOR_EMAIL", "")
+SUPERVISOR_PASSWORD = os.environ.get("SUPERVISOR_PASSWORD", "")
 class TestAuthLogin:
     """Test authentication for all user types"""
     

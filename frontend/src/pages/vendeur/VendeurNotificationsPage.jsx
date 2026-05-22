@@ -69,7 +69,9 @@ const VendeurNotificationsPage = () => {
       await axios.put(`${API_URL}/api/notifications/${id}/read`, {}, { headers });
       setNotifications(prev => prev.map(n => n.notification_id === id ? { ...n, read: true } : n));
       setStats(prev => ({ ...prev, unread: Math.max(0, prev.unread - 1) }));
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[Notifications] markAsRead error:', e);
+    }
   };
 
   const markAllAsRead = async () => {
@@ -78,7 +80,9 @@ const VendeurNotificationsPage = () => {
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setStats(prev => ({ ...prev, unread: 0 }));
       toast.success('Toutes marquées comme lues');
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[Notifications] markAllAsRead error:', e);
+    }
   };
 
   const deleteNotification = async (id) => {
@@ -87,7 +91,9 @@ const VendeurNotificationsPage = () => {
       setNotifications(prev => prev.filter(n => n.notification_id !== id));
       setArchivedNotifications(prev => prev.filter(n => n.notification_id !== id));
       toast.success('Supprimée');
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[Notifications] deleteNotification error:', e);
+    }
   };
 
   const formatTime = (dateStr) => {

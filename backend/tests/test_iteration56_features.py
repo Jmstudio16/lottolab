@@ -16,16 +16,14 @@ import os
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://seller-commission-ui.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
-SUPER_ADMIN_EMAIL = "jefferson@jmstudio.com"
-SUPER_ADMIN_PASSWORD = "JMStudio@2026!"
-COMPANY_ADMIN_EMAIL = "admin@lotopam.com"
-COMPANY_ADMIN_PASSWORD = "LotoPAM2026!"
-SUPERVISOR_EMAIL = "supervisor@lotopam.com"
-SUPERVISOR_PASSWORD = "super123"
-VENDOR_EMAIL = "vendeur@lotopam.com"
-VENDOR_PASSWORD = "vendor123"
-
-
+SUPER_ADMIN_EMAIL = os.environ.get("SUPER_ADMIN_EMAIL", "")
+SUPER_ADMIN_PASSWORD = os.environ.get("SUPER_ADMIN_PASSWORD", "")
+COMPANY_ADMIN_EMAIL = os.environ.get("COMPANY_ADMIN_EMAIL", "")
+COMPANY_ADMIN_PASSWORD = os.environ.get("COMPANY_ADMIN_PASSWORD", "")
+SUPERVISOR_EMAIL = os.environ.get("SUPERVISOR_EMAIL", "")
+SUPERVISOR_PASSWORD = os.environ.get("SUPERVISOR_PASSWORD", "")
+VENDOR_EMAIL = os.environ.get("VENDOR_EMAIL", "")
+VENDOR_PASSWORD = os.environ.get("VENDOR_PASSWORD", "")
 class TestSuperAdminAuth:
     """Super Admin authentication"""
     

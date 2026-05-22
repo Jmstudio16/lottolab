@@ -1,6 +1,7 @@
 import { API_URL } from '@/config/api';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { tokenStore } from '../services/tokenStore';
 
 
 const LogoContext = createContext();
@@ -27,7 +28,7 @@ export const LogoProvider = ({ children }) => {
   });
 
   const fetchLogoData = async () => {
-    const token = localStorage.getItem('token');
+    const token = tokenStore.getToken();
     
     if (!token) {
       // No token - fetch system settings only

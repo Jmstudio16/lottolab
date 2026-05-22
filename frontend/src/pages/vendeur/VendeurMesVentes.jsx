@@ -23,13 +23,13 @@ const VendeurMesVentes = () => {
   const [salesByLottery, setSalesByLottery] = useState([]);
   const [dailySales, setDailySales] = useState([]);
 
-  const headers = { Authorization: `Bearer ${token}` };
-
   // Fetch commission rate from profile - Only if explicitly configured
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await axios.get(`${API_URL}/api/vendeur/profile`, { headers });
+        const res = await axios.get(`${API_URL}/api/vendeur/profile`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         // Only set commission if it's explicitly configured (not 0 or undefined)
         const rate = res.data?.vendeur?.commission_rate;
         if (rate && rate > 0) {
@@ -48,7 +48,9 @@ const VendeurMesVentes = () => {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_URL}/api/vendeur/mes-tickets`, { headers });
+      const res = await axios.get(`${API_URL}/api/vendeur/mes-tickets`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const tickets = res.data || [];
 
       // Filter by period
@@ -212,8 +214,8 @@ const VendeurMesVentes = () => {
             <p className="text-slate-400 text-center py-6 sm:py-8 text-sm">Aucune donnée</p>
           ) : (
             <div className="space-y-2 sm:space-y-3">
-              {dailySales.map((day, idx) => (
-                <div key={idx} className="flex items-center gap-2 sm:gap-3">
+              {dailySales.map((day) => (
+                <div key={day.date} className="flex items-center gap-2 sm:gap-3">
                   <span className="text-xs text-slate-400 w-12 sm:w-20 flex-shrink-0">
                     {new Date(day.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}
                   </span>
@@ -242,8 +244,8 @@ const VendeurMesVentes = () => {
             <p className="text-slate-400 text-center py-6 sm:py-8 text-sm">Aucune donnée</p>
           ) : (
             <div className="space-y-2 sm:space-y-3 max-h-[250px] sm:max-h-[300px] overflow-y-auto">
-              {salesByLottery.map((lot, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2 sm:p-3 bg-slate-700/30 rounded-lg">
+              {salesByLottery.map((lot) => (
+                <div key={lot.name} className="flex items-center justify-between p-2 sm:p-3 bg-slate-700/30 rounded-lg">
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-white text-sm sm:text-base truncate">{lot.name}</p>
                     <p className="text-xs text-slate-400">{lot.count} ticket(s)</p>

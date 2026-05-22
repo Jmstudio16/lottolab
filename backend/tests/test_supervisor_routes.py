@@ -7,9 +7,8 @@ import os
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
-SUPERVISOR_EMAIL = "supervisor@lotopam.com"
-SUPERVISOR_PASSWORD = "Supervisor123!"
-
+SUPERVISOR_EMAIL = os.environ.get("SUPERVISOR_EMAIL", "")
+SUPERVISOR_PASSWORD = os.environ.get("SUPERVISOR_PASSWORD", "")
 @pytest.fixture
 def api_client():
     """Shared requests session"""

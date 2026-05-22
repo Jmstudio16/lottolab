@@ -15,12 +15,10 @@ import os
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
-COMPANY_ADMIN_EMAIL = "admin@lotopam.com"
-COMPANY_ADMIN_PASSWORD = "LotoPAM2026!"
-VENDEUR_EMAIL = "vendeur@lotopam.com"
-VENDEUR_PASSWORD = "vendor123"
-
-
+COMPANY_ADMIN_EMAIL = os.environ.get("COMPANY_ADMIN_EMAIL", "")
+COMPANY_ADMIN_PASSWORD = os.environ.get("COMPANY_ADMIN_PASSWORD", "")
+VENDEUR_EMAIL = os.environ.get("VENDEUR_EMAIL", "")
+VENDEUR_PASSWORD = os.environ.get("VENDEUR_PASSWORD", "")
 class TestDailyReportAPI:
     """Tests for the daily-summary report endpoint"""
     

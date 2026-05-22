@@ -18,8 +18,8 @@ import re
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8001').rstrip('/')
 
 # Test credentials
-VENDEUR_EMAIL = "vendeur@lotopam.com"
-VENDEUR_PASSWORD = "Test123456!"
+VENDEUR_EMAIL = os.environ.get("VENDEUR_EMAIL", "")
+VENDEUR_PASSWORD = os.environ.get("VENDEUR_PASSWORD", "")
 TEST_TICKET_ID = "tkt_1774408423431na86nx"
 
 

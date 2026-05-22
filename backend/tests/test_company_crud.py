@@ -13,10 +13,8 @@ if not BASE_URL:
     BASE_URL = "https://seller-commission-ui.preview.emergentagent.com"
 
 # Test credentials
-COMPANY_ADMIN_EMAIL = "admin@lotopam.com"
-COMPANY_ADMIN_PASSWORD = "Admin123!"
-
-
+COMPANY_ADMIN_EMAIL = os.environ.get("COMPANY_ADMIN_EMAIL", "")
+COMPANY_ADMIN_PASSWORD = os.environ.get("COMPANY_ADMIN_PASSWORD", "")
 @pytest.fixture(scope="module")
 def api_client():
     """Shared requests session"""

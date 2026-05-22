@@ -207,19 +207,20 @@ const VendeurNouvelleVente = () => {
       const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
       
       try {
+        const currentHeaders = { Authorization: `Bearer ${token}` };
         const [lotteriesRes, profileRes, limitsRes] = await Promise.all([
           axios.get(`${API_URL}/api/sync/vendeur/open-lotteries`, { 
-            headers, 
+            headers: currentHeaders, 
             signal: controller.signal,
             timeout: 6000 
           }),
           axios.get(`${API_URL}/api/vendeur/profile`, { 
-            headers, 
+            headers: currentHeaders, 
             signal: controller.signal,
             timeout: 6000 
           }).catch(() => ({ data: null })),
           axios.get(`${API_URL}/api/company/vendor/bet-type-limits`, { 
-            headers, 
+            headers: currentHeaders, 
             signal: controller.signal,
             timeout: 6000 
           }).catch(() => ({ data: { limits: {} } }))
@@ -250,7 +251,7 @@ const VendeurNouvelleVente = () => {
         }
         
         // Get config in background
-        axios.get(`${API_URL}/api/device/config`, { headers, timeout: 5000 })
+        axios.get(`${API_URL}/api/device/config`, { headers: currentHeaders, timeout: 5000 })
           .then(configRes => {
             if (configRes?.data?.configuration) {
               setMinBetAmount(configRes.data.configuration.min_bet_amount || 1);
@@ -306,7 +307,7 @@ const VendeurNouvelleVente = () => {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, [token, selectedLottery, headers]);
+  }, [token, selectedLottery]);
 
   // WebSocket connection reference for reconnection control
   const wsReconnectAttemptsRef = useRef(0);

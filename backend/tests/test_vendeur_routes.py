@@ -10,10 +10,8 @@ from datetime import datetime
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Vendeur credentials
-VENDEUR_EMAIL = "jean@gmail.com"
-VENDEUR_PASSWORD = "Jeff.1995"
-
-
+VENDEUR_EMAIL = os.environ.get("VENDEUR_EMAIL", "")
+VENDEUR_PASSWORD = os.environ.get("VENDEUR_PASSWORD", "")
 @pytest.fixture
 def api_client():
     """Shared requests session"""

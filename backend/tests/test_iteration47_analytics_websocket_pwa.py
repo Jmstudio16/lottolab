@@ -17,14 +17,12 @@ import os
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
-SUPER_ADMIN_EMAIL = "jefferson@jmstudio.com"
-SUPER_ADMIN_PASSWORD = "Super@2026!"
-COMPANY_ADMIN_EMAIL = "admin@lotopam.com"
-COMPANY_ADMIN_PASSWORD = "Admin@2026!"
-VENDEUR_EMAIL = "pierre.jean@agent.com"
-VENDEUR_PASSWORD = "Agent@2026!"
-
-
+SUPER_ADMIN_EMAIL = os.environ.get("SUPER_ADMIN_EMAIL", "")
+SUPER_ADMIN_PASSWORD = os.environ.get("SUPER_ADMIN_PASSWORD", "")
+COMPANY_ADMIN_EMAIL = os.environ.get("COMPANY_ADMIN_EMAIL", "")
+COMPANY_ADMIN_PASSWORD = os.environ.get("COMPANY_ADMIN_PASSWORD", "")
+VENDEUR_EMAIL = os.environ.get("VENDEUR_EMAIL", "")
+VENDEUR_PASSWORD = os.environ.get("VENDEUR_PASSWORD", "")
 @pytest.fixture(scope="module")
 def super_admin_token():
     """Get Super Admin authentication token"""

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { tokenStore } from '../services/tokenStore';
 
 // Universal API configuration - works on ALL environments
 // IMPORTANT: Hostname detection has PRIORITY over environment variables
@@ -63,7 +64,7 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = tokenStore.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -78,9 +79,9 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      tokenStore.clearSession().finally(() => {
+        window.location.href = '/login';
+      });
     }
     return Promise.reject(error);
   }

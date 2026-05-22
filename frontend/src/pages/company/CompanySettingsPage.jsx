@@ -11,6 +11,7 @@ import { Switch } from '../../components/ui/switch';
 import { useToast } from '../../hooks/use-toast';
 import { Loader2, Upload, Trash2, Building2, Phone, Mail, MapPin, Image as ImageIcon, Check, QrCode, FileText, DollarSign, Award, Info } from 'lucide-react';
 import axios from 'axios';
+import { tokenStore } from '../../services/tokenStore';
 
 
 const CompanySettingsPage = () => {
@@ -60,7 +61,7 @@ const CompanySettingsPage = () => {
 
   const fetchSettings = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = tokenStore.getToken();
       const response = await axios.get(`${API_URL}/api/company/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -104,7 +105,7 @@ const CompanySettingsPage = () => {
 
   const fetchPrimes = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = tokenStore.getToken();
       const response = await axios.get(`${API_URL}/api/company/primes`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -127,7 +128,7 @@ const CompanySettingsPage = () => {
   const handleSavePrimes = async () => {
     setSavingPrimes(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = tokenStore.getToken();
       await axios.put(`${API_URL}/api/company/primes`, primes, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -150,7 +151,7 @@ const CompanySettingsPage = () => {
   const handleSaveSettings = async () => {
     setSaving(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = tokenStore.getToken();
       await axios.put(`${API_URL}/api/company/profile`, settings, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -201,7 +202,7 @@ const CompanySettingsPage = () => {
 
     setUploading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = tokenStore.getToken();
       const formData = new FormData();
       formData.append('file', file);
 
@@ -239,7 +240,7 @@ const CompanySettingsPage = () => {
 
     setDeleting(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = tokenStore.getToken();
       await axios.delete(`${API_URL}/api/company/logo`, {
         headers: { Authorization: `Bearer ${token}` }
       });

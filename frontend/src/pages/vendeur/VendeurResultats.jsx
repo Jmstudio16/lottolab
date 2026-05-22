@@ -116,7 +116,7 @@ const LotteryResultCard = ({ result, index }) => {
         {/* Winning numbers with animation */}
         <div className="flex gap-2 justify-center">
           {numbers.map((num, idx) => (
-            <NumberBox key={idx} number={num} position={idx} isNew={isNew} />
+            <NumberBox key={`${idx}-${num}`} number={num} position={idx} isNew={isNew} />
           ))}
         </div>
       </div>

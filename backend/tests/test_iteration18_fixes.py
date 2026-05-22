@@ -14,12 +14,10 @@ import os
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Credentials
-SUPER_ADMIN_EMAIL = "jefferson@jmstudio.com"
-SUPER_ADMIN_PASSWORD = "JMStudio@2026!"
-COMPANY_ADMIN_EMAIL = "admin@lotopam.com"
-COMPANY_ADMIN_PASSWORD = "Admin123!"
-
-
+SUPER_ADMIN_EMAIL = os.environ.get("SUPER_ADMIN_EMAIL", "")
+SUPER_ADMIN_PASSWORD = os.environ.get("SUPER_ADMIN_PASSWORD", "")
+COMPANY_ADMIN_EMAIL = os.environ.get("COMPANY_ADMIN_EMAIL", "")
+COMPANY_ADMIN_PASSWORD = os.environ.get("COMPANY_ADMIN_PASSWORD", "")
 @pytest.fixture
 def super_admin_token():
     """Login as Super Admin"""

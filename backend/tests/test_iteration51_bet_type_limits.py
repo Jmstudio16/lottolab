@@ -21,12 +21,10 @@ import time
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
-COMPANY_ADMIN_EMAIL = "admin@lotopam.com"
-COMPANY_ADMIN_PASSWORD = "LotoPAM2026!"
-VENDOR_EMAIL = "vendeur@lotopam.com"
-VENDOR_PASSWORD = "vendor123"
-
-
+COMPANY_ADMIN_EMAIL = os.environ.get("COMPANY_ADMIN_EMAIL", "")
+COMPANY_ADMIN_PASSWORD = os.environ.get("COMPANY_ADMIN_PASSWORD", "")
+VENDOR_EMAIL = os.environ.get("VENDOR_EMAIL", "")
+VENDOR_PASSWORD = os.environ.get("VENDOR_PASSWORD", "")
 class TestBetTypeLimitsAPI:
     """Test bet type limits endpoints"""
     

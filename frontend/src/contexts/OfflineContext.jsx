@@ -13,6 +13,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { offlineDB } from '../services/offlineDB';
 import { syncManager } from '../services/offlineSyncManager';
+import { tokenStore } from '../services/tokenStore';
 import { API_URL } from '../config/api';
 
 const OfflineContext = createContext(null);
@@ -56,17 +57,8 @@ export const OfflineProvider = ({ children }) => {
 
   // Configure sync manager
   useEffect(() => {
-    const getToken = async () => {
-      try {
-        const token = await offlineDB.getToken();
-        if (token) return token;
-      } catch (e) {
-        console.warn('[OfflineContext] Token from IndexedDB failed:', e);
-      }
-      // Fallback to localStorage
-      return localStorage.getItem('token');
-    };
-    
+    const getToken = () => tokenStore.getToken();
+
     syncManager.configure({
       apiUrl: API_URL,
       getToken

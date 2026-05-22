@@ -21,10 +21,8 @@ from datetime import datetime, timedelta
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://seller-commission-ui.preview.emergentagent.com').rstrip('/')
 
 # Test credentials from review request
-SUPER_ADMIN_EMAIL = "jefferson@jmstudio.com"
-SUPER_ADMIN_PASSWORD = "JMStudio@2026!"
-
-
+SUPER_ADMIN_EMAIL = os.environ.get("SUPER_ADMIN_EMAIL", "")
+SUPER_ADMIN_PASSWORD = os.environ.get("SUPER_ADMIN_PASSWORD", "")
 class TestHealthCheck:
     """Basic health check to ensure API is running"""
     

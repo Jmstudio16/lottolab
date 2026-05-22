@@ -12,14 +12,12 @@ from datetime import datetime, timezone
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://seller-commission-ui.preview.emergentagent.com')
 
 # Test credentials
-SUPER_ADMIN_EMAIL = "jefferson@jmstudio.com"
-SUPER_ADMIN_PASSWORD = "JMStudio@2026!"
-COMPANY_ADMIN_EMAIL = "admin@lotopam.com"
-COMPANY_ADMIN_PASSWORD = "Admin123!"
-AGENT_EMAIL = "agent001@lotopam.com"
-AGENT_PASSWORD = "Agent123!"
-
-
+SUPER_ADMIN_EMAIL = os.environ.get("SUPER_ADMIN_EMAIL", "")
+SUPER_ADMIN_PASSWORD = os.environ.get("SUPER_ADMIN_PASSWORD", "")
+COMPANY_ADMIN_EMAIL = os.environ.get("COMPANY_ADMIN_EMAIL", "")
+COMPANY_ADMIN_PASSWORD = os.environ.get("COMPANY_ADMIN_PASSWORD", "")
+AGENT_EMAIL = os.environ.get("AGENT_EMAIL", "")
+AGENT_PASSWORD = os.environ.get("AGENT_PASSWORD", "")
 class TestAuthentication:
     """Helper class to get auth tokens"""
     

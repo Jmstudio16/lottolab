@@ -385,7 +385,9 @@ class UltraBluetoothPrinter {
     // Clear saved config
     try {
       await offlineDB.delete('printer', 'printer_config');
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[Printer] Could not clear config:', e);
+    }
   }
 
   // Set paper width

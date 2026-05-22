@@ -19,9 +19,8 @@ import re
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
-ADMIN_EMAIL = "admin@lotopam.com"
-ADMIN_PASSWORD = "Test123!"
-
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 # Known winning ticket from iteration 43
 WINNING_TICKET_ID = "ticket_winner_001"
 WINNING_TICKET_CODE = "558296411985929"

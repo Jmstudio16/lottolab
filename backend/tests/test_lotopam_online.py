@@ -10,10 +10,10 @@ import time
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://seller-commission-ui.preview.emergentagent.com')
 
 # Test credentials
-SUPER_ADMIN_EMAIL = "jefferson@jmstudio.com"
-SUPER_ADMIN_PASSWORD = "JMStudio@2026!"
+SUPER_ADMIN_EMAIL = os.environ.get("SUPER_ADMIN_EMAIL", "")
+SUPER_ADMIN_PASSWORD = os.environ.get("SUPER_ADMIN_PASSWORD", "")
 TEST_PLAYER_EMAIL = f"testplayer_{int(time.time())}@example.com"
-TEST_PLAYER_PASSWORD = "TestPass123!"
+TEST_PLAYER_PASSWORD = os.environ.get("TEST_PLAYER_PASSWORD", "")
 TEST_PLAYER_USERNAME = f"testplayer_{int(time.time())}"
 
 

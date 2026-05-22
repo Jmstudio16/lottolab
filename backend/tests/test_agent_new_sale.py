@@ -11,10 +11,8 @@ from datetime import datetime
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://seller-commission-ui.preview.emergentagent.com').rstrip('/')
 
 # Agent credentials
-AGENT_EMAIL = "agent.marie@lotopam.com"
-AGENT_PASSWORD = "password"
-
-
+AGENT_EMAIL = os.environ.get("AGENT_EMAIL", "")
+AGENT_PASSWORD = os.environ.get("AGENT_PASSWORD", "")
 @pytest.fixture
 def agent_token():
     """Login as agent and get token"""

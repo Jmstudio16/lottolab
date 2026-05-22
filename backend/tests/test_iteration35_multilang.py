@@ -14,12 +14,10 @@ import os
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8001')
 
 # Test credentials
-VENDEUR_EMAIL = "pierre.jean@agent.com"
-VENDEUR_PASSWORD = "Vendeur123!"
-COMPANY_ADMIN_EMAIL = "admin@lotopam.com"
-COMPANY_ADMIN_PASSWORD = "Test123!"
-
-
+VENDEUR_EMAIL = os.environ.get("VENDEUR_EMAIL", "")
+VENDEUR_PASSWORD = os.environ.get("VENDEUR_PASSWORD", "")
+COMPANY_ADMIN_EMAIL = os.environ.get("COMPANY_ADMIN_EMAIL", "")
+COMPANY_ADMIN_PASSWORD = os.environ.get("COMPANY_ADMIN_PASSWORD", "")
 class TestDeviceConfigAPI:
     """Tests for /api/device/config endpoint - bet limits and lottery schedules"""
     

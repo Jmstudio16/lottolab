@@ -735,6 +735,45 @@ class OfflineDBService {
       sessionExpires: session?.expires_at
     };
   }
+  // ==================== LOTOPAM PLAYER SESSION ====================
+
+  /**
+   * Save LotoPam (online player portal) token.
+   * Stored in the secure SESSION store (not localStorage).
+   */
+  async saveLotoPamToken(token) {
+    await this.put(STORES.SESSION, {
+      key: 'lotopam_token',
+      token,
+      saved_at: Date.now()
+    });
+  }
+
+  /**
+   * Get the LotoPam player token.
+   */
+  async getLotoPamToken() {
+    const rec = await this.get(STORES.SESSION, 'lotopam_token');
+    return rec?.token || null;
+  }
+
+  /**
+   * Clear LotoPam player session.
+   */
+  async clearLotoPamToken() {
+    await this.delete(STORES.SESSION, 'lotopam_token');
+  }
+
+  // ==================== SYNC TIMESTAMP ====================
+
+  async setLastSync(iso) {
+    await this.put(STORES.CONFIG, { key: 'last_sync', value: iso });
+  }
+
+  async getLastSync() {
+    const rec = await this.get(STORES.CONFIG, 'last_sync');
+    return rec?.value || null;
+  }
 }
 
 // Singleton instance

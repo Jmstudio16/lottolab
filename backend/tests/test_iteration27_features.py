@@ -18,19 +18,14 @@ import os
 BASE_URL = "http://localhost:8001"
 
 # Test credentials
-SUPER_ADMIN_EMAIL = "admin@lottolab.com"
-SUPER_ADMIN_PASSWORD = "123456"
-
-COMPANY_ADMIN_EMAIL = "admin@lotopam.com"
-COMPANY_ADMIN_PASSWORD = "Admin123!"
-
-SUPERVISOR_EMAIL = "supervisor@lotopam.com"
-SUPERVISOR_PASSWORD = "Supervisor123!"
-
-VENDEUR_EMAIL = "vendeur@lotopam.com"
-VENDEUR_PASSWORD = "Vendeur123!"
-
-
+SUPER_ADMIN_EMAIL = os.environ.get("SUPER_ADMIN_EMAIL", "")
+SUPER_ADMIN_PASSWORD = os.environ.get("SUPER_ADMIN_PASSWORD", "")
+COMPANY_ADMIN_EMAIL = os.environ.get("COMPANY_ADMIN_EMAIL", "")
+COMPANY_ADMIN_PASSWORD = os.environ.get("COMPANY_ADMIN_PASSWORD", "")
+SUPERVISOR_EMAIL = os.environ.get("SUPERVISOR_EMAIL", "")
+SUPERVISOR_PASSWORD = os.environ.get("SUPERVISOR_PASSWORD", "")
+VENDEUR_EMAIL = os.environ.get("VENDEUR_EMAIL", "")
+VENDEUR_PASSWORD = os.environ.get("VENDEUR_PASSWORD", "")
 class TestHealthCheck:
     """Health check tests"""
     

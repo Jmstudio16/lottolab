@@ -13,8 +13,8 @@ from datetime import datetime
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials from request
-VENDEUR_EMAIL = "agent.marie@lotopam.com"
-VENDEUR_PASSWORD = "Agent123!"
+VENDEUR_EMAIL = os.environ.get("VENDEUR_EMAIL", "")
+VENDEUR_PASSWORD = os.environ.get("VENDEUR_PASSWORD", "")
 EXPECTED_COMPANY = "LotoPam Center"
 
 

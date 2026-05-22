@@ -19,13 +19,11 @@ import time
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://seller-commission-ui.preview.emergentagent.com').rstrip('/')
 
 # Test credentials from iteration 42
-COMPANY_ADMIN_EMAIL = "admin@lotopam.com"
-COMPANY_ADMIN_PASSWORD = "Test123!"  # From review_request
+COMPANY_ADMIN_EMAIL = os.environ.get("COMPANY_ADMIN_EMAIL", "")
+COMPANY_ADMIN_PASSWORD = os.environ.get("COMPANY_ADMIN_PASSWORD", "")
 
 # Alternative credentials from iteration 42
-ALT_COMPANY_ADMIN_PASSWORD = "Admin@2026!"
-
-
+ALT_COMPANY_ADMIN_PASSWORD = os.environ.get("ALT_COMPANY_ADMIN_PASSWORD", "")
 class TestHealthCheck:
     """Verify API is accessible"""
     

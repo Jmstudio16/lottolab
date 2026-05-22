@@ -2,6 +2,7 @@ import { API_URL } from '@/config/api';
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { offlineDB } from '../services/offlineDB';
 
 
 const LotoPamAuthContext = createContext(null);
@@ -12,7 +13,7 @@ export const LotoPamAuthProvider = ({ children }) => {
   const [player, setPlayer] = useState(null);
   const [wallet, setWallet] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(localStorage.getItem('lotopam_token'));
+  const [token, setToken] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
   
   const wsRef = useRef(null);
@@ -150,6 +151,22 @@ export const LotoPamAuthProvider = ({ children }) => {
   }, [token, handleWsMessage]);
 
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const saved = await offlineDB.getLotoPamToken();
+        if (!cancelled && saved) setToken(saved);
+      } catch (err) {
+        console.error('[LotoPamAuth] Token hydrate error:', err);
+      } finally {
+        if (!cancelled && !token) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     if (token) {
       loadPlayer();
     } else {
@@ -189,7 +206,7 @@ export const LotoPamAuthProvider = ({ children }) => {
     const response = await apiClient.post('/api/online/login', { email, password });
     const { token: newToken, player: playerData, wallet: walletData } = response.data;
     
-    localStorage.setItem('lotopam_token', newToken);
+    await offlineDB.saveLotoPamToken(newToken);
     setToken(newToken);
     setPlayer(playerData);
     setWallet(walletData);
@@ -204,7 +221,7 @@ export const LotoPamAuthProvider = ({ children }) => {
     const response = await apiClient.post('/api/online/register', data);
     const { token: newToken, player: playerData } = response.data;
     
-    localStorage.setItem('lotopam_token', newToken);
+    await offlineDB.saveLotoPamToken(newToken);
     setToken(newToken);
     setPlayer(playerData);
     setWallet({ balance: 0, currency: 'HTG' });
@@ -216,7 +233,7 @@ export const LotoPamAuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('lotopam_token');
+    offlineDB.clearLotoPamToken().catch(err => console.error('[LotoPamAuth] clear error:', err));
     setToken(null);
     setPlayer(null);
     setWallet(null);

@@ -13,12 +13,10 @@ import os
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8001')
 
 # Test credentials
-COMPANY_ADMIN_EMAIL = "admin@lotopam.com"
-COMPANY_ADMIN_PASSWORD = "Admin123!"
-SUPERVISOR_EMAIL = "supervisor@lotopam.com"
-SUPERVISOR_PASSWORD = "Supervisor123!"
-
-
+COMPANY_ADMIN_EMAIL = os.environ.get("COMPANY_ADMIN_EMAIL", "")
+COMPANY_ADMIN_PASSWORD = os.environ.get("COMPANY_ADMIN_PASSWORD", "")
+SUPERVISOR_EMAIL = os.environ.get("SUPERVISOR_EMAIL", "")
+SUPERVISOR_PASSWORD = os.environ.get("SUPERVISOR_PASSWORD", "")
 class TestHealthCheck:
     """Basic health check to ensure API is running"""
     

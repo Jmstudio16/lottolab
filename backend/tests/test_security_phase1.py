@@ -21,10 +21,8 @@ import uuid
 BASE_URL = "https://seller-commission-ui.preview.emergentagent.com"
 
 # Test credentials
-SUPER_ADMIN_EMAIL = "jefferson@jmstudio.com"
-SUPER_ADMIN_PASSWORD = "JMStudio@2026!"
-
-
+SUPER_ADMIN_EMAIL = os.environ.get("SUPER_ADMIN_EMAIL", "")
+SUPER_ADMIN_PASSWORD = os.environ.get("SUPER_ADMIN_PASSWORD", "")
 class TestHealthCheck:
     """Basic health check"""
     
