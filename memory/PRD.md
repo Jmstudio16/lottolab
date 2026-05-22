@@ -1,12 +1,48 @@
 # LOTTOLAB PRO - Professional Lottery SaaS Platform
 
-## Version: 27.6.0 (Code Quality P0+P1 Hardening)
-## Last Updated: 2026-05-22 19:35 UTC
+## Version: 27.7.0 (SaaS Billing Module + Code Quality)
+## Last Updated: 2026-05-22 21:00 UTC
 ## Deployed: 2026-05-22 15:15 Haiti Time
 
 ---
 
-## 🆕 v27.6.0 — Code Quality Hardening (this session)
+## 🆕 v27.7.0 — Module de Facturation SaaS (this session)
+
+Le Super Admin peut désormais tracker chaque compagnie active et générer des factures mensuelles automatiques basées sur le nombre d'agents.
+
+### Backend — `/app/backend/billing_routes.py`
+- 4 compteurs d'agents par compagnie / mois :
+  - `agents_active`           — vendeurs avec `status=ACTIVE`
+  - `agents_online_now`       — vendeurs avec `last_login` dans les 5 dernières minutes
+  - `agents_monthly_active`   — vendeurs ayant ouvert une session ce mois
+  - `agents_monthly_sellers`  — vendeurs ayant vendu ≥ 1 ticket ce mois
+- 4 modes de facturation : `fixed_per_agent`, `tiered`, `percentage`, `custom`
+- 9 endpoints sous `/api/super/billing/*` :
+  - `GET /summary` — KPIs globaux
+  - `GET /companies?month=YYYY-MM` — compagnies actives + projection
+  - `GET /company/{id}/config` & `PUT` — config tarifaire par compagnie
+  - `POST /generate-invoices?month=...&force=...` — génération mensuelle idempotente
+  - `GET /invoices`, `GET /invoices/{id}`, `PUT /invoices/{id}/status`, `GET /invoices/{id}/pdf`
+- Collections MongoDB : `billing_configs`, `billing_invoices`
+- PDF généré via `reportlab` (compteurs + détails + montant dû)
+
+### Frontend — `/app/frontend/src/pages/super_admin/SuperBillingPage.jsx`
+- Page accessible à `/super/billing` (sidebar : "Facturation Compagnies", icône Receipt)
+- 4 stat cards (Compagnies actives, Agents en ligne, Factures en attente, Factures payées)
+- Onglet "Compagnies & projections" : tableau live avec les 4 compteurs + montant projeté + mode/comptage
+- Onglet "Factures" : statut (En attente / Payée / En retard / Annulée), téléchargement PDF, action "Marquer payée"
+- Modal de configuration par compagnie : sélection du mode + méthode de comptage + tarif/pourcentage + notes
+- Bouton "Générer Factures" pour créer / mettre à jour les factures du mois sélectionné
+- Sélecteur de mois (par défaut : mois précédent)
+
+### Testing
+- `testing_agent_v3_fork` itération 57 : Backend 16/16 + Frontend 100% PASS
+- Fichier pytest : `/app/backend/tests/test_super_billing.py` (16 cas, 5 groupes)
+- Auth check : `COMPANY_ADMIN` reçoit `403` sur tous les endpoints billing
+
+---
+
+## 🆕 v27.6.0 — Code Quality Hardening (previous session)
 
 ### P0 Security ✅
 - **Hardcoded credentials removed from 41 backend test files.**
