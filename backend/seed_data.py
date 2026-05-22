@@ -217,7 +217,7 @@ async def seed_database():
     admin_user = {
         "user_id": admin_user_id,
         "email": "admin@lotopam.com",
-        "password_hash": get_password_hash("Admin123!"),
+        "password_hash": get_password_hash("LotoPAM2026!"),
         "name": "Admin LotoPam",
         "role": "COMPANY_ADMIN",
         "company_id": company_id,
@@ -226,7 +226,7 @@ async def seed_database():
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     await db.users.insert_one(admin_user)
-    print("✅ Company Admin created: admin@lotopam.com / Admin123!")
+    print("✅ Company Admin created: admin@lotopam.com / LotoPAM2026!")
     
     # 8. Create Test Agent
     agent_user_id = generate_id("user_")
@@ -296,7 +296,7 @@ async def seed_database():
     print("  Password: JMStudio@2026!")
     print("\nCompany Admin (LotoPam):")
     print("  Email: admin@lotopam.com")
-    print("  Password: Admin123!")
+    print("  Password: LotoPAM2026!")
     print("\nAgent POS:")
     print("  Email: agent001@pos.lottolab.local")
     print("  Password: Agent123!")

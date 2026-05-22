@@ -411,7 +411,7 @@ async def seed_database():
         admin_doc = {
             "user_id": admin_id,
             "email": "admin@lotopam.com",
-            "password_hash": get_password_hash("Admin123!"),
+            "password_hash": get_password_hash("LotoPAM2026!"),
             "name": "Admin LotoPam",
             "role": "COMPANY_ADMIN",
             "company_id": company_id,
@@ -470,7 +470,7 @@ async def seed_database():
         })
         
         print(f"   ✅ Demo Company created: LotoPam Demo")
-        print(f"      Admin: admin@lotopam.com / Admin123!")
+        print(f"      Admin: admin@lotopam.com / LotoPAM2026!")
         print(f"      Lotteries linked: {len(master_lotteries)}")
     else:
         print("   ⏭️ Demo Company already exists")

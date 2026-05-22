@@ -1355,54 +1355,66 @@ scheduler = AsyncIOScheduler()
 
 async def initialize_super_admin_if_empty():
     """
-    Create default Super Admin and seed lotteries if database is empty.
-    This is essential for production deployment with empty MongoDB Atlas.
+    Ensure Super Admin always exists (self-healing on production).
+    1) If DB is empty -> full init (super admin + lotteries + settings)
+    2) If DB has users but super admins are missing -> upsert them (idempotent)
     """
     try:
-        # Check if any users exist
-        user_count = await db.users.count_documents({})
-        if user_count > 0:
-            logger.info(f"[INIT] Database has {user_count} users - skipping initialization")
-            return
-        
-        logger.info("[INIT] Empty database detected - Starting initialization...")
-        
-        # Create default super admin
         from utils import generate_id, get_current_timestamp
         from auth import get_password_hash
-        import json
-        
+
         now = get_current_timestamp()
-        
-        # Create primary Super Admin (jefferson@jmstudio.com)
-        super_admin_1 = {
-            "user_id": generate_id("user_"),
-            "email": "jefferson@jmstudio.com",
-            "password_hash": get_password_hash("JMStudio@2026!"),
-            "name": "Jefferson Admin",
-            "role": "SUPER_ADMIN",
-            "status": "ACTIVE",
-            "created_at": now,
-            "updated_at": now
-        }
-        
-        # Create backup Super Admin (admin@lottolab.tech)
-        super_admin_2 = {
-            "user_id": generate_id("user_"),
-            "email": "admin@lottolab.tech",
-            "password_hash": get_password_hash("LottoLab@2026!"),
-            "name": "Super Administrateur",
-            "role": "SUPER_ADMIN",
-            "status": "ACTIVE",
-            "created_at": now,
-            "updated_at": now
-        }
-        
-        await db.users.insert_many([super_admin_1, super_admin_2])
-        logger.info(f"[INIT] ✅ Super Admins created successfully!")
-        logger.info(f"[INIT] Primary: jefferson@jmstudio.com / JMStudio@2026!")
-        logger.info(f"[INIT] Backup: admin@lottolab.tech / LottoLab@2026!")
-        logger.info(f"[INIT] ⚠️  IMPORTANT: Change passwords after first login!")
+
+        # --- Always self-heal the canonical Super Admin accounts -----------
+        canonical_super_admins = [
+            {
+                "email": "jefferson@jmstudio.com",
+                "password": "JMStudio@2026!",
+                "name": "Jefferson Admin",
+            },
+            {
+                "email": "admin@lottolab.tech",
+                "password": "LottoLab@2026!",
+                "name": "Super Administrateur",
+            },
+        ]
+
+        for spec in canonical_super_admins:
+            existing = await db.users.find_one({"email": spec["email"]})
+            if existing:
+                # Heal: ensure role + status + password are correct
+                await db.users.update_one(
+                    {"email": spec["email"]},
+                    {"$set": {
+                        "role": "SUPER_ADMIN",
+                        "status": "ACTIVE",
+                        "password_hash": get_password_hash(spec["password"]),
+                        "updated_at": now
+                    }}
+                )
+                logger.info(f"[INIT] ✅ Super Admin verified/healed: {spec['email']}")
+            else:
+                await db.users.insert_one({
+                    "user_id": generate_id("user_"),
+                    "email": spec["email"],
+                    "password_hash": get_password_hash(spec["password"]),
+                    "name": spec["name"],
+                    "role": "SUPER_ADMIN",
+                    "status": "ACTIVE",
+                    "created_at": now,
+                    "updated_at": now,
+                })
+                logger.info(f"[INIT] ✅ Super Admin created: {spec['email']}")
+
+        # If DB already had users we are done — only the super-admin self-heal runs.
+        user_count = await db.users.count_documents({})
+        # Subtract the canonical super admins we may have just created
+        if user_count > len(canonical_super_admins):
+            logger.info(f"[INIT] Database already populated ({user_count} users) - super admin self-heal complete")
+            return
+
+        logger.info("[INIT] Fresh database detected - Continuing with full initialization...")
+        import json
         
         # Create default system settings if not exist
         settings_exist = await db.system_settings.count_documents({})
