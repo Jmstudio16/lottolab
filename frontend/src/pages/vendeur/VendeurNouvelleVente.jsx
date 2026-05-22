@@ -470,22 +470,14 @@ const VendeurNouvelleVente = () => {
 
     const amount = parseFloat(currentPlay.amount) || 0;
     
-    // Only check positive amount - NO minimum limit
+    // Only check positive amount - NO minimum or maximum limits
     if (amount <= 0) {
       toast.error('Montant invalide');
       return;
     }
     
-    // Get bet type specific limits from company config
-    const backendKey = BET_TYPE_MAP[currentPlay.betType] || currentPlay.betType;
-    const typeLimit = betTypeLimits[backendKey] || {};
-    const typeMaxBet = typeLimit.max_bet || 100000;
-    
-    // Validate max per bet type
-    if (typeMaxBet && amount > typeMaxBet) {
-      toast.error(`Mise maximum pour ${betType.label}: ${typeMaxBet} HTG`);
-      return;
-    }
+    // NO MAXIMUM LIMIT - Allow any amount
+    // Previously had bet type specific limits - REMOVED
 
     // Re-check if lottery is still in our open list
     const stillOpen = lotteries.find(l => l.lottery_id === selectedLottery.lottery_id);
@@ -741,6 +733,12 @@ const VendeurNouvelleVente = () => {
           ticket={{ ...ticketResult, lottery_name: selectedLottery?.lottery_name }}
           token={token}
           onNewSale={newSale}
+          companyName={companyName}
+          branchName={succursaleName}
+          vendorName={user?.name}
+          lotteryName={selectedLottery?.lottery_name}
+          plays={ticketResult.plays || cart}
+          totalAmount={ticketResult.total_amount || totalAmount}
         />
         
         {!showPrintModal && (

@@ -476,63 +476,16 @@ async def sell_ticket(
                     detail=f"Numéro [{num}] bloqué pour cette loterie. Raison: {blocked_entry.get('reason', 'Blocage administratif')}"
                 )
     
-    # Check bet limits
-    limits = await db.bet_limits.find_one({
-        "company_id": company_id,
-        "lottery_id": sell_data.lottery_id,
-        "is_active": True
-    }, {"_id": 0})
-    
-    if not limits:
-        limits = await db.bet_limits.find_one({
-            "company_id": company_id,
-            "lottery_id": None,
-            "is_active": True
-        }, {"_id": 0})
-    
-    if not limits:
-        config = await db.company_configurations.find_one(
-            {"company_id": company_id}, {"_id": 0}
-        )
-        if config:
-            limits = {
-                "max_bet": config.get("max_bet_amount", 10000),
-                "max_bet_per_number": config.get("max_bet_per_number", 5000),
-                "max_total_per_ticket": 50000
-            }
-    
-    if limits:
-        # NO minimum validation - only max limits
-        max_per_num = limits.get("max_bet_per_number", 100000)
-        max_total = limits.get("max_total_per_ticket", 500000)
-        max_bet = limits.get("max_bet", 100000)
-        
-        total_amount_check = sum(play.amount for play in sell_data.plays)
-        
-        for play in sell_data.plays:
-            # Only check positive amount (no minimum limit)
-            if play.amount <= 0:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Montant invalide. Numéro {play.numbers}: {play.amount} HTG"
-                )
-            # Maximum from config or 100000 default
-            if play.amount > max_bet:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Mise maximum: {max_bet} HTG. Numéro {play.numbers}: {play.amount} HTG"
-                )
-            if play.amount > max_per_num:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Mise maximum {max_per_num} HTG par numéro. Numéro {play.numbers}: {play.amount} HTG"
-                )
-        
-        if total_amount_check > max_total:
+    # Check bet limits - ONLY positive amount validation, NO maximum limits
+    # Maximum limits have been removed as per user request - allow any amount
+    for play in sell_data.plays:
+        # Only check positive amount (no minimum or maximum limit)
+        if play.amount <= 0:
             raise HTTPException(
                 status_code=400,
-                detail=f"Total ticket ({total_amount_check} HTG) dépasse le maximum autorisé ({max_total} HTG)"
+                detail=f"Montant invalide. Le montant doit être positif. Numéro {play.numbers}: {play.amount} HTG"
             )
+    
     # ========== END VALIDATION ==========
     
     # Validate lottery exists and is enabled GLOBALLY by Super Admin

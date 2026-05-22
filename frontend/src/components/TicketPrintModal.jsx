@@ -1,24 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Printer, CheckCircle, X, RefreshCw, Eye, Download, Copy,
-  Share2, FileText, Smartphone, AlertTriangle, Zap, ExternalLink
+  Share2, FileText, Smartphone, AlertTriangle, Zap, ExternalLink, Bluetooth
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { API_URL } from '@/config/api';
 import PrinterSelector from './PrinterSelector';
 import printerService, { printTicket } from '@/services/PrinterService';
+import bluetoothPrinter from '@/utils/bluetoothPrinter';
 
 /**
  * TicketPrintModal - ULTRA PRO Modal displayed after successful ticket creation
- * Features: Print, Reprint, PDF Download, PDF Share (WhatsApp/Email), Preview
+ * Features: Print via Bluetooth/Network, PDF Download, Share
  */
 const TicketPrintModal = ({ 
   isOpen, 
   onClose, 
   ticket, 
   token,
-  onNewSale 
+  onNewSale,
+  companyName,
+  branchName,
+  vendorName,
+  lotteryName,
+  plays,
+  totalAmount
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -29,23 +36,32 @@ const TicketPrintModal = ({
   const [selectedPrinter, setSelectedPrinter] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [canShare, setCanShare] = useState(false);
+  const [bluetoothConnected, setBluetoothConnected] = useState(false);
 
-  // Check if Web Share API is available
+  // Check if Web Share API is available and Bluetooth status
   useEffect(() => {
     setCanShare(typeof navigator !== 'undefined' && 'share' in navigator);
+    setBluetoothConnected(bluetoothPrinter.isConnected);
+    
+    // Listen for Bluetooth changes
+    const unsubscribe = bluetoothPrinter.addListener((state) => {
+      setBluetoothConnected(state.isConnected);
+    });
+    
+    return () => unsubscribe();
   }, []);
 
-  // Auto-print on mount if enabled
+  // Auto-print on mount if enabled (prefer Bluetooth if connected)
   useEffect(() => {
     if (isOpen && ticket && !autoPrintDone) {
       const settings = printerService.getSettings();
-      if (settings.autoPrint) {
+      if (settings.autoPrint || bluetoothConnected) {
         handlePrint(true);
         setAutoPrintDone(true);
       }
       setSelectedPrinter(printerService.getSelectedPrinter());
     }
-  }, [isOpen, ticket, autoPrintDone]);
+  }, [isOpen, ticket, autoPrintDone, bluetoothConnected]);
 
   // Reset when closed
   useEffect(() => {
@@ -55,30 +71,80 @@ const TicketPrintModal = ({
     }
   }, [isOpen]);
 
+  // Print via Bluetooth
+  const handleBluetoothPrint = async () => {
+    if (!bluetoothPrinter.isConnected) {
+      toast.error('Imprimante Bluetooth non connectée');
+      return false;
+    }
+    
+    try {
+      await bluetoothPrinter.printTicket({
+        companyName: companyName || 'LOTTOLAB',
+        branchName: branchName || '',
+        ticketId: ticket?.ticket_code || ticket?.ticket_id || 'N/A',
+        dateTime: new Date().toLocaleString('fr-FR'),
+        vendorName: vendorName || 'Agent',
+        lotteryName: lotteryName || '',
+        plays: plays || ticket?.plays || [],
+        totalAmount: totalAmount || ticket?.total_amount || 0,
+        status: ticket?.offline ? 'EN ATTENTE' : 'VALIDÉ',
+        footerMessage: ticket?.offline ? 'Sync au retour connexion' : 'Merci et bonne chance!'
+      });
+      return true;
+    } catch (error) {
+      console.error('[Print] Bluetooth error:', error);
+      return false;
+    }
+  };
+
   const handlePrint = async (isAuto = false) => {
-    if (!ticket?.ticket_id) {
+    if (!ticket?.ticket_id && !ticket?.offline_id) {
       toast.error('Ticket non disponible');
       return;
     }
 
     setIsPrinting(true);
     try {
-      await printTicket(ticket.ticket_id, token, API_URL);
-      setPrintCount(prev => prev + 1);
-      if (!isAuto) {
-        toast.success('Impression lancée');
+      // Try Bluetooth first if connected
+      if (bluetoothConnected) {
+        const btSuccess = await handleBluetoothPrint();
+        if (btSuccess) {
+          setPrintCount(prev => prev + 1);
+          if (!isAuto) {
+            toast.success('🖨️ Imprimé via Bluetooth');
+          }
+          setIsPrinting(false);
+          return;
+        }
+      }
+      
+      // Fallback to network/browser printing
+      if (ticket?.ticket_id && !ticket?.offline) {
+        await printTicket(ticket.ticket_id, token, API_URL);
+        setPrintCount(prev => prev + 1);
+        if (!isAuto) {
+          toast.success('Impression lancée');
+        }
+      } else {
+        // Offline ticket - can only print via Bluetooth
+        if (!isAuto) {
+          toast.warning('Ticket hors ligne - connectez une imprimante Bluetooth');
+        }
       }
     } catch (error) {
       console.error('Print error:', error);
       if (!isAuto) {
         toast.error('Erreur d\'impression');
       }
-      // Fallback to new window
-      window.open(
-        `${API_URL}/api/ticket/print/${ticket.ticket_id}?token=${token}&format=thermal&auto=true`,
-        '_blank',
-        'width=400,height=700'
-      );
+      // Fallback to new window for online tickets
+      if (ticket?.ticket_id && !ticket?.offline) {
+        window.open(
+          `${API_URL}/api/ticket/print/${ticket.ticket_id}?token=${token}&format=thermal&auto=true`,
+          '_blank',
+          'width=400,height=700'
+        );
+      }
     } finally {
       setIsPrinting(false);
     }

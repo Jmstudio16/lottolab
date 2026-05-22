@@ -1,12 +1,34 @@
 # LOTTOLAB PRO - Professional Lottery SaaS Platform
 
-## Version: 27.3.0 (LOTTOLAB PRO - Printer & PDF Complete)
-## Last Updated: 2026-04-09 22:45 UTC
-## Deployed: 2026-04-09 18:45 Haiti Time
+## Version: 27.4.0 (LOTTOLAB PRO - No Limits + Printer Fixed)
+## Last Updated: 2026-05-22 19:05 UTC
+## Deployed: 2026-05-22 15:05 Haiti Time
 
 ---
 
 ## 🚀 STATUT: PRODUCTION READY ✅
+
+### Corrections v27.4.0 (Limites Supprimées + Impression):
+
+#### 1. AUCUNE LIMITE DE MONTANT ✅
+- **Frontend** : Suppression de toutes les validations max_bet
+- **Backend** : Suppression des vérifications de limites dans `/api/vendeur/sell`
+- **Testé avec succès** :
+  - 500,000 HTG ✅
+  - 1,000,000 HTG ✅
+  - N'importe quel montant fonctionne ✅
+- Seule validation restante : montant > 0 (positif)
+
+#### 2. Impression Bluetooth Améliorée ✅
+- **TicketPrintModal** : Intégration complète Bluetooth
+- **Auto-print** : Si Bluetooth connecté, impression automatique après validation
+- **Fallback** : Impression navigateur si pas de Bluetooth
+- **Props enrichies** : companyName, branchName, vendorName, lotteryName, plays, totalAmount
+
+#### 3. Modal de Ticket Complet ✅
+- Boutons : Imprimer, Aperçu, Réimprimer, PDF, Partager, WhatsApp
+- "Imprimante Navigateur - Prêt à imprimer" avec option "Changer"
+- Support mode offline avec notification "Ticket sauvegardé hors ligne!"
 
 ### Fonctionnalités v27.3.0 (Imprimante & PDF):
 
