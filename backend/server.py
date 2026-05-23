@@ -163,135 +163,192 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 @api_router.post("/auth/login", response_model=LoginResponse)
 @limiter.limit("10/minute")  # 10 login attempts per minute per IP
 async def login(request: Request, credentials: LoginRequest):
+    """
+    Bulletproof login endpoint.
+    The only hard requirements for a successful auth are:
+      1) The user document exists
+      2) verify_password passes
+      3) Status is not SUSPENDED/DELETED
+    Every side-effect (brute-force protection, audit log, last_login update)
+    is best-effort and wrapped in try/except so a transient infra issue
+    cannot 500 the entire login.
+    """
     from security_system import LoginProtection, create_audit_log, AuditAction, get_client_info
-    
+
     # Log incoming request for debugging
     origin = request.headers.get("origin", "no-origin")
-    client_info = get_client_info(request)
-    client_ip = client_info["client_ip"]
-    
+    try:
+        client_info = get_client_info(request)
+    except Exception:
+        client_info = {"client_ip": "unknown", "user_agent": "unknown"}
+    client_ip = client_info.get("client_ip", "unknown")
+
     logger.info(f"[LOGIN] Attempt from origin: {origin}, email: {credentials.email}, IP: {client_ip}")
-    
-    # Check if blocked
-    block_status = await LoginProtection.check_blocked(db, credentials.email, client_ip)
-    if block_status["is_blocked"]:
-        logger.warning(f"[SECURITY] Blocked login attempt: {credentials.email} from {client_ip}")
-        raise HTTPException(
-            status_code=429, 
-            detail=f"Trop de tentatives échouées. Réessayez dans {LoginProtection.BLOCK_DURATION_MINUTES} minutes."
-        )
-    
+
+    # 1) Brute-force protection — best-effort
+    try:
+        block_status = await LoginProtection.check_blocked(db, credentials.email, client_ip)
+        if block_status.get("is_blocked"):
+            logger.warning(f"[SECURITY] Blocked login attempt: {credentials.email} from {client_ip}")
+            raise HTTPException(
+                status_code=429,
+                detail=f"Trop de tentatives échouées. Réessayez dans {LoginProtection.BLOCK_DURATION_MINUTES} minutes."
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"[LOGIN] Block check skipped: {e}")
+
+    # 2) Find user — hard requirement
     user_doc = await db.users.find_one({"email": credentials.email}, {"_id": 0})
     if not user_doc:
         logger.warning(f"[LOGIN] User not found: {credentials.email}")
-        # Record failed attempt
-        await LoginProtection.record_attempt(db, credentials.email, client_ip, False, client_info["user_agent"])
-        await LoginProtection.check_and_block_if_needed(db, credentials.email, client_ip)
+        try:
+            await LoginProtection.record_attempt(db, credentials.email, client_ip, False, client_info.get("user_agent", ""))
+            await LoginProtection.check_and_block_if_needed(db, credentials.email, client_ip)
+        except Exception as e:
+            logger.warning(f"[LOGIN] Attempt record skipped: {e}")
         raise HTTPException(status_code=401, detail="Email ou mot de passe invalide")
-    
-    if not verify_password(credentials.password, user_doc.get("password_hash", "")):
-        # Record failed attempt
-        await LoginProtection.record_attempt(db, credentials.email, client_ip, False, client_info["user_agent"])
-        was_blocked = await LoginProtection.check_and_block_if_needed(db, credentials.email, client_ip)
-        
-        # Create audit log for failed login
-        await create_audit_log(
-            db=db,
-            action=AuditAction.LOGIN_FAILED,
-            user_id=user_doc.get("user_id", "unknown"),
-            request=request,
-            details={"reason": "invalid_password"},
-            severity="WARNING",
-            company_id=user_doc.get("company_id")
-        )
-        
+
+    # 3) Verify password — hard requirement
+    try:
+        password_ok = verify_password(credentials.password, user_doc.get("password_hash", ""))
+    except Exception as e:
+        logger.error(f"[LOGIN] Password verification crashed for {credentials.email}: {e}")
+        raise HTTPException(status_code=401, detail="Email ou mot de passe invalide")
+
+    if not password_ok:
+        try:
+            await LoginProtection.record_attempt(db, credentials.email, client_ip, False, client_info.get("user_agent", ""))
+            was_blocked = await LoginProtection.check_and_block_if_needed(db, credentials.email, client_ip)
+            await create_audit_log(
+                db=db,
+                action=AuditAction.LOGIN_FAILED,
+                user_id=user_doc.get("user_id", "unknown"),
+                request=request,
+                details={"reason": "invalid_password"},
+                severity="WARNING",
+                company_id=user_doc.get("company_id")
+            )
+        except Exception as e:
+            logger.warning(f"[LOGIN] Audit/protection skipped: {e}")
+            was_blocked = False
+
         if was_blocked:
             raise HTTPException(
-                status_code=429, 
+                status_code=429,
                 detail=f"Compte bloqué temporairement après {LoginProtection.MAX_ATTEMPTS} tentatives échouées."
             )
-        
         raise HTTPException(status_code=401, detail="Email ou mot de passe invalide")
-    
-    # Check if user is suspended or deleted
+
+    # 4) Status check — hard requirement
     if user_doc.get("status") in ["SUSPENDED", "DELETED"]:
-        await create_audit_log(
-            db=db,
-            action=AuditAction.LOGIN_FAILED,
-            user_id=user_doc.get("user_id"),
-            request=request,
-            details={"reason": "account_suspended"},
-            severity="WARNING",
-            company_id=user_doc.get("company_id")
-        )
+        try:
+            await create_audit_log(
+                db=db,
+                action=AuditAction.LOGIN_FAILED,
+                user_id=user_doc.get("user_id"),
+                request=request,
+                details={"reason": "account_suspended"},
+                severity="WARNING",
+                company_id=user_doc.get("company_id")
+            )
+        except Exception:
+            pass
         raise HTTPException(status_code=403, detail="Compte suspendu ou supprimé. Contactez l'administrateur.")
-    
-    # Check if company is suspended or expired (for non-super-admin)
+
+    # 5) Company status check (non-super-admin) — best-effort
     if user_doc.get("role") != UserRole.SUPER_ADMIN and user_doc.get("company_id"):
-        company = await db.companies.find_one(
-            {"company_id": user_doc["company_id"]},
-            {"_id": 0, "status": 1, "license_end": 1}
-        )
-        if company:
-            if company.get("status") in ["SUSPENDED", "DELETED"]:
-                raise HTTPException(status_code=403, detail="Entreprise suspendue. Contactez l'administrateur.")
-            if company.get("status") == "EXPIRED":
-                raise HTTPException(status_code=403, detail="Abonnement expiré. Contactez l'administrateur.")
-            
-            # Check license expiration
-            license_end = company.get("license_end")
-            if license_end:
-                try:
-                    from datetime import datetime, timezone
-                    end_date = datetime.fromisoformat(license_end.replace("Z", "+00:00"))
-                    if end_date < datetime.now(timezone.utc):
-                        # Auto-expire the company
-                        await db.companies.update_one(
-                            {"company_id": user_doc["company_id"]},
-                            {"$set": {"status": "EXPIRED", "updated_at": get_current_timestamp()}}
-                        )
-                        raise HTTPException(status_code=403, detail="Abonnement expiré. Contactez l'administrateur.")
-                except ValueError:
-                    pass
-    
-    # Record successful login
-    await LoginProtection.record_attempt(db, credentials.email, client_ip, True, client_info["user_agent"])
-    
-    # Update last_login
+        try:
+            company = await db.companies.find_one(
+                {"company_id": user_doc["company_id"]},
+                {"_id": 0, "status": 1, "license_end": 1}
+            )
+            if company:
+                if company.get("status") in ["SUSPENDED", "DELETED"]:
+                    raise HTTPException(status_code=403, detail="Entreprise suspendue. Contactez l'administrateur.")
+                if company.get("status") == "EXPIRED":
+                    raise HTTPException(status_code=403, detail="Abonnement expiré. Contactez l'administrateur.")
+                license_end = company.get("license_end")
+                if license_end:
+                    try:
+                        from datetime import datetime, timezone
+                        end_date = datetime.fromisoformat(license_end.replace("Z", "+00:00"))
+                        if end_date < datetime.now(timezone.utc):
+                            await db.companies.update_one(
+                                {"company_id": user_doc["company_id"]},
+                                {"$set": {"status": "EXPIRED", "updated_at": get_current_timestamp()}}
+                            )
+                            raise HTTPException(status_code=403, detail="Abonnement expiré. Contactez l'administrateur.")
+                    except ValueError:
+                        pass
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.warning(f"[LOGIN] Company check skipped: {e}")
+
+    # 6) Success side-effects — best-effort
     now = get_current_timestamp()
-    await db.users.update_one(
-        {"user_id": user_doc["user_id"]},
-        {"$set": {"last_login": now, "last_ip": client_ip}}
-    )
-    
+    try:
+        await LoginProtection.record_attempt(db, credentials.email, client_ip, True, client_info.get("user_agent", ""))
+    except Exception as e:
+        logger.warning(f"[LOGIN] Success record skipped: {e}")
+
+    try:
+        await db.users.update_one(
+            {"user_id": user_doc["user_id"]},
+            {"$set": {"last_login": now, "last_ip": client_ip}}
+        )
+    except Exception as e:
+        logger.warning(f"[LOGIN] last_login update skipped: {e}")
+
     user_doc["last_login"] = now
     user_doc.pop("password_hash", None)
-    user = User(**user_doc)
+    try:
+        user = User(**user_doc)
+    except Exception as e:
+        # If Pydantic validation fails on some odd field, fall back to a minimal payload
+        logger.error(f"[LOGIN] User Pydantic validation failed, using minimal: {e}")
+        user = User(
+            user_id=user_doc["user_id"],
+            email=user_doc["email"],
+            name=user_doc.get("name", user_doc["email"]),
+            role=user_doc.get("role", "AGENT_POS"),
+            status=user_doc.get("status", "ACTIVE"),
+            company_id=user_doc.get("company_id"),
+            created_at=user_doc.get("created_at", now),
+            updated_at=user_doc.get("updated_at", now),
+        )
     
     token = create_access_token({"user_id": user.user_id, "role": user.role, "company_id": user.company_id})
-    
-    # Create audit log for successful login
-    await create_audit_log(
-        db=db,
-        action=AuditAction.LOGIN,
-        user_id=user.user_id,
-        request=request,
-        details={"role": user.role},
-        severity="INFO",
-        company_id=user.company_id
-    )
-    
-    # Log login activity (legacy)
-    await log_activity(
-        db=db,
-        action_type="USER_LOGIN",
-        entity_type="user",
-        entity_id=user.user_id,
-        performed_by=user.user_id,
-        company_id=user.company_id,
-        metadata={"email": user.email, "role": user.role},
-        ip_address=client_ip
-    )
+
+    # Audit + activity logs — best-effort, never crash the login
+    try:
+        await create_audit_log(
+            db=db,
+            action=AuditAction.LOGIN,
+            user_id=user.user_id,
+            request=request,
+            details={"role": user.role},
+            severity="INFO",
+            company_id=user.company_id
+        )
+    except Exception as e:
+        logger.warning(f"[LOGIN] Audit log skipped: {e}")
+
+    try:
+        await log_activity(
+            db=db,
+            action_type="USER_LOGIN",
+            entity_type="user",
+            entity_id=user.user_id,
+            performed_by=user.user_id,
+            company_id=user.company_id,
+            metadata={"email": user.email, "role": user.role},
+            ip_address=client_ip
+        )
+    except Exception as e:
+        logger.warning(f"[LOGIN] Activity log skipped: {e}")
     
     redirect_map = {
         UserRole.SUPER_ADMIN: "/super/dashboard",
