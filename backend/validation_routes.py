@@ -22,7 +22,7 @@ async def activate_all_lotteries_for_company(company_id: str):
     Activate all master_lotteries for a company.
     Called when a new company is created to ensure they have access to all lotteries by default.
     """
-    if not db:
+    if db is None:
         return 0
     
     master_lotteries = await db.master_lotteries.find({}).to_list(500)
