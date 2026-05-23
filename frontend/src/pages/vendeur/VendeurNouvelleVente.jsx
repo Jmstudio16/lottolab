@@ -276,7 +276,6 @@ const VendeurNouvelleVente = () => {
         
         if (cachedResult.data && cachedResult.data.length > 0) {
           setLotteries(cachedResult.data);
-          initialLoadDoneRef.current = true;
           
           const cachedLimits = await offlineDB.getCachedBetLimits();
           const cachedConfig = await offlineDB.getVendorConfig();
@@ -287,14 +286,12 @@ const VendeurNouvelleVente = () => {
             setCompanyName(cachedConfig.company?.name || cachedConfig.companyName || '');
           }
           
-          // Only show toast on first load failure
-          if (!initialLoadDoneRef.current) {
-            if (!navigator.onLine) {
-              toast.info('Mode hors ligne');
-            } else {
-              toast.warning('Données du cache');
-            }
+          // Only notify when truly disconnected (not on transient slow network).
+          // Showing a "cache" toast while the user is fully online creates noise.
+          if (!initialLoadDoneRef.current && !navigator.onLine) {
+            toast.info('Mode hors ligne — données restaurées');
           }
+          initialLoadDoneRef.current = true;
         } else {
           // No cache - show error only on first load
           if (!initialLoadDoneRef.current) {

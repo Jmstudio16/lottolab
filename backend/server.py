@@ -1124,6 +1124,104 @@ async def create_super_admin_endpoint(secret_key: str = "LOTTOLAB_INIT_2026"):
         "warning": "Please change this password immediately after login!"
     }
 
+
+@api_router.post("/init/reset-system")
+async def reset_system_endpoint(
+    secret_key: str = "LOTTOLAB_INIT_2026",
+    confirm: str = ""
+):
+    """
+    ⚠️ DANGER: Wipe ALL business data from the database and reset to a clean slate.
+    Preserves ONLY the canonical Super Admin accounts so login still works.
+    Requires both `secret_key` and `confirm=RESET_LOTTOLAB_NOW` to execute.
+    """
+    if secret_key != "LOTTOLAB_INIT_2026":
+        raise HTTPException(status_code=403, detail="Invalid secret key")
+    if confirm != "RESET_LOTTOLAB_NOW":
+        raise HTTPException(
+            status_code=400,
+            detail="Add ?confirm=RESET_LOTTOLAB_NOW to confirm. THIS WIPES ALL DATA."
+        )
+
+    from auth import get_password_hash
+    from utils import generate_id, get_current_timestamp
+
+    # Collections to fully wipe (every transactional / company data store)
+    collections_to_wipe = [
+        # Companies & branches
+        "companies", "company_settings", "company_configurations",
+        "company_lotteries", "company_lottery_availability",
+        "succursales", "branches", "branch_lottery_assignments",
+        # Users (will be re-seeded with super admins below)
+        "users", "agents", "vendeurs", "vendeur_profiles", "supervisors",
+        "staff_members", "agent_policies",
+        # Tickets / sales / transactions
+        "lottery_transactions", "tickets", "ticket_plays",
+        "settlements", "settlement_history", "winning_tickets",
+        "payouts", "commissions", "deleted_tickets",
+        # Financial
+        "financial_transactions", "wallets", "wallet_transactions",
+        "deposits", "withdrawals", "invoices",
+        # SaaS billing module (the one we just built)
+        "billing_configs", "billing_invoices",
+        # Online players
+        "online_players", "online_tickets", "online_results_distribution",
+        # Activity logs / notifications / WS state
+        "activity_logs", "notifications", "sync_queue", "websocket_sessions",
+        "device_sessions", "audit_logs",
+        # Bet limits & schedules (per-company config — defaults remain)
+        "bet_type_limits", "prime_configs", "draw_schedules",
+        "company_draw_times", "limits",
+        # Misc
+        "scheduled_results", "manual_results", "result_distributions",
+        "reports", "daily_reports", "report_exports",
+    ]
+
+    wiped = {}
+    for name in collections_to_wipe:
+        try:
+            res = await db[name].delete_many({})
+            if res.deleted_count > 0:
+                wiped[name] = res.deleted_count
+        except Exception as exc:
+            wiped[name] = f"error: {exc}"
+
+    # Re-seed the canonical super admins
+    now = get_current_timestamp()
+    super_admins = [
+        {
+            "user_id": generate_id("user_"),
+            "email": "jefferson@jmstudio.com",
+            "password_hash": get_password_hash("JMStudio@2026!"),
+            "name": "Jefferson Admin",
+            "role": "SUPER_ADMIN",
+            "status": "ACTIVE",
+            "created_at": now,
+            "updated_at": now,
+        },
+        {
+            "user_id": generate_id("user_"),
+            "email": "admin@lottolab.tech",
+            "password_hash": get_password_hash("LottoLab@2026!"),
+            "name": "Super Administrateur",
+            "role": "SUPER_ADMIN",
+            "status": "ACTIVE",
+            "created_at": now,
+            "updated_at": now,
+        },
+    ]
+    await db.users.insert_many(super_admins)
+
+    return {
+        "message": "System reset complete. All companies, agents and transactions deleted. Super Admins re-seeded.",
+        "wiped_collections": wiped,
+        "super_admins": [
+            {"email": "jefferson@jmstudio.com", "password": "JMStudio@2026!"},
+            {"email": "admin@lottolab.tech", "password": "LottoLab@2026!"},
+        ],
+        "note": "Lottery catalogue (master_lotteries / haiti lotteries) was preserved. Re-create your companies and agents from scratch."
+    }
+
 # Initialize all routes with database
 set_db(db)
 set_super_admin_global_db(db)
