@@ -74,9 +74,41 @@ from daily_report_routes import daily_report_router, set_daily_report_db
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+# ============================================================
+# PRODUCTION-GRADE STARTUP VALIDATION
+# Verify all critical env vars BEFORE creating MongoDB client.
+# Logs explicit messages so we can debug on Emergent production logs.
+# ============================================================
+_critical_envs = {
+    "MONGO_URL": os.environ.get("MONGO_URL"),
+    "DB_NAME": os.environ.get("DB_NAME"),
+    "JWT_SECRET_KEY": os.environ.get("JWT_SECRET_KEY"),
+    "CORS_ORIGINS": os.environ.get("CORS_ORIGINS"),
+}
+_missing = [k for k, v in _critical_envs.items() if not v]
+if _missing:
+    print(f"[BOOT ERROR] Missing required environment variables: {_missing}", flush=True)
+    raise RuntimeError(f"Missing env vars: {_missing}")
+
+# Log connection target (hide the password portion of the URL)
+def _mask_mongo(url: str) -> str:
+    try:
+        if "@" in url and "://" in url:
+            scheme, rest = url.split("://", 1)
+            creds, host = rest.split("@", 1)
+            user = creds.split(":")[0]
+            return f"{scheme}://{user}:***@{host}"
+    except Exception:
+        pass
+    return url.split("@")[0] + "@***" if "@" in url else url
+
 mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db_name = os.environ['DB_NAME']
+print(f"[BOOT] Connecting to MongoDB: {_mask_mongo(mongo_url)}", flush=True)
+print(f"[BOOT] Database name: {db_name}", flush=True)
+
+client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=10000)
+db = client[db_name]
 
 app = FastAPI(title="LOTTOLAB API", version="1.0.0", description="Enterprise Lottery SaaS Platform")
 
@@ -104,6 +136,8 @@ async def health_check():
     
     db_status = "unknown"
     permissions_ok = False
+    write_ok = False
+    db_name_in_use = db.name
     
     try:
         # Test database connection
@@ -112,11 +146,19 @@ async def health_check():
         
         # Test read permission on users collection
         await db.users.find_one({}, {"_id": 1})
-        
         # Test read permission on companies collection  
         await db.companies.find_one({}, {"_id": 1})
-        
         permissions_ok = True
+
+        # Test WRITE permission (critical for production)
+        try:
+            test_doc = {"_id": "__healthcheck__", "ts": get_current_timestamp()}
+            await db.healthchecks.update_one({"_id": "__healthcheck__"}, {"$set": test_doc}, upsert=True)
+            await db.healthchecks.delete_one({"_id": "__healthcheck__"})
+            write_ok = True
+        except Exception as we:
+            write_ok = False
+            db_status = f"read_only: {str(we)[:80]}"
         
     except OperationFailure as e:
         db_status = f"auth_error: code={e.code}"
@@ -128,12 +170,14 @@ async def health_check():
         db_status = f"error: {str(e)}"
         permissions_ok = False
     
-    status = "healthy" if db_status == "connected" and permissions_ok else "degraded"
+    status = "healthy" if (db_status == "connected" and permissions_ok and write_ok) else "degraded"
     
     return {
         "status": status,
         "database": db_status,
+        "db_name": db_name_in_use,
         "permissions": "ok" if permissions_ok else "insufficient",
+        "write_permission": "ok" if write_ok else "missing",
         "version": "9.0.1",
         "timestamp": get_current_timestamp()
     }
