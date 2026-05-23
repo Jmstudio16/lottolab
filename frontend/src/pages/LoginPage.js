@@ -58,7 +58,20 @@ export const LoginPage = () => {
       toast.success(t('common.success'));
       navigate(redirectPath);
     } catch (error) {
-      toast.error(error.response?.data?.detail || t('auth.invalidCredentials'));
+      // Differentiate between backend down (network/520) and real invalid credentials
+      const status = error.response?.status;
+      const isNetworkError = !error.response || error.code === 'ERR_NETWORK' || status >= 500;
+
+      if (isNetworkError) {
+        const detail = status
+          ? `Serveur indisponible (HTTP ${status}). Vérifiez que le backend de production est actif ou réessayez plus tard.`
+          : 'Impossible de joindre le serveur. Vérifiez votre connexion internet ou contactez le support.';
+        toast.error(detail, { duration: 8000 });
+      } else if (status === 401 || status === 403) {
+        toast.error(error.response?.data?.detail || t('auth.invalidCredentials'));
+      } else {
+        toast.error(error.response?.data?.detail || t('auth.invalidCredentials'));
+      }
     } finally {
       setLoading(false);
     }
