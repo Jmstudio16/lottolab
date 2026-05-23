@@ -89,6 +89,13 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer()
 
+# Instant liveness probe - no DB, returns immediately
+# Used by Kubernetes liveness/readiness checks so cold starts don't kill the pod
+@api_router.get("/live")
+async def liveness_probe():
+    return {"status": "ok", "service": "lottolab-api"}
+
+
 # Health check endpoint (no auth required)
 @api_router.get("/health")
 async def health_check():
@@ -1561,74 +1568,91 @@ async def initialize_super_admin_if_empty():
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize scheduler on startup"""
-    # Initialize Super Admin if database is empty (for production deployment)
-    await initialize_super_admin_if_empty()
-    
-    # Set database for scheduler
-    set_scheduler_db(db)
-    
-    # Set database for Analytics
-    set_analytics_db(db)
-    
-    # Initialize lottery schedules for Plop Plop and Loto Rapid
-    await initialize_lottery_schedules()
-    
-    # Initialize Settlement Engine indexes
+    """
+    Bulletproof startup: every init step is wrapped in try/except so that a
+    transient MongoDB Atlas issue (slow cold start, replica election, etc.)
+    cannot crash the FastAPI process. The pod will always become ready and
+    /api/live will respond. Any failed init can be retried via the recovery
+    endpoints (/api/init/create-super-admin, /api/init/reset-system).
+    """
+    logger.info("[STARTUP] LOTTOLAB backend starting…")
+
+    # 1. Super Admin self-heal — protected
+    try:
+        await initialize_super_admin_if_empty()
+    except Exception as e:
+        logger.error(f"[STARTUP] Super admin init failed (will retry on demand): {e}")
+
+    # 2. Wire scheduler & analytics with DB
+    try:
+        set_scheduler_db(db)
+        set_analytics_db(db)
+    except Exception as e:
+        logger.warning(f"[STARTUP] Scheduler/Analytics DB wiring warning: {e}")
+
+    # 3. Lottery schedules — protected
+    try:
+        await initialize_lottery_schedules()
+    except Exception as e:
+        logger.warning(f"[STARTUP] Lottery schedules init skipped: {e}")
+
+    # 4. Settlement engine indexes — protected
     try:
         await ensure_settlement_indexes()
         logger.info("[STARTUP] Settlement engine indexes created")
     except Exception as e:
-        logger.warning(f"[STARTUP] Settlement index creation warning: {str(e)}")
-    
-    # Initialize Haiti lotteries (idempotent - safe to run multiple times)
+        logger.warning(f"[STARTUP] Settlement index creation warning: {e}")
+
+    # 5. Haiti lotteries — protected
     try:
         from haiti_lottery_init import initialize_haiti_lotteries
         result = await initialize_haiti_lotteries(db)
         logger.info(f"[STARTUP] Haiti lotteries initialized: Created {result['created']}, Updated {result['updated']}")
     except Exception as e:
-        logger.warning(f"[STARTUP] Haiti lottery init skipped: {str(e)}")
-    
-    # Add daily job to check expired subscriptions at 00:00
-    scheduler.add_job(
-        check_expired_subscriptions,
-        CronTrigger(hour=0, minute=0),
-        id="check_expired_subscriptions",
-        name="Daily Subscription Expiration Check",
-        replace_existing=True
-    )
-    
-    # Add job to check expiring soon (runs at 06:00 for notifications)
-    scheduler.add_job(
-        check_expiring_soon,
-        CronTrigger(hour=6, minute=0),
-        id="check_expiring_soon",
-        name="Check Expiring Subscriptions",
-        replace_existing=True
-    )
-    
-    # Add job to check and release scheduled results every minute
-    scheduler.add_job(
-        check_and_release_scheduled_results,
-        CronTrigger(minute="*"),  # Every minute
-        id="check_scheduled_results",
-        name="Check Scheduled Results",
-        replace_existing=True
-    )
-    
-    # Start the scheduler
-    scheduler.start()
-    logger.info("[SCHEDULER] Started - Daily subscription check at 00:00, Results check every minute")
-    
-    # Auto-repair companies with enabled_lotteries = 0
+        logger.warning(f"[STARTUP] Haiti lottery init skipped: {e}")
+
+    # 6. APScheduler jobs — protected
+    try:
+        scheduler.add_job(
+            check_expired_subscriptions,
+            CronTrigger(hour=0, minute=0),
+            id="check_expired_subscriptions",
+            name="Daily Subscription Expiration Check",
+            replace_existing=True
+        )
+        scheduler.add_job(
+            check_expiring_soon,
+            CronTrigger(hour=6, minute=0),
+            id="check_expiring_soon",
+            name="Check Expiring Subscriptions",
+            replace_existing=True
+        )
+        scheduler.add_job(
+            check_and_release_scheduled_results,
+            CronTrigger(minute="*"),
+            id="check_scheduled_results",
+            name="Check Scheduled Results",
+            replace_existing=True
+        )
+        scheduler.start()
+        logger.info("[SCHEDULER] Started - subscription@00:00, results every minute")
+    except Exception as e:
+        logger.error(f"[STARTUP] Scheduler init failed: {e}")
+
+    # 7. Lottery sync auto-repair — protected
     try:
         await startup_lottery_sync()
-        logger.info("[STARTUP] Lottery sync completed - enabled_lotteries bug fixed")
+        logger.info("[STARTUP] Lottery sync completed")
     except Exception as e:
-        logger.warning(f"[STARTUP] Lottery sync warning: {str(e)}")
-    
-    # Run initial check at startup
-    asyncio.create_task(check_expired_subscriptions())
+        logger.warning(f"[STARTUP] Lottery sync warning: {e}")
+
+    # 8. Fire-and-forget initial check
+    try:
+        asyncio.create_task(check_expired_subscriptions())
+    except Exception as e:
+        logger.warning(f"[STARTUP] Initial subscription check skipped: {e}")
+
+    logger.info("[STARTUP] LOTTOLAB backend ready ✅")
 
 
 @app.on_event("shutdown")

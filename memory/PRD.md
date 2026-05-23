@@ -1,12 +1,32 @@
 # LOTTOLAB PRO - Professional Lottery SaaS Platform
 
-## Version: 27.7.0 (SaaS Billing Module + Code Quality)
-## Last Updated: 2026-05-22 21:00 UTC
-## Deployed: 2026-05-22 15:15 Haiti Time
+## Version: 27.8.0 (Production Hardening + Reset Endpoint)
+## Last Updated: 2026-05-23 17:00 UTC
 
 ---
 
-## 🆕 v27.7.0 — Module de Facturation SaaS (this session)
+## 🆕 v27.8.0 — Production-grade startup & deployment
+
+### Bulletproof backend startup
+- **`@app.on_event("startup")` entièrement protégé** — chaque étape d'init (super admin self-heal, scheduler, loteries Haïti, indexes settlement, lottery sync) est wrappée individuellement dans try/except. Une seule erreur ne peut plus crasher le pod.
+- **Nouveau endpoint `/api/live`** — sonde de liveness Kubernetes instantanée (pas de DB, < 50ms). Le pod devient "Ready" immédiatement même si MongoDB Atlas est lent au cold start.
+- **Self-heal Super Admin** à chaque démarrage : upsert `jefferson@jmstudio.com` + `admin@lottolab.tech` avec rôle ACTIVE + password correct, même si DB non-vide.
+
+### Endpoints de récupération (Super Admin)
+- `POST /api/init/create-super-admin?secret_key=LOTTOLAB_INIT_2026` — réinitialise le password Super Admin
+- `POST /api/init/reset-system?secret_key=LOTTOLAB_INIT_2026&confirm=RESET_LOTTOLAB_NOW` — wipe complet (compagnies/agents/tickets/factures/logs) en préservant Super Admins + catalogue loteries
+
+### Login UX
+- Frontend `LoginPage.js` affiche désormais l'erreur réelle (`Serveur indisponible HTTP 520`) au lieu du faux `Email ou mot de passe invalide` quand le backend est down.
+
+### Fixes annexes
+- `.gitignore` corrigé (n'ignore plus les `.env` de production)
+- `seed_data.py` / `seed_saas.py` : Company Admin password = `LotoPAM2026!`
+- Toast "Données du cache" supprimé quand l'appareil est en réalité online (réduit le bruit UX)
+
+---
+
+## 🆕 v27.7.0 — Module Facturation SaaS
 
 Le Super Admin peut désormais tracker chaque compagnie active et générer des factures mensuelles automatiques basées sur le nombre d'agents.
 
