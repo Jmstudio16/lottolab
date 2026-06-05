@@ -1,0 +1,186 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║        ✅ LOTTOLAB - CHECKLIST FINALE DE DÉPLOIEMENT                ║
+║                                                                      ║
+║         Utilisez cette checklist avant et après déploiement         ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════
+AVANT LE DÉPLOIEMENT (Sur votre ordinateur local)
+═══════════════════════════════════════════════════════════════════════
+
+☐ Fichier /app/backend/server.py existe et est valide
+☐ Fichier /app/backend/auth.py existe et est valide
+☐ Fichier /app/backend/.env contient:
+  ☐ MONGO_URL=mongodb+srv://seller-commission-ui:...
+  ☐ DB_NAME=lottolab
+  ☐ JWT_SECRET_KEY=lottolab-secure-production-key...
+  ☐ CORS_ORIGINS=https://multi-tenant-lottery.emergent.host,...
+  ☐ EMERGENT_LLM_KEY=sk-emergent-6F5B3426d8cA3364e4
+☐ Fichier /app/backend/requirements.txt existe
+☐ Syntaxe Python validée: python3 -m py_compile server.py auth.py
+☐ Packages installés localement: pip install -r requirements.txt
+
+═══════════════════════════════════════════════════════════════════════
+TRANSFERT DES FICHIERS VERS LE SERVEUR
+═══════════════════════════════════════════════════════════════════════
+
+Choisir UNE méthode:
+
+MÉTHODE A: Via SCP
+───────────────────
+☐ scp /app/backend/server.py seller-commission-ui@IP:/app/backend/
+☐ scp /app/backend/auth.py seller-commission-ui@IP:/app/backend/
+☐ scp /app/backend/.env seller-commission-ui@IP:/app/backend/
+☐ scp /app/backend/requirements.txt seller-commission-ui@IP:/app/backend/
+
+MÉTHODE B: Via Panneau Emergent (File Manager)
+────────────────────────────────────────────────
+☐ Connecté au panneau Emergent
+☐ Naviguer à /app/backend/
+☐ Uploader server.py
+☐ Uploader auth.py
+☐ Uploader .env
+☐ Uploader requirements.txt
+
+═══════════════════════════════════════════════════════════════════════
+SUR LE SERVEUR - AVANT DÉPLOIEMENT
+═══════════════════════════════════════════════════════════════════════
+
+☐ Se connecter en SSH: ssh seller-commission-ui@IP
+☐ Naviguer: cd /app/backend
+☐ Vérifier les fichiers:
+  ☐ ls -la server.py
+  ☐ ls -la auth.py
+  ☐ ls -la .env
+  ☐ ls -la requirements.txt
+
+═══════════════════════════════════════════════════════════════════════
+DÉPLOIEMENT
+═══════════════════════════════════════════════════════════════════════
+
+Option A: Script automatique (RECOMMANDÉ)
+───────────────────────────────────────────
+☐ Exécuter: bash DEPLOY-EMERGENT-QUICK.sh
+☐ Attendre la fin du script
+☐ Voir "✅ RÉPARATION TERMINÉE" à la fin
+
+Option B: Commandes manuelles
+──────────────────────────────
+☐ Arrêter ancien processus:
+  ☐ pkill -9 -f uvicorn
+  ☐ pkill -9 -f "python.*server"
+  ☐ sleep 2
+
+☐ Installer dépendances:
+  ☐ pip install -q --upgrade pip
+  ☐ pip install -q -r requirements.txt
+
+☐ Vérifier syntaxe:
+  ☐ python3 -m py_compile server.py auth.py
+
+☐ Démarrer le backend:
+  ☐ nohup python3 -m uvicorn server:app --host 0.0.0.0 --port 8001 --workers 2 > /var/log/lottolab-backend.log 2>&1 &
+  ☐ sleep 3
+
+═══════════════════════════════════════════════════════════════════════
+APRÈS DÉPLOIEMENT - VÉRIFICATIONS SUR LE SERVEUR
+═══════════════════════════════════════════════════════════════════════
+
+☐ Backend tourne?
+  ☐ ps aux | grep '[u]vicorn'
+  ☐ Résultat attendu: Une ligne avec "uvicorn server:app"
+
+☐ Port 8001 écoute?
+  ☐ netstat -tlnp | grep 8001 (ou: ss -tlnp | grep 8001)
+  ☐ Résultat attendu: Une ligne avec ":8001"
+
+☐ Backend répond?
+  ☐ curl http://localhost:8001/api/health
+  ☐ Résultat attendu: JSON response ({"status":"healthy"} ou similaire)
+
+☐ Variables d'environnement correctes?
+  ☐ grep MONGO_URL /app/backend/.env
+  ☐ Résultat attendu: mongodb+srv://...
+  ☐ grep JWT_SECRET_KEY /app/backend/.env
+  ☐ Résultat attendu: lottolab-secure-production-key... (PAS VOTRE-CLE)
+
+☐ Logs sans erreur?
+  ☐ tail -30 /var/log/lottolab-backend.log
+  ☐ Rechercher: ERROR, Exception, Failed, error
+
+═══════════════════════════════════════════════════════════════════════
+VÉRIFICATION DANS LE NAVIGATEUR
+═══════════════════════════════════════════════════════════════════════
+
+☐ Aller à: https://multi-tenant-lottery.emergent.host
+☐ Page charge correctement?
+☐ Pas de message "HTTP 500"?
+☐ Formulaire de login visible et interactif?
+☐ Essayer de se connecter?
+  ☐ Utilisateur valide → Connexion réussie
+  ☐ Utilisateur invalide → Message "User not found" (bon signe!)
+  ☐ HTTP 500 → Problème, voir troubleshooting
+
+═══════════════════════════════════════════════════════════════════════
+TROUBLESHOOTING - SI PROBLÈME
+═══════════════════════════════════════════════════════════════════════
+
+❌ Je vois toujours HTTP 500
+───────────────────────────────
+☐ Vérifier les logs:
+  ☐ tail -100 /var/log/lottolab-backend.log | grep -i error
+  ☐ Copier le message d'erreur exact
+
+☐ Redémarrer le backend:
+  ☐ pkill -9 -f uvicorn
+  ☐ sleep 2
+  ☐ cd /app/backend
+  ☐ nohup python3 -m uvicorn server:app --host 0.0.0.0 --port 8001 --workers 2 > /var/log/lottolab-backend.log 2>&1 &
+  ☐ sleep 3
+  ☐ curl http://localhost:8001/api/health
+
+❌ Port 8001 est déjà utilisé
+────────────────────────────────
+☐ Vérifier qui l'utilise:
+  ☐ lsof -i :8001 | grep LISTEN
+  ☐ ou: netstat -tlnp | grep 8001
+
+☐ Tuer le processus:
+  ☐ PID=$(lsof -i :8001 | grep LISTEN | awk '{print $2}')
+  ☐ kill -9 $PID
+
+☐ Redémarrer:
+  ☐ nohup python3 -m uvicorn server:app --host 0.0.0.0 --port 8001 --workers 2 > /var/log/lottolab-backend.log 2>&1 &
+
+❌ ModuleNotFoundError
+────────────────────────
+☐ Réinstaller les packages:
+  ☐ pip install -r /app/backend/requirements.txt
+
+☐ Vérifier l'installation:
+  ☐ python3 -c "import fastapi, motor, jose; print('OK')"
+
+❌ MONGO_URL not set
+──────────────────────
+☐ Vérifier que .env existe:
+  ☐ cat /app/backend/.env
+  ☐ grep MONGO_URL /app/backend/.env
+
+☐ Si absent, copier le fichier à nouveau:
+  ☐ scp /app/backend/.env seller-commission-ui@IP:/app/backend/
+
+═══════════════════════════════════════════════════════════════════════
+SUCCÈS! ✅
+═══════════════════════════════════════════════════════════════════════
+
+Vous avez réussi si:
+✅ Backend tourne (ps aux montre uvicorn)
+✅ Port 8001 écoute (netstat montre :8001)
+✅ Backend répond (curl donne une réponse)
+✅ Pas de HTTP 500 dans le navigateur
+✅ Formulaire de login est interactif
+✅ Essai de connexion ne donne pas HTTP 500 (erreur "User not found" = bon signe)
+
+═══════════════════════════════════════════════════════════════════════

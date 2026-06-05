@@ -138,26 +138,38 @@ async def require_company_admin(user: dict):
 
 @settings_router.get("/system/settings")
 async def get_system_settings():
-    """Get global system settings - public endpoint for logo display"""
-    settings = await db.system_settings.find_one({}, {"_id": 0})
-    
+    """Get global system settings - public endpoint for logo display.
+    Bulletproof: returns sensible defaults if DB unreachable or unauthorized."""
+    default_settings = {
+        "id": "system_settings",
+        "system_name": "LOTTOLAB",
+        "system_logo_url": "/assets/logos/lottolab-logo.png",
+        "created_at": get_current_timestamp(),
+        "updated_at": get_current_timestamp()
+    }
+
+    try:
+        settings = await db.system_settings.find_one({}, {"_id": 0})
+    except Exception as e:
+        # MongoDB unreachable / unauthorized — degrade gracefully
+        import logging
+        logging.getLogger(__name__).warning(f"[settings] DB read failed, returning defaults: {e}")
+        return default_settings
+
     if not settings:
-        # Create default settings
-        settings = {
-            "id": "system_settings",
-            "system_name": "LOTTOLAB",
-            "system_logo_url": "/assets/logos/lottolab-logo.png",
-            "created_at": get_current_timestamp(),
-            "updated_at": get_current_timestamp()
-        }
-        await db.system_settings.insert_one(settings)
-    else:
-        # Ensure system_logo_url exists (migration from old field name)
-        if not settings.get("system_logo_url"):
-            settings["system_logo_url"] = settings.get("platform_logo", "/assets/logos/lottolab-logo.png")
-        if not settings.get("system_name"):
-            settings["system_name"] = settings.get("platform_name", "LOTTOLAB")
-    
+        # Try to seed defaults, but if write fails we still return them
+        try:
+            await db.system_settings.insert_one(default_settings)
+        except Exception:
+            pass
+        return default_settings
+
+    # Ensure system_logo_url exists (migration from old field name)
+    if not settings.get("system_logo_url"):
+        settings["system_logo_url"] = settings.get("platform_logo", "/assets/logos/lottolab-logo.png")
+    if not settings.get("system_name"):
+        settings["system_name"] = settings.get("platform_name", "LOTTOLAB")
+
     return settings
 
 

@@ -73,7 +73,15 @@ from bet_type_limits_routes import bet_type_limits_router, set_bet_type_limits_d
 from daily_report_routes import daily_report_router, set_daily_report_db
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+env_file = ROOT_DIR / '.env'
+prod_env_file = ROOT_DIR / '.env.production'
+if env_file.exists():
+    load_dotenv(env_file)
+elif prod_env_file.exists():
+    print("[BOOT] .env file missing; loading .env.production instead", flush=True)
+    load_dotenv(prod_env_file)
+else:
+    load_dotenv(env_file)
 
 # ============================================================
 # PRODUCTION-GRADE STARTUP VALIDATION
@@ -90,6 +98,11 @@ _missing = [k for k, v in _critical_envs.items() if not v]
 if _missing:
     print(f"[BOOT ERROR] Missing required environment variables: {_missing}", flush=True)
     raise RuntimeError(f"Missing env vars: {_missing}")
+
+jwt_secret = os.environ.get("JWT_SECRET_KEY", "")
+if jwt_secret.strip() == "VOTRE-CLE-SECRETE-TRES-LONGUE-ET-COMPLEXE-CHANGEZ-LA" or jwt_secret.strip().startswith("VOTRE-CLE"): 
+    print("[BOOT ERROR] JWT_SECRET_KEY is using the placeholder value from .env.production. Replace it with a real secret.", flush=True)
+    raise RuntimeError("JWT_SECRET_KEY must be replaced with a real secret in backend/.env or environment variables.")
 
 # Log connection target (hide the password portion of the URL)
 def _mask_mongo(url: str) -> str:
@@ -112,6 +125,50 @@ client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=10000)
 db = client[db_name]
 
 app = FastAPI(title="LOTTOLAB API", version="1.0.0", description="Enterprise Lottery SaaS Platform")
+
+# ============================================================
+# GLOBAL EXCEPTION HANDLERS — Make every MongoDB failure a clean 503
+# This prevents Unauthorized / connection errors from killing the pod
+# during deployment when MongoDB permissions are still being provisioned.
+# ============================================================
+from pymongo.errors import OperationFailure, ServerSelectionTimeoutError, PyMongoError
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(OperationFailure)
+async def mongo_operation_failure_handler(request, exc: OperationFailure):
+    """Return a clean 503 for MongoDB authorization / operation failures."""
+    code = getattr(exc, "code", None)
+    detail = "Service de base de données temporairement indisponible."
+    if code == 13:
+        detail = "Permissions MongoDB insuffisantes — vérifiez que l'utilisateur Atlas a le rôle readWrite/Atlas admin."
+    logging.getLogger(__name__).error(f"[DB] OperationFailure code={code} on {request.url.path}: {str(exc)[:200]}")
+    return JSONResponse(status_code=503, content={
+        "error": "database_unavailable",
+        "code": code,
+        "detail": detail,
+        "path": str(request.url.path)
+    })
+
+@app.exception_handler(ServerSelectionTimeoutError)
+async def mongo_timeout_handler(request, exc: ServerSelectionTimeoutError):
+    """Return a clean 503 when MongoDB is unreachable."""
+    logging.getLogger(__name__).error(f"[DB] ServerSelectionTimeout on {request.url.path}: {str(exc)[:200]}")
+    return JSONResponse(status_code=503, content={
+        "error": "database_unreachable",
+        "detail": "Impossible de se connecter à MongoDB. Vérifiez MONGO_URL et Network Access.",
+        "path": str(request.url.path)
+    })
+
+@app.exception_handler(PyMongoError)
+async def mongo_generic_handler(request, exc: PyMongoError):
+    """Return a clean 503 for any other MongoDB error."""
+    logging.getLogger(__name__).error(f"[DB] PyMongoError on {request.url.path}: {type(exc).__name__}: {str(exc)[:200]}")
+    return JSONResponse(status_code=503, content={
+        "error": "database_error",
+        "detail": f"{type(exc).__name__}: {str(exc)[:150]}",
+        "path": str(request.url.path)
+    })
+# ============================================================
 
 # Add GZip compression middleware for faster responses on slow networks
 app.add_middleware(GZipMiddleware, minimum_size=500)

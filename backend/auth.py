@@ -7,13 +7,22 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+env_file = ROOT_DIR / '.env'
+prod_env_file = ROOT_DIR / '.env.production'
+if env_file.exists():
+    load_dotenv(env_file)
+elif prod_env_file.exists():
+    load_dotenv(prod_env_file)
+else:
+    load_dotenv(env_file)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
 if not SECRET_KEY:
-    raise ValueError("JWT_SECRET_KEY environment variable is required for production. Set it in backend/.env")
+    raise ValueError("JWT_SECRET_KEY environment variable is required for production. Set it in backend/.env or .env.production")
+if SECRET_KEY.strip() == "VOTRE-CLE-SECRETE-TRES-LONGUE-ET-COMPLEXE-CHANGEZ-LA" or SECRET_KEY.strip().startswith("VOTRE-CLE"):
+    raise ValueError("JWT_SECRET_KEY in backend/.env or .env.production must be replaced with a real secret, not the placeholder value.")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
